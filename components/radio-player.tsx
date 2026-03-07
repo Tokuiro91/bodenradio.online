@@ -212,6 +212,9 @@ export function RadioPlayer() {
       const el = scrollRef.current
       if (!el) return
 
+      const viewportWidth = el.clientWidth
+      if (viewportWidth === 0) return
+
       // Find the live artist index, or the nearest upcoming one
       const nowMs = getSyncedTime()
       let targetIdx = sortedArtists.findIndex(a => {
@@ -224,24 +227,32 @@ export function RadioPlayer() {
       }
       if (targetIdx < 0) targetIdx = 0
 
-      // Center the card: shift to the 2nd copy (middle of 3×) and center the target card
+      // CORRECT FORMULA INCLUDING 40dvw PADDING:
+      // paddingLeft = 0.4 * viewportWidth
+      // cardCenterInContainer = paddingLeft + (TOTAL_CARDS + targetIdx) * CARD_WIDTH + CARD_WIDTH / 2
+      // scrollLeft = cardCenterInContainer - viewportWidth / 2
+      const paddingLeft = 0.4 * viewportWidth
       const targetScroll =
-        CARD_WIDTH * (TOTAL_CARDS + targetIdx) - el.clientWidth / 2 + CARD_WIDTH / 2
+        paddingLeft + (TOTAL_CARDS + targetIdx) * CARD_WIDTH + (CARD_WIDTH / 2) - (viewportWidth / 2)
 
       el.scrollTo({ left: targetScroll, behavior: "instant" })
       setScrollX(targetScroll)
       setVisibleIndex(targetIdx)
     }
 
-    // Capture initial load
+    // Multiple passes to ensure we catch the late-loading layout/fonts
     scrollInitial()
     const t1 = setTimeout(scrollInitial, 150)
-    const t2 = setTimeout(scrollInitial, 1000)
+    const t2 = setTimeout(scrollInitial, 600)
+    const t3 = setTimeout(scrollInitial, 1500)
+    const t4 = setTimeout(scrollInitial, 3000)
 
     window.addEventListener('resize', scrollInitial)
     return () => {
       clearTimeout(t1)
       clearTimeout(t2)
+      clearTimeout(t3)
+      clearTimeout(t4)
       window.removeEventListener('resize', scrollInitial)
     }
   }, [TOTAL_CARDS, ready, sortedArtists])
