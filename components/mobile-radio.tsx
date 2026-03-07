@@ -76,6 +76,10 @@ function calcProgress(artist: { startTime: string; endTime: string }): number {
   return (now - s) / (e - s)
 }
 
+function formatTime(date: Date): string {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
+}
+
 export function MobileRadio() {
   const { artists, ready } = useArtists()
   const [showVolume, setShowVolume] = useState(false)
@@ -341,23 +345,15 @@ export function MobileRadio() {
         </Sheet>
       </header>
 
-      {/* Time displays — Hide if Ad */}
+      {/* Time displays — Slot Time */}
       {!isAd && (
-        <div className="flex items-center justify-between px-4 py-3 bg-[#0a0a0a]">
-          <div>
-            <p className="text-[9px] uppercase tracking-[0.15em] text-[#737373] mb-0.5">
-              Current time
+        <div className="flex items-center justify-center px-4 py-4 bg-[#0a0a0a]">
+          <div className="text-center">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-[#737373] mb-1 font-mono uppercase">
+              Broadcast Slot
             </p>
-            <p className="text-2xl font-mono font-bold text-[#e5e5e5] tracking-tight">
-              {currentTime}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-[9px] uppercase tracking-[0.15em] text-[#737373] mb-0.5">
-              Start time
-            </p>
-            <p className="text-2xl font-mono font-bold text-[#e5e5e5] tracking-tight">
-              {timeDisplay}
+            <p className="text-2xl font-mono font-bold text-[#99CCCC] tracking-tight">
+              с {formatTime(new Date(artist.startTime))} до {formatTime(new Date(artist.endTime))}
             </p>
           </div>
         </div>
