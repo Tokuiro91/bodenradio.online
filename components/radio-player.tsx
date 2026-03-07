@@ -350,13 +350,7 @@ export function RadioPlayer() {
         </div>
       )}
 
-      <Timeline
-        totalArtists={TOTAL_CARDS}
-        currentPlayingIndex={currentPlayingIndex}
-        visibleIndex={visibleIndex}
-        onSeek={scrollToArtist}
-        artists={sortedArtists}
-      />
+      {/* Timeline removed per user request */}
 
       {/* Reaction picker positioned in the bottom-right of the player area */}
       <div className="absolute bottom-24 right-8 z-[9997]">
