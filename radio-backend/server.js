@@ -218,6 +218,26 @@ app.get('/api/schedule', auth, (req, res) => {
     db.all(query, params, (err, rows) => res.json(rows));
 });
 
+// Bulk sync schedule (used by Next.js admin)
+app.post('/api/schedule/sync', auth, (req, res) => {
+    const { events } = req.body; // array of { title, type, item_id, start_time, end_time }
+
+    db.serialize(() => {
+        db.run('DELETE FROM schedule', (err) => {
+            if (err) return res.status(500).json({ error: 'Failed to clear schedule' });
+
+            if (!events || !events.length) return res.json({ success: true, count: 0 });
+
+            const stmt = db.prepare('INSERT INTO schedule (title, type, item_id, start_time, end_time) VALUES (?, ?, ?, ?, ?)');
+            events.forEach(ev => {
+                stmt.run(ev.title, ev.type, ev.item_id, ev.start_time, ev.end_time);
+            });
+            stmt.finalize();
+            res.json({ success: true, count: events.length });
+        });
+    });
+});
+
 app.post('/api/schedule', auth, (req, res) => {
     const { title, type, item_id, start_time, end_time } = req.body;
 

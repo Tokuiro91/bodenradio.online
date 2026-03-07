@@ -238,6 +238,13 @@ export default function AdminPage() {
 
     setArtists(nextArtists)
 
+    // Trigger Radio Schedule Sync
+    fetch("/api/radio/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ artists: nextArtists }),
+    }).catch(() => { })
+
     // Auto-save Artist to DB if it's a new artist or edited one and it's an 'artist' type
     if (form.type === 'artist' && form.name) {
       const exists = dbArtists.some(a => a.name === form.name && a.show === form.show)
@@ -274,6 +281,13 @@ export default function AdminPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(next),
     })
+
+    // Trigger Radio Schedule Sync
+    fetch("/api/radio/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ artists: next }),
+    }).catch(() => { })
     if (editingId === id) resetForm()
   }
 
