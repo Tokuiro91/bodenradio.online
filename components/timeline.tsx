@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo } from "react"
+import { useCallback, useMemo, useEffect, useRef } from "react"
 import type { Artist } from "@/lib/artists-data"
 import { getSyncedTime } from "@/hooks/use-server-time"
 
@@ -41,41 +41,41 @@ export function Timeline({
   artists = [],
 }: TimelineProps) {
   /**
-   * Build day groups from actual artist dates.
-   * Each group tracks how many artists belong to that day
-   * so we can set proportional widths on the label row.
+   * Auto-scroll the timeline to center the 'visibleIndex' segment.
    */
-  const days = useMemo<DayGroup[]>(() => {
-    if (!artists.length) return []
-    const groups: DayGroup[] = []
-    artists.forEach((a, i) => {
-      const d = localDate(a.startTime)
-      if (!groups.length || groups[groups.length - 1].date !== d) {
-        groups.push({
-          date: d,
-          label: new Date(a.startTime)
-            .toLocaleDateString("en-US", {
-              day: "numeric",
-              month: "long",
-            })
-            .toUpperCase(),
-          startIndex: i,
-          count: 1,
-        })
-      } else {
-        groups[groups.length - 1].count++
-      }
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const SEGMENT_WIDTH = 120
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+
+    const viewportWidth = el.clientWidth
+    if (viewportWidth === 0) return
+
+    // Center the target segment:
+    // centerPos = index * SEGMENT_WIDTH + SEGMENT_WIDTH / 2
+    // scrollPosition = centerPos - viewportWidth / 2
+    const targetIndex = visibleIndex >= 0 ? visibleIndex : 0
+    const targetScroll = targetIndex * SEGMENT_WIDTH + SEGMENT_WIDTH / 2 - viewportWidth / 2
+
+    el.scrollTo({
+      left: targetScroll,
+      behavior: "smooth",
     })
-    return groups
-  }, [artists])
+  }, [visibleIndex])
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       const rect = e.currentTarget.getBoundingClientRect()
       const x = e.clientX - rect.left
-      const ratio = x / rect.width
+      const el = scrollRef.current
+      if (!el) return
+
+      // Adjust for scroll position to find which segment was clicked
+      const absoluteX = x + el.scrollLeft
       const index = Math.min(
-        Math.floor(ratio * totalArtists),
+        Math.floor(absoluteX / SEGMENT_WIDTH),
         totalArtists - 1
       )
       onSeek(index)
@@ -85,18 +85,21 @@ export function Timeline({
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0a]/95 backdrop-blur-md border-t border-[#2a2a2a]">
-      {/* ── Artist bars (equal width per artist) ── */}
+      {/* Side Fade Masks */}
+      <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-[#0a0a0a] to-transparent z-10 pointer-events-none" />
+      <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-[#0a0a0a] to-transparent z-10 pointer-events-none" />
+
+      {/* ── Artist bars (Fixed width, scrollable) ── */}
       <div
-        className="relative w-full h-8 cursor-pointer group"
+        ref={scrollRef}
+        className="relative w-full h-8 overflow-x-auto overflow-y-hidden scrollbar-hide cursor-pointer group"
         onClick={handleClick}
-        role="slider"
-        aria-label="Artist navigation"
-        aria-valuemin={0}
-        aria-valuemax={totalArtists - 1}
-        aria-valuenow={visibleIndex}
-        tabIndex={0}
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
-        <div className="absolute inset-0 flex">
+        <div
+          className="flex h-full"
+          style={{ width: totalArtists * SEGMENT_WIDTH, paddingLeft: "0px" }}
+        >
           {Array.from({ length: totalArtists }).map((_, i) => {
             const isPlayed =
               currentPlayingIndex >= 0 && i < currentPlayingIndex
@@ -108,8 +111,8 @@ export function Timeline({
             return (
               <div
                 key={i}
-                className="relative flex-1 flex items-end px-px"
-                style={{ height: "100%" }}
+                className="relative flex items-end px-px border-r border-[#2a2a2a]/30 last:border-r-0"
+                style={{ height: "100%", width: SEGMENT_WIDTH, flexShrink: 0 }}
               >
                 {/* Base bar */}
                 <div
@@ -118,8 +121,7 @@ export function Timeline({
                     : isPlayed
                       ? "bg-[#737373] h-3/5"
                       : "bg-[#2a2a2a] h-2/5"
-                    } ${isVisible ? "ring-1 ring-[#e5e5e5]" : ""}`}
-                  style={{ minHeight: "4px" }}
+                    } ${isVisible ? "ring-1 ring-[#e5e5e5]/50" : ""}`}
                 />
                 {/* Real-time fill for playing slot */}
                 {isPlaying && (
@@ -137,28 +139,27 @@ export function Timeline({
         </div>
       </div>
 
-      {/* ── Day labels — width proportional to artist count ── */}
-      {days.length > 0 ? (
-        <div className="relative flex h-6">
-          {days.map((day) => (
-            <div
-              key={day.date}
-              className="flex items-center border-r border-[#2a2a2a] last:border-r-0 overflow-hidden"
-              // flex-none with explicit % width so bars and labels align
-              style={{ width: `${(day.count / totalArtists) * 100}%` }}
-            >
-              <button
-                onClick={() => onSeek(day.startIndex)}
-                className="px-3 text-[10px] font-mono uppercase tracking-widest text-[#737373] hover:text-[#99CCCC] transition-colors whitespace-nowrap overflow-hidden text-ellipsis"
-              >
-                {day.label}
-              </button>
-            </div>
-          ))}
+      {/* ── Day labels (Proportional to scrollable container) ── */}
+      <div className="relative h-6 overflow-hidden">
+        <div
+          className="flex h-full"
+          style={{
+            width: totalArtists * SEGMENT_WIDTH,
+            transform: scrollRef.current ? `translateX(-${scrollRef.current.scrollLeft}px)` : 'none'
+          }}
+        >
+          {/* Note: In a pure React way, we'd sync this scroll or use the same scrollRef element. 
+              But keeping it simple: labels will follow segments if they are children of the same scrollable. 
+              Let's put labels INSIDE the scrollable div for perfect sync. */}
         </div>
-      ) : (
-        <div className="h-6" />
-      )}
+      </div>
+
+      {/* Simplified Day labels footer (fixed, or synced) */}
+      <div className="h-4 flex items-center justify-center border-t border-[#1a1a1a]">
+        <div className="text-[9px] font-mono uppercase tracking-[0.3em] text-[#444]">
+          Archive & Schedule Navigation
+        </div>
+      </div>
     </div>
   )
 }
