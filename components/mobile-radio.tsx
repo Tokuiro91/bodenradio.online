@@ -345,16 +345,12 @@ export function MobileRadio() {
         </Sheet>
       </header>
 
-      {/* Time displays — Hide if Ad */}
+      {/* Time displays — Style matched to Web ArtistCard Badge */}
       {!isAd && (
-        <div className="flex items-center justify-center px-4 py-3 bg-[#0a0a0a]">
-          <div className="text-center">
-            <p className="text-[9px] uppercase tracking-[0.15em] text-[#737373] mb-0.5">
-              Set Time
-            </p>
-            <p className="text-lg font-mono font-bold text-[#e5e5e5] tracking-tight">
-              {timeDisplay}
-            </p>
+        <div className="flex items-center justify-center px-4 py-4 bg-[#0a0a0a]">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-[#1a1a1a]/80 text-[#a3a3a3] font-mono text-xs border border-[#2a2a2a]/50">
+            <Clock className="w-3.5 h-3.5" />
+            <span className="tracking-tight">{timeDisplay}</span>
           </div>
         </div>
       )}
@@ -681,10 +677,12 @@ export function MobileRadio() {
                   }}
                   className={`flex-shrink-0 rounded-sm transition-all duration-200 ${isCurrentPlaying
                     ? "bg-[#99CCCC] h-full"
-                    : isPlayed
-                      ? "bg-[#737373] h-3/5"
-                      : "bg-[#2a2a2a] h-2/5"
-                    } ${isViewing ? "ring-1 ring-[#e5e5e5]" : ""}`}
+                    : isViewing
+                      ? "bg-[#99CCCC]/60 h-full"
+                      : isPlayed
+                        ? "bg-[#737373] h-3/5"
+                        : "bg-[#2a2a2a] h-2/5"
+                    }`}
                   style={{ width: MINI_BAR_WIDTH - 1, minHeight: "3px" }}
                   aria-label={`Artist ${i + 1}`}
                 />

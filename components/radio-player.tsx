@@ -5,7 +5,7 @@ import { Header } from "@/components/header"
 import { ArtistCard } from "@/components/artist-card"
 import { Timeline } from "@/components/timeline"
 import { useArtists } from "@/lib/use-artists"
-import { Clock, ExternalLink, Search, X as CloseIcon } from "lucide-react"
+import { Clock, ExternalLink } from "lucide-react"
 import { ReactionPicker } from "@/components/reaction-picker"
 import type { Artist } from "@/lib/artists-data"
 import { useAudioEngine } from "@/hooks/use-audio-engine"
@@ -79,20 +79,10 @@ export function RadioPlayer() {
   const cardRefs = useRef<(HTMLDivElement | null)[]>([])
   const CARD_WIDTH = 336 // 312px card + 24px gap
 
-  const [searchQuery, setSearchQuery] = useState("")
-
-  const sortedArtists = useMemo(() => {
-    let list = [...artists].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase()
-      list = list.filter(a =>
-        a.name.toLowerCase().includes(q) ||
-        a.show.toLowerCase().includes(q) ||
-        (a.location && a.location.toLowerCase().includes(q))
-      )
-    }
-    return list
-  }, [artists, searchQuery])
+  const sortedArtists = useMemo(
+    () => [...artists].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()),
+    [artists]
+  )
 
   const TOTAL_CARDS = sortedArtists.length
 
@@ -338,25 +328,6 @@ export function RadioPlayer() {
         onVolumeChange={setVolume}
         onMuteToggle={() => setIsMuted(!isMuted)}
       />
-
-      {/* Search Bar */}
-      <div className="absolute top-20 right-8 z-[60] flex items-center gap-2">
-        <div className={`flex items-center bg-black/60 backdrop-blur-md border rounded-full px-3 py-1.5 transition-all duration-300 ${searchQuery ? 'border-[#99CCCC] w-64' : 'border-[#2a2a2a] w-10 hover:w-64 hover:border-[#444]'}`}>
-          <Search size={16} className={`${searchQuery ? 'text-[#99CCCC]' : 'text-[#737373]'} flex-shrink-0`} />
-          <input
-            type="text"
-            placeholder="SEARCH ARTIST / SHOW..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-transparent border-none outline-none text-[10px] font-mono uppercase tracking-widest text-white ml-2 w-full placeholder:text-[#444]"
-          />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery("")} className="text-[#444] hover:text-white transition-colors">
-              <CloseIcon size={14} />
-            </button>
-          )}
-        </div>
-      </div>
 
       {/* Background ambience */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">

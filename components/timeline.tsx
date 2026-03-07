@@ -104,12 +104,12 @@ export function Timeline({
   const tripleSegments = Array.from({ length: totalArtists * 3 })
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0a]/95 backdrop-blur-md border-t border-[#2a2a2a] h-14">
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0a]/95 backdrop-blur-md border-t border-[#2a2a2a] transition-all duration-500 h-14 hover:h-24 group/timeline">
       {/* Side Fade Masks */}
       <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#0a0a0a] to-transparent z-20 pointer-events-none" />
       <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#0a0a0a] to-transparent z-20 pointer-events-none" />
 
-      {/* ── Artist bars (Fixed width, scrollable, tripled) ── */}
+      {/* ── Artist bars ── */}
       <div
         ref={scrollRef}
         className="relative w-full h-full overflow-x-auto overflow-y-hidden scrollbar-hide cursor-pointer"
@@ -130,27 +130,19 @@ export function Timeline({
             const isVisible = realIndex === visibleIndex
             const innerProgress = isPlaying ? getArtistProgress(artist) : 0
 
-            // Date division check
-            const prevArtist = i === 0 ? null : artists[(realIndex - 1 + totalArtists) % totalArtists]
-            const isFirstOfDay = !prevArtist || localDate(artist.startTime) !== localDate(prevArtist.startTime)
-
             return (
               <div
                 key={i}
-                className="relative flex items-end px-px border-r border-[#2a2a2a]/20 last:border-r-0 pb-1"
+                className="relative flex items-end px-px border-r border-[#2a2a2a]/20 last:border-r-0 pb-1 group/segment"
                 style={{ height: "100%", width: SEGMENT_WIDTH, flexShrink: 0 }}
               >
-                {/* Date Marker */}
-                {isFirstOfDay && (
-                  <div className="absolute top-1 left-1 z-10">
-                    <span className="text-[9px] font-mono text-[#444] uppercase tracking-widest whitespace-nowrap bg-[#0a0a0a]/80 px-1">
-                      {new Date(artist.startTime).toLocaleDateString("en-US", {
-                        day: "numeric",
-                        month: "short",
-                      }).toUpperCase()}
-                    </span>
+                {/* Floating Info on Hover (Only visible when timeline is hovered) */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 pb-2 opacity-0 group-hover/segment:opacity-100 transition-opacity pointer-events-none z-30 whitespace-nowrap">
+                  <div className="text-[10px] font-mono text-[#99CCCC] flex flex-col items-center leading-tight">
+                    <span className="mb-0.5">{new Date(artist.startTime).toLocaleDateString("en-US", { day: 'numeric', month: 'short' }).toUpperCase()}</span>
+                    <span className="text-white font-bold">{artist.name.toUpperCase()}</span>
                   </div>
-                )}
+                </div>
 
                 {/* Base bar */}
                 <div
@@ -159,7 +151,7 @@ export function Timeline({
                     : isPlayed
                       ? "bg-[#737373] h-2/5"
                       : "bg-[#2a2a2a] h-1/4"
-                    } ${isVisible ? "ring-1 ring-[#e5e5e5]/40" : ""}`}
+                    } ${isVisible ? "ring-1 ring-[#e5e5e5]/40" : ""} group-hover/segment:bg-[#99CCCC]/80 group-hover/segment:h-1/2`}
                 />
 
                 {/* Real-time fill for playing slot */}
