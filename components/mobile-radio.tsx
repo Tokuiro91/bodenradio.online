@@ -630,9 +630,35 @@ export function MobileRadio() {
       </div>
 
       {/* Bottom control bar */}
-      <div className="bg-[#0a0a0a] border-t border-[#2a2a2a] px-3 pt-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] z-20">
-        {/* Mini timeline */}
-        <div className="flex items-end gap-px h-4 mb-2">
+      <div className="bg-[#0a0a0a] border-t border-[#2a2a2a] px-3 pt-3 pb-[max(env(safe-area-inset-bottom),0.5rem)] z-20 flex flex-col gap-4">
+        {/* Controls row - MOVED UP */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1 text-[10px] text-[#737373] font-mono">
+            <Clock className="w-3 h-3" />
+            {viewIndex + 1}/{TOTAL}
+          </div>
+
+          {/* Play button */}
+          <button
+            onClick={togglePlay}
+            className="w-12 h-12 flex items-center justify-center rounded-full bg-[#99CCCC] text-[#ffffff] active:scale-95 transition-transform shadow-lg shadow-[#99CCCC]/20"
+            aria-label={isPlaying ? "Pause" : "Play"}
+          >
+            {isPlaying ? (
+              <Pause className="w-5 h-5" />
+            ) : (
+              <Play className="w-5 h-5 ml-0.5" />
+            )}
+          </button>
+
+          {/* Reaction Picker instead of Volume */}
+          <div className="flex items-center justify-center w-10">
+            <ReactionPicker isFixed={false} className="!bg-transparent !border-none !shadow-none !w-auto !h-auto" />
+          </div>
+        </div>
+
+        {/* Mini timeline - MOVED DOWN */}
+        <div className="flex items-end gap-px h-4">
           {sortedArtists.map((_, i) => {
             const isPlayed = currentPlayingIndex >= 0 && i < currentPlayingIndex
             const isCurrentPlaying = i === currentPlayingIndex
@@ -656,76 +682,6 @@ export function MobileRadio() {
             )
           })}
         </div>
-
-        {/* Controls row */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 text-[10px] text-[#737373] font-mono">
-            <Clock className="w-3 h-3" />
-            {viewIndex + 1}/{TOTAL}
-          </div>
-
-          {/* Play button */}
-          <button
-            onClick={togglePlay}
-            className="w-12 h-12 flex items-center justify-center rounded-full bg-[#99CCCC] text-[#ffffff] active:scale-95 transition-transform shadow-lg shadow-[#99CCCC]/20"
-            aria-label={isPlaying ? "Pause" : "Play"}
-          >
-            {isPlaying ? (
-              <Pause className="w-5 h-5" />
-            ) : (
-              <Play className="w-5 h-5 ml-0.5" />
-            )}
-          </button>
-
-          {/* Volume */}
-          <div className="relative">
-            <button
-              onClick={() => setShowVolume(!showVolume)}
-              className="w-10 h-10 flex items-center justify-center rounded-full bg-[#1f1f1f] text-[#e5e5e5] active:bg-[#2a2a2a] transition-colors"
-              aria-label="Volume"
-            >
-              {isMuted || volume === 0 ? (
-                <VolumeX className="w-4 h-4" />
-              ) : (
-                <Volume2 className="w-4 h-4" />
-              )}
-            </button>
-
-            {showVolume && (
-              <div className="absolute bottom-full right-0 mb-2 p-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-sm shadow-lg w-[200px]">
-                <div className="flex items-center gap-2">
-                  <button onClick={handleMuteToggle} className="text-[#737373] active:text-[#e5e5e5]">
-                    {isMuted || volume === 0 ? (
-                      <VolumeX className="w-3.5 h-3.5" />
-                    ) : (
-                      <Volume2 className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={isMuted ? 0 : volume}
-                    onChange={(e) => {
-                      const val = Number(e.target.value)
-                      setVolume(val)
-                      if (val > 0) setIsMuted(false)
-                    }}
-                    className="flex-1 h-1 appearance-none bg-[#2a2a2a] rounded-full accent-[#99CCCC] cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#99CCCC]"
-                  />
-                  <span className="text-[10px] font-mono text-[#737373] w-6 text-right">
-                    {isMuted ? 0 : volume}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile-friendly Reaction Picker placement */}
-      <div className="fixed bottom-24 right-4 z-[9997]">
-        <ReactionPicker isFixed={false} className="shadow-2xl border-white/10" />
       </div>
     </div>
   )

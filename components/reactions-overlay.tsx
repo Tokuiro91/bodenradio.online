@@ -20,16 +20,16 @@ function FloatingReaction({ reaction, onDone }: { reaction: Reaction; onDone: ()
         const drift = -20 + Math.random() * 40
         el.style.setProperty("--drift", `${drift}px`)
 
-        // Animate: pop in, float up slowly, fade out
+        // Animate: pop in, float up quickly, fade out
         el.animate(
             [
                 { transform: "translateY(0) translateX(0) scale(0)", opacity: 0 },
-                { transform: "translateY(-20px) translateX(calc(var(--drift) * 0.5)) scale(2)", opacity: 1, offset: 0.2 },
-                { transform: "translateY(-100px) translateX(calc(var(--drift))) scale(2.5)", opacity: 0, offset: 1 },
+                { transform: "translateY(-10px) translateX(calc(var(--drift) * 0.2)) scale(1.5)", opacity: 1, offset: 0.1 },
+                { transform: "translateY(-150px) translateX(calc(var(--drift))) scale(1.8)", opacity: 0, offset: 1 },
             ],
             {
-                duration: 2000 + Math.random() * 500,
-                easing: "ease-out",
+                duration: 2000,
+                easing: "cubic-bezier(0.2, 0, 0.2, 1)",
                 fill: "forwards",
             }
         ).onfinish = onDone

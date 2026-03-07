@@ -66,5 +66,12 @@ export function useReactions() {
         setReactions(prev => prev.filter(r => r.id !== id))
     }, [])
 
-    return { reactions, removeReaction }
+    const addLocalReaction = useCallback((reaction: Reaction) => {
+        setReactions(prev => {
+            const next = [...prev, reaction]
+            return next.slice(-50)
+        })
+    }, [])
+
+    return { reactions, removeReaction, addLocalReaction }
 }

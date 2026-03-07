@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import { Smile, Lock } from "lucide-react"
 import dynamic from "next/dynamic"
+import { useReactions } from "@/hooks/use-reactions"
 
 interface Sticker {
     id: string
@@ -22,6 +23,7 @@ interface Pack {
 
 export function ReactionPicker({ isFixed = true, className = "" }: { isFixed?: boolean; className?: string }) {
     const { data: session } = useSession()
+    const { addLocalReaction } = useReactions()
     const [packs, setPacks] = useState<Pack[]>([])
     const [open, setOpen] = useState(false)
     const [activePack, setActivePack] = useState<string>("basic")
@@ -47,6 +49,19 @@ export function ReactionPicker({ isFixed = true, className = "" }: { isFixed?: b
         setSending(true)
 
         try {
+            // Local echo: trigger the animation immediately
+            addLocalReaction({
+                id: `local-${Date.now()}`,
+                userId: session?.user?.id || "local",
+                username: session?.user?.name || "Me",
+                packId: pack.id,
+                stickerId: sticker.id,
+                stickerType: sticker.type,
+                value: sticker.value,
+                url: sticker.url,
+                sentAt: Date.now(),
+            })
+
             const res = await fetch("/api/reactions/send", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
