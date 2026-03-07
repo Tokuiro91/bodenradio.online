@@ -55,23 +55,10 @@ export function useReactions() {
     useEffect(() => {
         mountedRef.current = true
         connect()
-
-        // Listen for local echo events
-        const handleLocal = (e: any) => {
-            if (e.detail) {
-                setReactions(prev => {
-                    const next = [...prev, e.detail as Reaction]
-                    return next.slice(-50)
-                })
-            }
-        }
-        window.addEventListener("local-reaction", handleLocal)
-
         return () => {
             mountedRef.current = false
             if (reconnectRef.current) clearTimeout(reconnectRef.current)
             wsRef.current?.close()
-            window.removeEventListener("local-reaction", handleLocal)
         }
     }, [connect])
 

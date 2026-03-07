@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import Image from "next/image"
 import {
   Play,
@@ -88,7 +88,6 @@ export function MobileRadio() {
   const [touchDelta, setTouchDelta] = useState(0)
   const [isSwiping, setIsSwiping] = useState(false)
   const [userFavorites, setUserFavorites] = useState<number[]>([])
-  const miniTimelineRef = useRef<HTMLDivElement>(null)
 
   // Load user favorites
   useEffect(() => {
@@ -180,14 +179,11 @@ export function MobileRadio() {
     if (target < 0) {
       target = sortedArtists.findIndex(a => new Date(a.startTime).getTime() > now)
     }
-    if (target >= 0) {
-      setViewIndex(target)
-    } else {
-      setViewIndex(0)
-    }
-  }, [ready, sortedArtists])
+    if (target >= 0) setViewIndex(target)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, sortedArtists.length])
 
-  // Real-time artist tracking and mini-timeline centering
+  // Real-time artist tracking
   useEffect(() => {
     if (!ready || !sortedArtists.length) return
     const tick = () => {
@@ -200,14 +196,6 @@ export function MobileRadio() {
     const interval = setInterval(tick, 1000)
     return () => clearInterval(interval)
   }, [sortedArtists, ready])
-
-  const MINI_BAR_WIDTH = 20
-  useEffect(() => {
-    const el = miniTimelineRef.current
-    if (!el) return
-    const scrollLeft = (viewIndex * MINI_BAR_WIDTH) + (MINI_BAR_WIDTH / 2) - (el.clientWidth / 2)
-    el.scrollTo({ left: scrollLeft, behavior: "smooth" })
-  }, [viewIndex])
 
   const getStatus = useCallback(
     (i: number): "played" | "playing" | "upcoming" => {
@@ -290,13 +278,21 @@ export function MobileRadio() {
   const prevArtist = sortedArtists[((viewIndex - 1) % TOTAL + TOTAL) % TOTAL]
   const nextArtist = sortedArtists[(viewIndex + 1) % TOTAL]
 
-  const formatShortTime = (iso: string) => {
-    const d = new Date(iso)
-    if (isNaN(d.getTime())) return "--:--"
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+  const getTimeDisplay = (a: Artist | undefined, s: "played" | "playing" | "upcoming") => {
+    if (!a) return "00:00:00"
+    if (s === "playing") {
+      const parts = a.duration.split(":").map(Number)
+      const totalSec = parts[0] * 3600 + parts[1] * 60 + parts[2]
+      const elapsed = Math.floor(totalSec * progress)
+      const h = String(Math.floor(elapsed / 3600)).padStart(2, "0")
+      const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, "0")
+      const sSec = String(elapsed % 60).padStart(2, "0")
+      return `${h}:${m}:${sSec}`
+    }
+    return a.duration
   }
 
-  const timeDisplay = artist ? `${formatShortTime(artist.startTime)} — ${formatShortTime(artist.endTime)}` : "--:--"
+  const timeDisplay = getTimeDisplay(artist, status)
 
   const isAd = artist?.type === 'ad'
 
@@ -347,12 +343,20 @@ export function MobileRadio() {
 
       {/* Time displays — Hide if Ad */}
       {!isAd && (
-        <div className="flex items-center justify-center px-4 py-3 bg-[#0a0a0a]">
-          <div className="text-center">
+        <div className="flex items-center justify-between px-4 py-3 bg-[#0a0a0a]">
+          <div>
             <p className="text-[9px] uppercase tracking-[0.15em] text-[#737373] mb-0.5">
-              Set Time
+              Current time
             </p>
-            <p className="text-lg font-mono font-bold text-[#e5e5e5] tracking-tight">
+            <p className="text-2xl font-mono font-bold text-[#e5e5e5] tracking-tight">
+              {currentTime}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-[9px] uppercase tracking-[0.15em] text-[#737373] mb-0.5">
+              Start time
+            </p>
+            <p className="text-2xl font-mono font-bold text-[#e5e5e5] tracking-tight">
               {timeDisplay}
             </p>
           </div>
@@ -374,12 +378,11 @@ export function MobileRadio() {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Previous card peek (left) - Narrow strip style */}
+        {/* Previous card peek (left) */}
         <div
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-[70vh] overflow-hidden transition-opacity duration-300 z-0"
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-48 overflow-hidden opacity-40 z-0"
           style={{
-            transform: `translateX(${isSwiping ? touchDelta * 0.15 : 0}px) translateY(-50%)`,
-            opacity: isSwiping && touchDelta > 0 ? 0.4 + (touchDelta / 200) : 0.2,
+            transform: `translateX(${isSwiping ? touchDelta * 0.3 : 0}px) translateY(-50%)`,
           }}
         >
           {prevArtist && (
@@ -387,20 +390,19 @@ export function MobileRadio() {
               src={prevArtist.image}
               alt=""
               fill
-              className="object-cover grayscale"
-              sizes="32px"
+              className={`object-cover ${getStatus(((viewIndex - 1) % TOTAL + TOTAL) % TOTAL) === "played" ? "grayscale" : ""}`}
+              sizes="48px"
               aria-hidden="true"
             />
           )}
-          <div className="absolute inset-0 bg-black/50" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] to-transparent" />
         </div>
 
-        {/* Next card peek (right) - Narrow strip style */}
+        {/* Next card peek (right) */}
         <div
-          className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-[70vh] overflow-hidden transition-opacity duration-300 z-0"
+          className="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-48 overflow-hidden opacity-40 z-0"
           style={{
-            transform: `translateX(${isSwiping ? touchDelta * 0.15 : 0}px) translateY(-50%)`,
-            opacity: isSwiping && touchDelta < 0 ? 0.4 + (Math.abs(touchDelta) / 200) : 0.2,
+            transform: `translateX(${isSwiping ? touchDelta * 0.3 : 0}px) translateY(-50%)`,
           }}
         >
           {nextArtist && (
@@ -408,25 +410,23 @@ export function MobileRadio() {
               src={nextArtist.image}
               alt=""
               fill
-              className="object-cover grayscale"
-              sizes="32px"
+              className={`object-cover ${getStatus((viewIndex + 1) % TOTAL) === "played" ? "grayscale" : ""}`}
+              sizes="48px"
               aria-hidden="true"
             />
           )}
-          <div className="absolute inset-0 bg-black/50" />
+          <div className="absolute inset-0 bg-gradient-to-l from-[#0a0a0a] to-transparent" />
         </div>
 
         {/* Main card */}
         <div
-          className="relative w-full max-w-[320px] z-10 transition-all duration-300 ease-out"
+          className="relative w-full max-w-[300px] z-10 transition-transform duration-200"
           style={{
             transform: isSwiping ? `translateX(${touchDelta}px)` : "translateX(0)",
-            scale: isSwiping ? 0.9 + (1 - Math.abs(touchDelta) / 300) * 0.1 : 1,
-            filter: isSwiping ? `grayscale(${Math.abs(touchDelta) / 300})` : "grayscale(0)",
           }}
         >
           {/* Cyan/Blue border frame */}
-          <div className="p-[1px] bg-[#99CCCC]/30 rounded-sm">
+          <div className="p-1 bg-[#99CCCC] rounded-sm">
             <div
               className={`relative w-full overflow-hidden rounded-sm cursor-pointer border border-[#2a2a2a]`}
               style={{
@@ -526,7 +526,7 @@ export function MobileRadio() {
                         toggleFavorite(artist.id)
                       }}
                       className={`transition-colors ${userFavorites.includes(artist.id)
-                        ? "text-[#99CCCC]"
+                        ? "text-yellow-500 hover:text-yellow-400"
                         : "text-[#737373] hover:text-[#99CCCC]"
                         }`}
                       aria-label={userFavorites.includes(artist.id) ? "Remove from favorites" : "Add to favorites"}
@@ -630,7 +630,32 @@ export function MobileRadio() {
       </div>
 
       {/* Bottom control bar */}
-      <div className="bg-[#0a0a0a] border-t border-[#2a2a2a] px-3 pt-4 pb-[max(env(safe-area-inset-bottom),1rem)] z-20 flex flex-col gap-4">
+      <div className="bg-[#0a0a0a] border-t border-[#2a2a2a] px-3 pt-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] z-20">
+        {/* Mini timeline */}
+        <div className="flex items-end gap-px h-4 mb-2">
+          {sortedArtists.map((_, i) => {
+            const isPlayed = currentPlayingIndex >= 0 && i < currentPlayingIndex
+            const isCurrentPlaying = i === currentPlayingIndex
+            const isViewing = i === viewIndex
+            return (
+              <button
+                key={i}
+                onClick={() => {
+                  setViewIndex(i)
+                  setExpanded(false)
+                }}
+                className={`flex-1 rounded-t-sm transition-all duration-200 ${isCurrentPlaying
+                  ? "bg-[#99CCCC] h-full"
+                  : isPlayed
+                    ? "bg-[#737373] h-3/5"
+                    : "bg-[#2a2a2a] h-2/5"
+                  } ${isViewing ? "ring-1 ring-[#e5e5e5]" : ""}`}
+                style={{ minHeight: "3px" }}
+                aria-label={`Artist ${i + 1}`}
+              />
+            )
+          })}
+        </div>
 
         {/* Controls row */}
         <div className="flex items-center justify-between">
@@ -652,48 +677,56 @@ export function MobileRadio() {
             )}
           </button>
 
-          {/* Reactions instead of Volume */}
-          <div className="flex items-center justify-center w-10">
-            <ReactionPicker isFixed={false} className="!p-0 !bg-transparent !border-none !shadow-none" />
-          </div>
-        </div>
+          {/* Volume */}
+          <div className="relative">
+            <button
+              onClick={() => setShowVolume(!showVolume)}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-[#1f1f1f] text-[#e5e5e5] active:bg-[#2a2a2a] transition-colors"
+              aria-label="Volume"
+            >
+              {isMuted || volume === 0 ? (
+                <VolumeX className="w-4 h-4" />
+              ) : (
+                <Volume2 className="w-4 h-4" />
+              )}
+            </button>
 
-        {/* Mini timeline - Scrollable and centering */}
-        <div
-          ref={miniTimelineRef}
-          className="w-full overflow-x-auto overflow-y-hidden scrollbar-hide"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
-          <div
-            className="flex items-end gap-px h-2"
-            style={{ width: TOTAL * MINI_BAR_WIDTH, minWidth: '100%' }}
-          >
-            {sortedArtists.map((_, i) => {
-              const isPlayed = currentPlayingIndex >= 0 && i < currentPlayingIndex
-              const isCurrentPlaying = i === currentPlayingIndex
-              const isViewing = i === viewIndex
-              return (
-                <button
-                  key={i}
-                  onClick={() => {
-                    setViewIndex(i)
-                    setExpanded(false)
-                  }}
-                  className={`flex-shrink-0 rounded-sm transition-all duration-200 ${isCurrentPlaying
-                    ? "bg-[#99CCCC] h-full"
-                    : isPlayed
-                      ? "bg-[#737373] h-3/5"
-                      : "bg-[#2a2a2a] h-2/5"
-                    } ${isViewing ? "ring-1 ring-[#e5e5e5]" : ""}`}
-                  style={{ width: MINI_BAR_WIDTH - 1, minHeight: "3px" }}
-                  aria-label={`Artist ${i + 1}`}
-                />
-              )
-            })}
+            {showVolume && (
+              <div className="absolute bottom-full right-0 mb-2 p-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-sm shadow-lg w-[200px]">
+                <div className="flex items-center gap-2">
+                  <button onClick={handleMuteToggle} className="text-[#737373] active:text-[#e5e5e5]">
+                    {isMuted || volume === 0 ? (
+                      <VolumeX className="w-3.5 h-3.5" />
+                    ) : (
+                      <Volume2 className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={isMuted ? 0 : volume}
+                    onChange={(e) => {
+                      const val = Number(e.target.value)
+                      setVolume(val)
+                      if (val > 0) setIsMuted(false)
+                    }}
+                    className="flex-1 h-1 appearance-none bg-[#2a2a2a] rounded-full accent-[#99CCCC] cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#99CCCC]"
+                  />
+                  <span className="text-[10px] font-mono text-[#737373] w-6 text-right">
+                    {isMuted ? 0 : volume}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Mobile-friendly Reaction Picker placement */}
+      <div className="fixed bottom-24 right-4 z-[9997]">
+        <ReactionPicker isFixed={false} className="shadow-2xl border-white/10" />
+      </div>
     </div>
   )
 }

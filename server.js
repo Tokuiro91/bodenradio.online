@@ -30,12 +30,11 @@ app.prepare().then(() => {
     global.__wss = wss
 
     wss.on("connection", (ws, req) => {
-        const ip = req.socket.remoteAddress
-        console.log(`[WS] New connection from ${ip}`)
         ws.isAlive = true
         ws.on("pong", () => { ws.isAlive = true })
-        ws.on("error", (err) => console.error(`[WS] Client error (${ip}):`, err))
-        ws.on("close", () => console.log(`[WS] Connection closed (${ip})`))
+        ws.on("error", console.error)
+        // Clients only receive — they cannot push directly via WS
+        // Reactions are sent via POST /api/reactions/send
     })
 
     // Heartbeat to clean up stale connections
