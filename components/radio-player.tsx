@@ -10,7 +10,6 @@ import { ReactionPicker } from "@/components/reaction-picker"
 import type { Artist } from "@/lib/artists-data"
 import { useAudioEngine } from "@/hooks/use-audio-engine"
 import { useServerTimeSync, setGlobalTimeOffset, getSyncedTime } from "@/hooks/use-server-time"
-import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel"
 import useEmblaCarousel from "embla-carousel-react"
 
 /** Returns index of currently-playing artist (by real clock), or -1 */
@@ -108,53 +107,48 @@ export function RadioPlayer() {
     return () => clearInterval(interval)
   }, [sortedArtists, ready])
 
-  // Scale effect and visibility tracking
-  const [slidesInView, setSlidesInView] = useState<number[]>([])
-  const [scrollProgress, setScrollProgress] = useState(0)
-
-  const onScroll = useCallback(() => {
-    if (!emblaApi) return
-    const progress = Math.max(0, Math.min(1, emblaApi.scrollProgress()))
-    setScrollProgress(progress)
-
-    const engine = emblaApi.internalEngine()
+  // Visibility tracking
+  const onSelect = useCallback(() => {
+    if (!emblaApi || TOTAL_CARDS === 0) return
     const scrollSnap = emblaApi.selectedScrollSnap()
     setVisibleIndex(scrollSnap % TOTAL_CARDS)
   }, [emblaApi, TOTAL_CARDS])
 
   useEffect(() => {
     if (!emblaApi) return
-    onScroll()
-    emblaApi.on('scroll', onScroll)
-    emblaApi.on('select', onScroll)
-    emblaApi.on('reInit', onScroll)
+    onSelect()
+    emblaApi.on('select', onSelect)
+    emblaApi.on('reInit', onSelect)
 
     return () => {
-      emblaApi.off('scroll', onScroll)
-      emblaApi.off('select', onScroll)
-      emblaApi.off('reInit', onScroll)
+      emblaApi.off('select', onSelect)
+      emblaApi.off('reInit', onSelect)
     }
-  }, [emblaApi, onScroll])
+  }, [emblaApi, onSelect])
 
   // Initial scroll to playing (or nearest upcoming) artist
   useEffect(() => {
     if (!ready || !sortedArtists.length || !emblaApi) return
 
-    const now = getSyncedTime()
+    const time = getSyncedTime()
     let targetIdx = sortedArtists.findIndex(a => {
       const s = new Date(a.startTime).getTime()
       const e = new Date(a.endTime).getTime()
-      return now >= s && now < e
+      return time >= s && time < e
     })
     if (targetIdx < 0) {
-      targetIdx = sortedArtists.findIndex(a => new Date(a.startTime).getTime() > now)
+      targetIdx = sortedArtists.findIndex(a => new Date(a.startTime).getTime() > time)
     }
     if (targetIdx < 0) targetIdx = 0
 
-    // Small delay to ensure Embla is ready
-    setTimeout(() => {
-      emblaApi.scrollTo(targetIdx, true)
-    }, 100)
+    // Ensure Embla is ready and snap points exist
+    const timer = setTimeout(() => {
+      if (emblaApi && emblaApi.scrollSnapList().length > 0) {
+        emblaApi.scrollTo(targetIdx, true)
+      }
+    }, 150)
+
+    return () => clearTimeout(timer)
   }, [TOTAL_CARDS, ready, emblaApi, sortedArtists])
 
   const scrollToArtist = useCallback(
@@ -167,6 +161,7 @@ export function RadioPlayer() {
 
   const getStatus = useCallback(
     (index: number): "played" | "playing" | "upcoming" => {
+      if (TOTAL_CARDS === 0) return "upcoming"
       const realIndex = index % TOTAL_CARDS
       if (currentPlayingIndex >= 0) {
         if (realIndex < currentPlayingIndex) return "played"
@@ -305,20 +300,11 @@ function ArtistCardWrapper({ emblaApi, index, artist, status, progress, isFavori
 
   const applyStyles = useCallback(() => {
     if (!emblaApi) return
-    const engine = emblaApi.internalEngine()
-    const scrollProgress = emblaApi.scrollProgress()
-    const slidesInView = emblaApi.slidesInView()
-    const scrollSnap = emblaApi.scrollSnapList()[index]
-    const scrollOffset = engine.scrollProgress
-
-    // Calculate distance from center
-    const slidePos = engine.slideLooper.loopPoints.find(lp => lp.index === index)?.target() || engine.location.get()
-    // This is a bit complex due to loop, using engine.slidesInView and distances is better
-
-    const slideLocation = engine.slidesInView.includes(index)
 
     // Easier way: emblaApi.scrollProgress() vs slide snap positions
     const snapList = emblaApi.scrollSnapList();
+    if (!snapList || snapList.length === 0) return;
+
     const snapPos = snapList[index];
 
     // Safety check: snapPos could be undefined if Embla is not ready
@@ -328,7 +314,8 @@ function ArtistCardWrapper({ emblaApi, index, artist, status, progress, isFavori
       return;
     }
 
-    const diff = Math.abs(emblaApi.scrollProgress() - snapPos);
+    const currentScroll = emblaApi.scrollProgress();
+    const diff = Math.abs(currentScroll - snapPos);
     // Handle loop wrap around
     const normalizedDiff = diff > 0.5 ? 1 - diff : diff;
 
@@ -347,13 +334,20 @@ function ArtistCardWrapper({ emblaApi, index, artist, status, progress, isFavori
     if (!emblaApi) return
     applyStyles()
     emblaApi.on('scroll', applyStyles)
+    emblaApi.on('reInit', applyStyles)
     return () => {
       emblaApi.off('scroll', applyStyles)
+      emblaApi.off('reInit', applyStyles)
     }
   }, [emblaApi, applyStyles])
 
   return (
-    <div style={{ transform: `scale(${scale})`, opacity: opacity, transition: 'transform 0.1s ease-out, opacity 0.1s ease-out' }}>
+    <div style={{
+      transform: `scale(${scale})`,
+      opacity: opacity,
+      transition: 'transform 0.1s ease-out, opacity 0.1s ease-out',
+      willChange: 'transform, opacity'
+    }}>
       <ArtistCard
         artist={artist}
         status={status}
