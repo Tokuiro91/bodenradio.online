@@ -654,44 +654,7 @@ export function MobileRadio() {
           </div>
         </div>
 
-        {/* Mini timeline - Scrollable and centering */}
-        <div
-          ref={miniTimelineRef}
-          className="w-full overflow-x-auto overflow-y-hidden scrollbar-hide"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
-          <div
-            className="flex items-end gap-px h-2"
-            style={{ width: TOTAL * MINI_BAR_WIDTH, minWidth: '100%' }}
-          >
-            {sortedArtists.map((_, i) => {
-              const isPlayed = currentPlayingIndex >= 0 && i < currentPlayingIndex
-              const isCurrentPlaying = i === currentPlayingIndex
-              const isViewing = i === viewIndex
-              return (
-                <button
-                  key={i}
-                  onClick={() => {
-                    setViewIndex(i)
-                    setExpanded(false)
-                  }}
-                  className={`flex-shrink-0 rounded-sm transition-all duration-200 ${isCurrentPlaying
-                    ? "bg-[#99CCCC] h-full"
-                    : isViewing
-                      ? "bg-[#99CCCC]/60 h-full"
-                      : isPlayed
-                        ? "bg-[#737373] h-3/5"
-                        : "bg-[#2a2a2a] h-2/5"
-                    }`}
-                  style={{ width: MINI_BAR_WIDTH - 1, minHeight: "3px" }}
-                  aria-label={`Artist ${i + 1}`}
-                />
-              )
-            })}
-          </div>
-        </div>
       </div>
-
     </div>
   )
 }
