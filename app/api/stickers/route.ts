@@ -20,7 +20,8 @@ export async function POST(req: Request) {
     const session = await auth()
 
     // Only superadmin can modify stickers
-    if (session?.user?.email !== SUPERADMIN_EMAIL) {
+    // @ts-ignore
+    if (!session?.user?.isSuperAdmin) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 

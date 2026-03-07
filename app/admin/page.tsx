@@ -7,6 +7,7 @@ import { useArtists } from "@/lib/use-artists"
 import { signOut, useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { AnalyticsDashboard } from "@/components/analytics-dashboard"
+import { Search } from "lucide-react"
 import { StickerPackManager } from "@/components/sticker-pack-manager"
 import type { DBArtist } from "@/lib/artist-db-store"
 import type { Listener } from "@/lib/listeners-store"
@@ -45,7 +46,8 @@ export default function AdminPage() {
   const MAX_ARTISTS = 500
   const { artists, setArtists, ready } = useArtists()
 
-  const isSuperAdmin = session?.user?.email === "chyrukoleksii@gmail.com"
+  // @ts-ignore
+  const isSuperAdmin = session?.user?.isSuperAdmin
 
   // Protect page
   useEffect(() => {
@@ -72,6 +74,7 @@ export default function AdminPage() {
   const [adminEmails, setAdminEmails] = useState<string[]>([])
   const [newAdminEmail, setNewAdminEmail] = useState("")
   const [adminError, setAdminError] = useState("")
+  const [formError, setFormError] = useState("")
 
   const [dbArtists, setDbArtists] = useState<DBArtist[]>([])
   const [listeners, setListeners] = useState<Listener[]>([])
