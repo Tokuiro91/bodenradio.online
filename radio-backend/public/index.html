@@ -74,15 +74,60 @@
         .fc-theme-standard td,
         .fc-theme-standard th,
         .fc-theme-standard .fc-scrollgrid {
-            border-color: var(--border) !important;
+            border-color: #1a1a1a !important;
         }
 
         .fc-event {
-            background-color: var(--accent) !important;
-            border-color: var(--accent) !important;
-            color: black !important;
+            background-color: #dc2626 !important;
+            border: none !important;
+            color: white !important;
             font-weight: bold;
-            padding: 2px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            border-radius: 2px;
+            padding: 4px;
+            font-size: 10px;
+        }
+
+        .fc-daygrid-event {
+            white-space: normal !important;
+            align-items: center;
+        }
+
+        .fc-toolbar-title {
+            font-size: 14px !important;
+            font-weight: bold !important;
+            letter-spacing: 0.1em;
+        }
+
+        .fc-button {
+            background: #000 !important;
+            border: 1px solid #1a1a1a !important;
+            color: #737373 !important;
+            text-transform: uppercase !important;
+            font-size: 10px !important;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+            border-radius: 2px !important;
+        }
+
+        .fc-button:hover {
+            background: #111 !important;
+            color: white !important;
+        }
+
+        .fc-button-active {
+            background: white !important;
+            color: black !important;
+            border-color: white !important;
+        }
+
+        .fc-timegrid-slot-label-cushion,
+        .fc-col-header-cell-cushion {
+            color: #444 !important;
+            font-size: 9px;
+        }
+
+        .fc-day-today {
+            background: rgba(220, 38, 38, 0.05) !important;
         }
 
         .logout {
@@ -456,8 +501,9 @@
                         })));
                     } catch (e) { failureCallback(e); }
                 },
+                timeZone: 'local',
                 eventClick: async (info) => {
-                    if (confirm(`Delete scheduled event?\\n${info.event.title}`)) {
+                    if (confirm(`Delete scheduled event?\n${info.event.title}`)) {
                         await api(`/schedule/${info.event.id}`, { method: 'DELETE' });
                         calendar.refetchEvents();
                     }
