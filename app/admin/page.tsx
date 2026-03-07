@@ -10,6 +10,7 @@ import { AnalyticsDashboard } from "@/components/analytics-dashboard"
 import { StickerPackManager } from "@/components/sticker-pack-manager"
 import type { DBArtist } from "@/lib/artist-db-store"
 import type { Listener } from "@/lib/listeners-store"
+import { RadioScheduleManager } from "@/components/radio-schedule-manager"
 
 function formatDuration(ms: number) {
   const totalSec = Math.max(0, Math.floor(ms / 1000))
@@ -54,7 +55,7 @@ export default function AdminPage() {
   }, [status, router])
 
   const [editingId, setEditingId] = useState<number | null>(null)
-  const [activeTab, setActiveTab] = useState<"artists" | "admins" | "analytics" | "stickers" | "artist-db" | "listeners">("analytics")
+  const [activeTab, setActiveTab] = useState<"artists" | "admins" | "analytics" | "stickers" | "artist-db" | "listeners" | "radio-schedule">("analytics")
   const [formError, setFormError] = useState("")
 
   // Form state
@@ -232,6 +233,31 @@ export default function AdminPage() {
     }
 
     setArtists(nextArtists)
+
+    // Auto-save Artist to DB if it's a new artist or edited one and it's an 'artist' type
+    if (form.type === 'artist' && form.name) {
+      const exists = dbArtists.some(a => a.name === form.name && a.show === form.show)
+      if (!exists) {
+        fetch("/api/artist-db", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: form.name,
+            location: form.location || "Earth",
+            show: form.show || "Новый сет",
+            image: form.image || "/artists/artist-1.jpg",
+            description: form.description || "...",
+            audioUrl: form.audioUrl || "",
+            instagramUrl: form.instagramUrl || "",
+            soundcloudUrl: form.soundcloudUrl || "",
+            bandcampUrl: form.bandcampUrl || "",
+          }),
+        }).then(r => r.json()).then(newA => {
+          if (newA && newA.id) setDbArtists(prev => [...prev, newA])
+        }).catch(() => { })
+      }
+    }
+
     resetForm()
   }
 
@@ -267,6 +293,7 @@ export default function AdminPage() {
             <span className="font-tektur">BØDEN</span> <span className="text-[#737373]">/ ADMIN</span>
           </h1>
           <div className="flex gap-1">
+            <button onClick={() => setActiveTab("radio-schedule")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "radio-schedule" ? "bg-white text-black font-bold" : "text-[#737373] hover:text-white"}`}>Эфир Радио</button>
             <button onClick={() => setActiveTab("artists")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "artists" ? "bg-[#dc2626] text-white" : "text-[#737373] hover:text-white"}`}>Расписание</button>
             <button onClick={() => setActiveTab("artist-db")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "artist-db" ? "bg-[#dc2626] text-white" : "text-[#737373] hover:text-white"}`}>База Артистов</button>
             <button onClick={() => setActiveTab("admins")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "admins" ? "bg-[#dc2626] text-white" : "text-[#737373] hover:text-white"}`}>Администраторы</button>
@@ -279,6 +306,24 @@ export default function AdminPage() {
         </div>
         <button onClick={() => signOut({ callbackUrl: "/admin/login" })} className="text-xs text-[#737373] hover:text-white transition px-3 py-1 border border-[#2a2a2a] rounded-sm">Выйти</button>
       </header>
+
+      {activeTab === "radio-schedule" && (
+        <div className="p-6">
+          <RadioScheduleManager
+            artists={artists}
+            setArtists={setArtists}
+            dbArtists={[
+              ...dbArtists,
+              ...artists.map(a => ({
+                id: `timeline-${a.id}`,
+                name: a.name,
+                show: a.show,
+                image: a.image
+              })).filter(ta => !dbArtists.some(da => da.name === ta.name && da.show === ta.show))
+            ]}
+          />
+        </div>
+      )}
 
       {activeTab === "analytics" && (
         <div className="p-6">

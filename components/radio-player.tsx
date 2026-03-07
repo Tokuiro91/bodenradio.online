@@ -102,25 +102,47 @@ export function RadioPlayer() {
     return () => clearInterval(interval)
   }, [sortedArtists, ready])
 
-  // Infinite scroll
+  // Calculate center offsets for all cards based on scroll position
+  const [scrollX, setScrollX] = useState(0)
+
   useEffect(() => {
     if (!ready) return
     const el = scrollRef.current
     if (!el) return
+
     const handleScroll = () => {
-      const scrollLeft = el.scrollLeft
+      const x = el.scrollLeft
+      setScrollX(x)
+
+      // Infinite loop jump
       const maxScroll = el.scrollWidth - el.clientWidth
-      const idx = Math.round(scrollLeft / CARD_WIDTH) % TOTAL_CARDS
-      setVisibleIndex(Math.max(0, Math.min(idx, TOTAL_CARDS - 1)))
-      if (scrollLeft <= 0) {
+      if (x <= 0) {
         el.scrollLeft = CARD_WIDTH * TOTAL_CARDS
-      } else if (scrollLeft >= maxScroll - 10) {
+      } else if (x >= maxScroll - 2) {
         el.scrollLeft = CARD_WIDTH * TOTAL_CARDS
       }
+
+      // Update visible index based on center
+      const centerX = x + el.clientWidth / 2
+      const idx = Math.floor(centerX / CARD_WIDTH) % TOTAL_CARDS
+      setVisibleIndex(idx)
     }
+
     el.addEventListener("scroll", handleScroll, { passive: true })
     return () => el.removeEventListener("scroll", handleScroll)
-  }, [TOTAL_CARDS, ready])
+  }, [TOTAL_CARDS, ready, CARD_WIDTH])
+
+  const getCenterOffset = (index: number) => {
+    const el = scrollRef.current
+    if (!el) return 0
+    // Each container is exactly CARD_WIDTH
+    const cardCenter = (index * CARD_WIDTH) + (CARD_WIDTH / 2)
+    const viewportCenter = scrollX + el.clientWidth / 2
+    const dist = Math.abs(cardCenter - viewportCenter)
+    // Range of influence: 1.2 cards
+    const threshold = CARD_WIDTH * 1.2
+    return Math.max(0, 1 - dist / threshold)
+  }
 
   // Drag scroll (LMB hold + drag)
   useEffect(() => {
@@ -175,22 +197,21 @@ export function RadioPlayer() {
 
   // Initial scroll to playing (or nearest upcoming) artist — centered
   useEffect(() => {
-    if (!ready) return
+    if (!ready || !sortedArtists.length) return
 
-    // Delay to ensure layout has painted before reading clientWidth
-    const timer = setTimeout(() => {
+    const scrollInitial = () => {
       const el = scrollRef.current
       if (!el) return
 
       // Find the live artist index, or the nearest upcoming one
-      const now = getSyncedTime()
+      const nowMs = getSyncedTime()
       let targetIdx = sortedArtists.findIndex(a => {
         const s = new Date(a.startTime).getTime()
         const e = new Date(a.endTime).getTime()
-        return now >= s && now < e
+        return nowMs >= s && nowMs < e
       })
       if (targetIdx < 0) {
-        targetIdx = sortedArtists.findIndex(a => new Date(a.startTime).getTime() > now)
+        targetIdx = sortedArtists.findIndex(a => new Date(a.startTime).getTime() > nowMs)
       }
       if (targetIdx < 0) targetIdx = 0
 
@@ -198,11 +219,20 @@ export function RadioPlayer() {
       const targetScroll =
         CARD_WIDTH * (TOTAL_CARDS + targetIdx) - el.clientWidth / 2 + CARD_WIDTH / 2
       el.scrollLeft = targetScroll
-    }, 100)
+      setVisibleIndex(targetIdx)
+    }
 
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [TOTAL_CARDS, ready])
+    // Try multiple times to catch layout settled
+    const t1 = setTimeout(scrollInitial, 100)
+    const t2 = setTimeout(scrollInitial, 500)
+    const t3 = setTimeout(scrollInitial, 1000)
+
+    return () => {
+      clearTimeout(t1)
+      clearTimeout(t2)
+      clearTimeout(t3)
+    }
+  }, [TOTAL_CARDS, ready, sortedArtists])
 
   const scrollToArtist = useCallback(
     (index: number) => {
@@ -288,50 +318,35 @@ export function RadioPlayer() {
       {/* Horizontal scroll area */}
       <div
         ref={scrollRef}
-        className="absolute inset-0 pt-16 pb-16 flex items-center overflow-x-auto overflow-y-hidden scrollbar-hide"
-        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        className="absolute inset-0 pt-16 pb-16 flex items-center overflow-x-auto overflow-y-hidden scroll-smooth select-none"
+        style={{
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+          scrollSnapType: "x mandatory"
+        }}
       >
-        <div className="flex items-center gap-6 px-8" style={{ minWidth: "max-content" }}>
+        <div className="flex items-center px-[40dvw]" style={{ minWidth: "max-content" }}>
           {tripleArtists.map((artist, i) => {
             const realIndex = i % TOTAL_CARDS
-
-            const prevDate =
-              i === 0
-                ? null
-                : localDate(sortedArtists[(i - 1) % TOTAL_CARDS].startTime)
-            const thisDate = localDate(sortedArtists[realIndex].startTime)
-            const isFirstOfDay = prevDate !== thisDate
-
-            const sawtoothPeriod = 6
-            const t = (realIndex % sawtoothPeriod) / sawtoothPeriod
-            const waveOffset = (1 - t) * 150 - 75
+            const centerOffset = getCenterOffset(i)
 
             return (
               <div
                 key={`${artist.id}-${i}`}
                 ref={(el) => { cardRefs.current[i] = el }}
-                className="flex-shrink-0 transition-transform duration-500"
-                style={{ transform: `translateY(${waveOffset}px)` }}
+                className="flex-shrink-0 flex items-center justify-center"
+                style={{
+                  width: CARD_WIDTH,
+                  scrollSnapAlign: "center"
+                }}
               >
-                {isFirstOfDay && (
-                  <div className="flex items-center gap-2 mb-3 pl-1">
-                    <div className="w-2 h-2 rotate-45 bg-[#99CCCC]" />
-                    <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#99CCCC]">
-                      {new Date(artist.startTime).toLocaleDateString("en-US", {
-                        day: "numeric",
-                        month: "long",
-                      }).toUpperCase()}
-                    </span>
-                    <div className="flex-1 h-px bg-[#2a2a2a]" />
-                  </div>
-                )}
-
                 <ArtistCard
                   artist={artist}
                   status={getStatus(i)}
                   progress={realIndex === currentPlayingIndex ? progress : 0}
                   isFavorite={userFavorites.includes(artist.id)}
                   onToggleFavorite={toggleFavorite}
+                  centerOffset={centerOffset}
                 />
               </div>
             )

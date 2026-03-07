@@ -44,8 +44,24 @@ export function ReactionPicker({ isFixed = true, className = "" }: { isFixed?: b
 
     const sendReaction = useCallback(async (pack: Pack, sticker: Sticker) => {
         if (pack.locked || sending || cooldown) return
-        setSending(true)
 
+        // --- Local Echo ---
+        // Dispatch a custom event so the UI shows the reaction immediately for the sender
+        const localReaction = {
+            type: "reaction",
+            id: `local-${Date.now()}-${Math.random()}`,
+            userId: session?.user?.id || "local",
+            username: session?.user?.name || "You",
+            packId: pack.id,
+            stickerId: sticker.id,
+            stickerType: sticker.type,
+            value: sticker.value,
+            url: sticker.url,
+            sentAt: Date.now(),
+        }
+        window.dispatchEvent(new CustomEvent("local-reaction", { detail: localReaction }))
+
+        setSending(true)
         try {
             const res = await fetch("/api/reactions/send", {
                 method: "POST",
@@ -58,7 +74,7 @@ export function ReactionPicker({ isFixed = true, className = "" }: { isFixed?: b
             }
         } catch { /* ignore network errors */ }
         finally { setSending(false) }
-    }, [sending, cooldown])
+    }, [sending, cooldown, session])
 
     if (!isLoggedIn) return null
 
