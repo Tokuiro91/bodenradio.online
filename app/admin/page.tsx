@@ -306,13 +306,13 @@ export default function AdminPage() {
           </h1>
           <div className="flex gap-1">
             <button onClick={() => setActiveTab("radio-schedule")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "radio-schedule" ? "bg-white text-black font-bold" : "text-[#737373] hover:text-white"}`}>Эфир Радио</button>
-            <button onClick={() => setActiveTab("artists")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "artists" ? "bg-[#dc2626] text-white" : "text-[#737373] hover:text-white"}`}>Расписание</button>
-            <button onClick={() => setActiveTab("artist-db")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "artist-db" ? "bg-[#dc2626] text-white" : "text-[#737373] hover:text-white"}`}>База Артистов</button>
-            <button onClick={() => setActiveTab("admins")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "admins" ? "bg-[#dc2626] text-white" : "text-[#737373] hover:text-white"}`}>Администраторы</button>
-            <button onClick={() => setActiveTab("listeners")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "listeners" ? "bg-[#dc2626] text-white" : "text-[#737373] hover:text-white"}`}>Слушатели</button>
-            <button onClick={() => setActiveTab("analytics")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "analytics" ? "bg-[#dc2626] text-white" : "text-[#737373] hover:text-white"}`}>Аналитика</button>
+            <button onClick={() => setActiveTab("artists")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "artists" ? "bg-[#99CCCC] text-black font-bold" : "text-[#737373] hover:text-white"}`}>Расписание</button>
+            <button onClick={() => setActiveTab("artist-db")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "artist-db" ? "bg-[#99CCCC] text-black font-bold" : "text-[#737373] hover:text-white"}`}>База Артистов</button>
+            <button onClick={() => setActiveTab("admins")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "admins" ? "bg-[#99CCCC] text-black font-bold" : "text-[#737373] hover:text-white"}`}>Администраторы</button>
+            <button onClick={() => setActiveTab("listeners")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "listeners" ? "bg-[#99CCCC] text-black font-bold" : "text-[#737373] hover:text-white"}`}>Слушатели</button>
+            <button onClick={() => setActiveTab("analytics")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "analytics" ? "bg-[#99CCCC] text-black font-bold" : "text-[#737373] hover:text-white"}`}>Аналитика</button>
             {isSuperAdmin && (
-              <button onClick={() => setActiveTab("stickers")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "stickers" ? "bg-[#dc2626] text-white" : "text-[#737373] hover:text-white"}`}>Стикеры</button>
+              <button onClick={() => setActiveTab("stickers")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "stickers" ? "bg-[#99CCCC] text-black font-bold" : "text-[#737373] hover:text-white"}`}>Стикеры</button>
             )}
           </div>
         </div>
@@ -357,9 +357,9 @@ export default function AdminPage() {
               value={newAdminEmail}
               onChange={(e) => setNewAdminEmail(e.target.value)}
               placeholder="email@gmail.com"
-              className="flex-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#dc2626]"
+              className="flex-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]"
             />
-            <button onClick={addAdmin} className="px-3 py-1.5 text-xs bg-[#dc2626] text-white rounded-sm hover:bg-[#ef4444] transition">Добавить</button>
+            <button onClick={addAdmin} className="px-3 py-1.5 text-xs bg-[#99CCCC] text-black font-bold rounded-sm hover:bg-white transition">Добавить</button>
           </div>
           {adminError && <p className="text-xs text-red-400 mb-3">{adminError}</p>}
           <ul className="space-y-2">
@@ -542,11 +542,11 @@ export default function AdminPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Start Broadcast</label>
-                    <input type="datetime-local" step="1" value={form.start} onChange={(e) => setForm(f => ({ ...f, start: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#dc2626]" />
+                    <input type="datetime-local" step="1" value={form.start} onChange={(e) => setForm(f => ({ ...f, start: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
                   </div>
                   <div>
                     <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">End Broadcast</label>
-                    <input type="datetime-local" step="1" value={form.end} onChange={(e) => setForm(f => ({ ...f, end: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#dc2626]" />
+                    <input type="datetime-local" step="1" value={form.end} onChange={(e) => setForm(f => ({ ...f, end: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
                   </div>
                 </div>
               )}
@@ -571,7 +571,7 @@ export default function AdminPage() {
               </div>
 
               <div className="flex gap-2">
-                <button type="submit" className="flex-1 py-2 bg-[#dc2626] text-white text-[10px] font-mono uppercase tracking-widest hover:bg-[#ef4444] transition">{editingId ? 'Save Entry' : 'Create Entry'}</button>
+                <button type="submit" className="flex-1 py-2 bg-[#99CCCC] text-black font-bold text-[10px] font-mono uppercase tracking-widest hover:bg-white transition">{editingId ? 'Save Entry' : 'Create Entry'}</button>
                 {editingId && <button type="button" onClick={resetForm} className="px-4 py-2 border border-[#2a2a2a] text-[10px] font-mono uppercase text-[#737373]">Cancel</button>}
               </div>
               {formError && <p className="text-[10px] text-red-400 font-mono mt-2">{formError}</p>}
@@ -593,7 +593,7 @@ export default function AdminPage() {
             </div>
             <div className="max-h-[85vh] overflow-y-auto space-y-2 pr-2">
               {sortedArtists.map((artist) => (
-                <div key={artist.id} className={`p-4 border group transition-colors flex items-center justify-between ${editingId === artist.id ? 'border-[#dc2626] bg-[#111]' : 'border-[#1a1a1a] bg-[#080808] hover:border-[#333]'}`}>
+                <div key={artist.id} className={`p-4 border group transition-colors flex items-center justify-between ${editingId === artist.id ? 'border-[#99CCCC] bg-[#111]' : 'border-[#1a1a1a] bg-[#080808] hover:border-[#333]'}`}>
                   <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => handleEdit(artist)}>
                     <div className="relative w-12 h-12 bg-[#1a1a1a] rounded-sm overflow-hidden flex-shrink-0">
                       {artist.image && <Image src={artist.image} alt="" fill className={`object-cover ${artist.type === 'ad' ? 'opacity-90' : ''}`} sizes="48px" unoptimized />}

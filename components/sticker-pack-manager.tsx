@@ -107,7 +107,7 @@ export function StickerPackManager() {
         <div className="w-full">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-sm font-semibold font-mono text-[#99CCCC]">STICKER PACKS MANAGER</h2>
-                <button onClick={addPack} className="px-3 py-1 text-xs bg-[#dc2626] text-white rounded-sm hover:bg-[#ef4444] transition">
+                <button onClick={addPack} className="px-3 py-1 text-xs bg-[#99CCCC] text-black font-bold rounded-sm hover:bg-white transition">
                     + Add Pack
                 </button>
             </div>

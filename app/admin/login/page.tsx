@@ -83,9 +83,9 @@ export default function LoginPage() {
                 <div className="bg-[#111] border border-[#1f1f1f] rounded-lg p-8">
                     {/* Step indicator */}
                     <div className="flex items-center gap-2 mb-6">
-                        <div className={`w-2 h-2 rounded-full transition-colors ${step >= 1 ? "bg-[#dc2626]" : "bg-[#2a2a2a]"}`} />
-                        <div className={`flex-1 h-px transition-colors ${step >= 2 ? "bg-[#dc2626]" : "bg-[#2a2a2a]"}`} />
-                        <div className={`w-2 h-2 rounded-full transition-colors ${step >= 2 ? "bg-[#dc2626]" : "bg-[#2a2a2a]"}`} />
+                        <div className={`w-2 h-2 rounded-full transition-colors ${step >= 1 ? "bg-[#99CCCC]" : "bg-[#2a2a2a]"}`} />
+                        <div className={`flex-1 h-px transition-colors ${step >= 2 ? "bg-[#99CCCC]" : "bg-[#2a2a2a]"}`} />
+                        <div className={`w-2 h-2 rounded-full transition-colors ${step >= 2 ? "bg-[#99CCCC]" : "bg-[#2a2a2a]"}`} />
                     </div>
 
                     {step === 1 ? (
@@ -98,7 +98,7 @@ export default function LoginPage() {
                                     value={email}
                                     onChange={(e) => { setEmail(e.target.value); setError("") }}
                                     placeholder="admin@gmail.com"
-                                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-md px-3 py-2.5 text-sm text-white outline-none focus:border-[#dc2626] transition-colors placeholder:text-[#404040] font-mono"
+                                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-md px-3 py-2.5 text-sm text-white outline-none focus:border-[#99CCCC] transition-colors placeholder:text-[#404040] font-mono"
                                     autoComplete="email"
                                     autoFocus
                                     disabled={loading}
@@ -112,7 +112,7 @@ export default function LoginPage() {
                             <button
                                 type="submit"
                                 disabled={loading || !email.trim()}
-                                className="w-full py-2.5 text-xs uppercase tracking-widest font-medium rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-[#dc2626] text-white hover:bg-[#ef4444]"
+                                className="w-full py-2.5 text-xs uppercase tracking-widest font-medium rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-[#99CCCC] text-black font-bold hover:bg-white"
                             >
                                 {loading ? "Отправка…" : "Отправить код"}
                             </button>
@@ -134,7 +134,7 @@ export default function LoginPage() {
                                     value={code}
                                     onChange={(e) => { setCode(e.target.value.replace(/\D/g, "")); setError("") }}
                                     placeholder="000000"
-                                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-md px-3 py-2.5 text-2xl text-white outline-none focus:border-[#dc2626] transition-colors placeholder:text-[#404040] font-mono tracking-[0.5em] text-center"
+                                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-md px-3 py-2.5 text-2xl text-white outline-none focus:border-[#99CCCC] transition-colors placeholder:text-[#404040] font-mono tracking-[0.5em] text-center"
                                     autoFocus
                                     disabled={loading}
                                 />
@@ -147,7 +147,7 @@ export default function LoginPage() {
                             <button
                                 type="submit"
                                 disabled={loading || code.length !== 6}
-                                className="w-full py-2.5 text-xs uppercase tracking-widest font-medium rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-[#dc2626] text-white hover:bg-[#ef4444]"
+                                className="w-full py-2.5 text-xs uppercase tracking-widest font-medium rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-[#99CCCC] text-black font-bold hover:bg-white"
                             >
                                 {loading ? "Проверка…" : "Войти"}
                             </button>
