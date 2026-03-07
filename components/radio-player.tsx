@@ -318,7 +318,16 @@ function ArtistCardWrapper({ emblaApi, index, artist, status, progress, isFavori
     const slideLocation = engine.slidesInView.includes(index)
 
     // Easier way: emblaApi.scrollProgress() vs slide snap positions
-    const snapPos = emblaApi.scrollSnapList()[index];
+    const snapList = emblaApi.scrollSnapList();
+    const snapPos = snapList[index];
+
+    // Safety check: snapPos could be undefined if Embla is not ready
+    if (typeof snapPos === 'undefined') {
+      setScale(1);
+      setOpacity(1);
+      return;
+    }
+
     const diff = Math.abs(emblaApi.scrollProgress() - snapPos);
     // Handle loop wrap around
     const normalizedDiff = diff > 0.5 ? 1 - diff : diff;
@@ -327,8 +336,11 @@ function ArtistCardWrapper({ emblaApi, index, artist, status, progress, isFavori
     const s = 1 - (normalizedDiff * 0.4);
     const o = 1 - (normalizedDiff * 1.5);
 
-    setScale(Math.max(0.85, s))
-    setOpacity(Math.max(0.4, o))
+    const safeScale = isNaN(s) ? 1 : Math.max(0.85, s);
+    const safeOpacity = isNaN(o) ? 1 : Math.max(0.4, o);
+
+    setScale(safeScale)
+    setOpacity(safeOpacity)
   }, [emblaApi, index])
 
   useEffect(() => {
