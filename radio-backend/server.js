@@ -12,7 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 const JWT_SECRET = 'boden_radio_secret_key_123!';
-const MUSIC_DIR = process.env.MUSIC_DIR || '/var/radio/music';
+const MUSIC_DIR = process.env.MUSIC_DIR || path.join(__dirname, '../public/uploads/audio');
 const PORT = process.env.PORT || 8080;
 
 // Setup Multer for track uploads
@@ -30,6 +30,29 @@ const upload = multer({ storage });
 bcrypt.hash('admin', 10, (err, hash) => {
     db.run(`INSERT OR IGNORE INTO users (username, password) VALUES ('admin', ?)`, [hash]);
 });
+
+// Sync existing files on startup
+async function syncTracksWithDisk() {
+    console.log('🔄 Syncing tracks with disk...');
+    try {
+        if (!fs.existsSync(MUSIC_DIR)) {
+            console.log('📁 Music directory not found, skipping sync.');
+            return;
+        }
+        const files = fs.readdirSync(MUSIC_DIR).filter(f => f.toLowerCase().endsWith('.mp3'));
+        for (const file of files) {
+            const fullPath = path.join(MUSIC_DIR, file);
+            const stats = fs.statSync(fullPath);
+            // We use INSERT OR IGNORE to avoid duplicates if DB exists
+            db.run(`INSERT OR IGNORE INTO tracks (filename, originalname, size) VALUES (?, ?, ?)`,
+                [file, file, stats.size]);
+        }
+        console.log(`✅ Sync complete. Found ${files.length} files.`);
+    } catch (err) {
+        console.error('❌ Sync failed:', err);
+    }
+}
+syncTracksWithDisk();
 
 // Auth Middleware
 const auth = (req, res, next) => {

@@ -7,6 +7,11 @@
     <title>BØDEN — Scheduling Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@300;400;700&family=Tektur:wght@500;700&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --bg: #000000;
@@ -14,49 +19,76 @@
             --border: #1a1a1a;
             --accent: #dc2626;
             --text: #ffffff;
+            --font-sans: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --font-display: 'Tektur', sans-serif;
         }
 
         body {
             background-color: var(--bg);
             color: var(--text);
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            text-transform: uppercase;
+            font-family: var(--font-sans);
+            letter-spacing: -0.01em;
+        }
+
+        .font-display {
+            font-family: var(--font-display);
+        }
+
+        .font-mono {
+            font-family: var(--font-mono);
         }
 
         .glass {
-            background: rgba(18, 18, 18, 0.7);
-            backdrop-filter: blur(10px);
+            background: rgba(10, 10, 10, 0.8);
+            backdrop-filter: blur(20px);
             border: 1px solid var(--border);
         }
 
         .btn {
-            background: var(--border);
+            background: transparent;
             color: white;
             padding: 0.5rem 1rem;
-            border-radius: 6px;
-            transition: all 0.2s;
+            border: 1px solid var(--border);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.1em;
+            font-family: var(--font-mono);
         }
 
         .btn:hover {
-            background: var(--accent);
-            color: black;
+            border-color: var(--accent);
+            color: var(--accent);
+            box-shadow: 0 0 15px rgba(220, 38, 38, 0.2);
         }
 
         .btn-primary {
             background: var(--accent);
-            color: black;
+            border-color: var(--accent);
+            color: white;
             font-weight: bold;
         }
 
+        .btn-primary:hover {
+            background: white;
+            border-color: white;
+            color: black;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+
         .input-dark {
-            background: var(--surface);
+            background: transparent;
             border: 1px solid var(--border);
             color: white;
-            padding: 0.5rem;
-            border-radius: 6px;
+            padding: 0.6rem;
+            border-radius: 0;
             width: 100%;
             outline: none;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            transition: border-color 0.3s;
         }
 
         .input-dark:focus {
@@ -66,8 +98,21 @@
         h1,
         h2,
         h3 {
-            font-family: "Courier New", Courier, monospace;
-            letter-spacing: 0.1em;
+            font-family: var(--font-display);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* FullCalendar Customizations */
+        .fc {
+            font-family: var(--font-mono) !important;
+            font-size: 11px !important;
+        }
+
+        .fc .fc-toolbar-title {
+            font-family: var(--font-display) !important;
+            font-size: 16px !important;
+            letter-spacing: 0.05em;
             text-transform: uppercase;
         }
 
@@ -78,68 +123,66 @@
         }
 
         .fc-event {
-            background-color: #dc2626 !important;
+            background-color: var(--accent) !important;
             border: none !important;
             color: white !important;
-            font-weight: bold;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            border-radius: 2px;
-            padding: 4px;
-            font-size: 10px;
-        }
-
-        .fc-daygrid-event {
-            white-space: normal !important;
-            align-items: center;
-        }
-
-        .fc-toolbar-title {
-            font-size: 14px !important;
-            font-weight: bold !important;
-            letter-spacing: 0.1em;
+            padding: 4px 6px;
+            border-radius: 0px !important;
+            box-shadow: 4px 0 0 0 var(--accent) inset;
         }
 
         .fc-button {
-            background: #000 !important;
-            border: 1px solid #1a1a1a !important;
+            background: transparent !important;
+            border: 1px solid var(--border) !important;
             color: #737373 !important;
             text-transform: uppercase !important;
-            font-size: 10px !important;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
-            border-radius: 2px !important;
+            font-size: 9px !important;
+            letter-spacing: 0.05em;
+            border-radius: 0 !important;
+            transition: all 0.2s !important;
         }
 
         .fc-button:hover {
-            background: #111 !important;
+            border-color: var(--accent) !important;
             color: white !important;
         }
 
         .fc-button-active {
-            background: white !important;
-            color: black !important;
-            border-color: white !important;
+            background: var(--accent) !important;
+            color: white !important;
+            border-color: var(--accent) !important;
         }
 
-        .fc-timegrid-slot-label-cushion,
-        .fc-col-header-cell-cushion {
+        .fc-timegrid-slot-label,
+        .fc-col-header-cell {
             color: #444 !important;
-            font-size: 9px;
+            text-transform: uppercase;
+            font-weight: normal !important;
         }
 
         .fc-day-today {
-            background: rgba(220, 38, 38, 0.05) !important;
+            background: rgba(220, 38, 38, 0.02) !important;
         }
 
         .logout {
             position: absolute;
-            top: 1rem;
-            right: 1rem;
+            top: 2rem;
+            right: 2rem;
             cursor: pointer;
+            color: #444;
+            font-family: var(--font-mono);
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            transition: color 0.3s;
+        }
+
+        .logout:hover {
             color: var(--accent);
         }
 
         .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
+            width: 3px;
         }
 
         .custom-scrollbar::-webkit-scrollbar-track {
@@ -148,7 +191,6 @@
 
         .custom-scrollbar::-webkit-scrollbar-thumb {
             background: var(--border);
-            border-radius: 3px;
         }
 
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
@@ -157,7 +199,7 @@
     </style>
 </head>
 
-<body class="p-6">
+<body class="p-8">
     <div id="login-view" class="max-w-md mx-auto mt-20 glass p-8 rounded-xl hidden">
         <h1 class="text-2xl mb-6 text-center text-[#99CCCC]">BØDEN // ADMIN LOGIN</h1>
         <input type="text" id="username" placeholder="Username" class="input-dark mb-4">
@@ -170,26 +212,30 @@
         <h1 class="text-xs mb-6 border-b border-[#1a1a1a] pb-4 font-bold tracking-widest text-white">РАДИО ЭФИР //
             СИСТЕМА УПРАВЛЕНИЯ</h1>
 
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-12">
             <!-- Sidebar -->
-            <div class="col-span-1 border-r border-gray-800 pr-6">
+            <div class="col-span-1 border-r border-[#1a1a1a] pr-12">
                 <!-- Tracks -->
-                <div class="mb-8">
-                    <h2 class="text-xl mb-4 border-l-4 border-[#99CCCC] pl-2">Tracks</h2>
+                <div class="mb-12">
+                    <h2 class="text-[10px] mb-6 font-bold text-[#737373] border-l-2 border-[#dc2626] pl-2">БИБЛИОТЕКА
+                    </h2>
                     <input type="file" id="file-upload" multiple class="hidden" onchange="uploadTracks()">
                     <button onclick="document.getElementById('file-upload').click()" id="upload-btn"
-                        class="btn btn-primary w-full mb-4">Upload MP3s</button>
-                    <div id="track-list" class="space-y-2 h-48 overflow-y-auto pr-2 custom-scrollbar text-sm"></div>
+                        class="btn btn-primary w-full mb-6">ЗАГРУЗИТЬ MP3</button>
+                    <div id="track-list"
+                        class="space-y-1 h-64 overflow-y-auto pr-2 custom-scrollbar text-[10px] font-mono"></div>
                 </div>
 
                 <!-- Playlists -->
-                <div class="mb-8">
-                    <h2 class="text-xl mb-4 border-l-4 border-[#99CCCC] pl-2">Playlists</h2>
-                    <div class="flex gap-2 mb-4">
-                        <input type="text" id="new-playlist-name" placeholder="Name" class="input-dark text-sm">
-                        <button onclick="createPlaylist()" class="btn text-sm">+</button>
+                <div class="mb-12">
+                    <h2 class="text-[10px] mb-6 font-bold text-[#737373] border-l-2 border-[#dc2626] pl-2">ПЛЕЙЛИСТЫ
+                    </h2>
+                    <div class="flex gap-2 mb-6">
+                        <input type="text" id="new-playlist-name" placeholder="НАЗВАНИЕ" class="input-dark">
+                        <button onclick="createPlaylist()" class="btn">+</button>
                     </div>
-                    <div id="playlist-list" class="space-y-2 h-48 overflow-y-auto pr-2 custom-scrollbar text-sm"></div>
+                    <div id="playlist-list"
+                        class="space-y-1 h-64 overflow-y-auto pr-2 custom-scrollbar text-[10px] font-mono"></div>
                 </div>
             </div>
 
@@ -245,25 +291,25 @@
     </div>
 
     <!-- Modals -->
-    <div id="playlist-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-        <div class="glass p-6 rounded-xl w-full max-w-lg">
-            <h2 id="modal-pl-name" class="text-xl mb-4 border-b border-gray-800 pb-2">Playlist Editor</h2>
-            <div class="grid grid-cols-2 gap-4">
+    <div id="playlist-modal" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4">
+        <div class="glass p-12 rounded-0 w-full max-w-4xl">
+            <h2 id="modal-pl-name" class="text-xl mb-8 border-b border-[#1a1a1a] pb-4 font-display">ПЛЕЙЛИСТ: ...</h2>
+            <div class="grid grid-cols-2 gap-12">
                 <div>
-                    <h3 class="text-sm text-gray-400 mb-2">Available Tracks</h3>
+                    <h3 class="text-[10px] text-gray-500 mb-4 font-mono">ДОСТУПНЫЕ ТРЕКИ</h3>
                     <div id="modal-all-tracks"
-                        class="h-64 overflow-y-auto space-y-1 text-sm border border-gray-800 p-2 custom-scrollbar">
+                        class="h-[400px] overflow-y-auto space-y-1 text-[10px] font-mono border border-[#1a1a1a] p-4 custom-scrollbar">
                     </div>
                 </div>
                 <div>
-                    <h3 class="text-sm text-[#99CCCC] mb-2">Playlist Tracks</h3>
+                    <h3 class="text-[10px] text-[#dc2626] mb-4 font-mono">СОСТАВ ПЛЕЙЛИСТА</h3>
                     <div id="modal-pl-tracks"
-                        class="h-64 overflow-y-auto space-y-1 text-sm border border-gray-800 p-2 bg-[#121212] custom-scrollbar">
+                        class="h-[400px] overflow-y-auto space-y-1 text-[10px] font-mono border border-[#1a1a1a] p-4 bg-[#050505] custom-scrollbar">
                     </div>
                 </div>
             </div>
-            <div class="mt-4 flex justify-end">
-                <button onclick="closeModal()" class="btn">Done</button>
+            <div class="mt-8 flex justify-end">
+                <button onclick="closeModal()" class="btn btn-primary px-12">ГОТОВО</button>
             </div>
         </div>
     </div>

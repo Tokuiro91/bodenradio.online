@@ -34,11 +34,10 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   set -e
   cd /var/www/agileradio
   echo "   → git checkout BODEN-STADT && pull..."
-  git stash
+  # Preserve untracked files (like database.sqlite) during pull
   git fetch origin
   git checkout BODEN-STADT
   git pull origin BODEN-STADT
-  git stash pop || true
   echo "   → npm install for root..."
   npm ci --legacy-peer-deps --silent
   echo "   → npm install for backend..."
