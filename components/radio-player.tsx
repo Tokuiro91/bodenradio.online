@@ -10,7 +10,6 @@ import { ReactionPicker } from "@/components/reaction-picker"
 import type { Artist } from "@/lib/artists-data"
 import { useAudioEngine } from "@/hooks/use-audio-engine"
 import { useServerTimeSync, setGlobalTimeOffset, getSyncedTime } from "@/hooks/use-server-time"
-import useEmblaCarousel from "embla-carousel-react"
 
 /** Returns index of currently-playing artist (by real clock), or -1 */
 function findCurrentArtistIndex(artists: { startTime: string; endTime: string }[]): number {
@@ -53,14 +52,6 @@ export function RadioPlayer() {
   const [now, setNow] = useState(0)
   const [userFavorites, setUserFavorites] = useState<number[]>([])
 
-  // Embla Carousel Hook
-  const [emblaRef, emblaApi] = useEmblaCarousel({
-    loop: true,
-    align: 'center',
-    skipSnaps: false,
-    duration: 30
-  })
-
   useEffect(() => {
     fetch("/api/listeners/favorites")
       .then(r => r.json())
@@ -83,6 +74,10 @@ export function RadioPlayer() {
       setUserFavorites(prev => isFav ? [...prev, artistId] : prev.filter(id => id !== artistId))
     }
   }
+
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([])
+  const CARD_WIDTH = 406
 
   const sortedArtists = useMemo(
     () => [...artists].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()),
@@ -107,61 +102,151 @@ export function RadioPlayer() {
     return () => clearInterval(interval)
   }, [sortedArtists, ready])
 
-  // Visibility tracking
-  const onSelect = useCallback(() => {
-    if (!emblaApi || TOTAL_CARDS === 0) return
-    const scrollSnap = emblaApi.selectedScrollSnap()
-    setVisibleIndex(scrollSnap % TOTAL_CARDS)
-  }, [emblaApi, TOTAL_CARDS])
+  // Calculate center offsets for all cards based on scroll position
+  const [scrollX, setScrollX] = useState(0)
 
   useEffect(() => {
-    if (!emblaApi) return
-    onSelect()
-    emblaApi.on('select', onSelect)
-    emblaApi.on('reInit', onSelect)
+    if (!ready) return
+    const el = scrollRef.current
+    if (!el) return
+
+    const handleScroll = () => {
+      const x = el.scrollLeft
+      setScrollX(x)
+
+      // Infinite loop jump
+      const maxScroll = el.scrollWidth - el.clientWidth
+      if (x <= 0) {
+        el.scrollLeft = CARD_WIDTH * TOTAL_CARDS
+      } else if (x >= maxScroll - 2) {
+        el.scrollLeft = CARD_WIDTH * TOTAL_CARDS
+      }
+
+      // Update visible index based on center
+      const centerX = x + el.clientWidth / 2
+      const idx = Math.floor(centerX / CARD_WIDTH) % TOTAL_CARDS
+      setVisibleIndex(idx)
+    }
+
+    el.addEventListener("scroll", handleScroll, { passive: true })
+    return () => el.removeEventListener("scroll", handleScroll)
+  }, [TOTAL_CARDS, ready, CARD_WIDTH])
+
+  const getCenterOffset = (index: number) => {
+    const el = scrollRef.current
+    if (!el) return 0
+    // Each container is exactly CARD_WIDTH
+    const cardCenter = (index * CARD_WIDTH) + (CARD_WIDTH / 2)
+    const viewportCenter = scrollX + el.clientWidth / 2
+    const dist = Math.abs(cardCenter - viewportCenter)
+    // Range of influence: 1.2 cards
+    const threshold = CARD_WIDTH * 1.2
+    return Math.max(0, 1 - dist / threshold)
+  }
+
+  // Drag scroll (LMB hold + drag)
+  useEffect(() => {
+    if (!ready) return
+    const el = scrollRef.current
+    if (!el) return
+    let isDragging = false
+    let startX = 0
+    let scrollStart = 0
+
+    const onMouseDown = (e: MouseEvent) => {
+      isDragging = true
+      startX = e.clientX
+      scrollStart = el.scrollLeft
+      el.style.cursor = "grabbing"
+      el.style.userSelect = "none"
+    }
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return
+      const dx = e.clientX - startX
+      el.scrollLeft = scrollStart - dx
+    }
+    const onMouseUp = () => {
+      isDragging = false
+      el.style.cursor = ""
+      el.style.userSelect = ""
+    }
+
+    el.addEventListener("mousedown", onMouseDown)
+    window.addEventListener("mousemove", onMouseMove)
+    window.addEventListener("mouseup", onMouseUp)
+    return () => {
+      el.removeEventListener("mousedown", onMouseDown)
+      window.removeEventListener("mousemove", onMouseMove)
+      window.removeEventListener("mouseup", onMouseUp)
+    }
+  }, [ready])
+
+  // Wheel scroll (vertical → horizontal)
+  useEffect(() => {
+    if (!ready) return
+    const el = scrollRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
+      e.preventDefault()
+      el.scrollLeft += e.deltaY
+    }
+    el.addEventListener("wheel", onWheel, { passive: false })
+    return () => el.removeEventListener("wheel", onWheel)
+  }, [ready])
+
+  // Initial scroll to playing (or nearest upcoming) artist — centered
+  useEffect(() => {
+    if (!ready || !sortedArtists.length) return
+
+    const scrollInitial = () => {
+      const el = scrollRef.current
+      if (!el) return
+
+      // Find the live artist index, or the nearest upcoming one
+      const nowMs = getSyncedTime()
+      let targetIdx = sortedArtists.findIndex(a => {
+        const s = new Date(a.startTime).getTime()
+        const e = new Date(a.endTime).getTime()
+        return nowMs >= s && nowMs < e
+      })
+      if (targetIdx < 0) {
+        targetIdx = sortedArtists.findIndex(a => new Date(a.startTime).getTime() > nowMs)
+      }
+      if (targetIdx < 0) targetIdx = 0
+
+      // Center the card: shift to the 2nd copy (middle of 3×) and center the target card
+      const targetScroll =
+        CARD_WIDTH * (TOTAL_CARDS + targetIdx) - el.clientWidth / 2 + CARD_WIDTH / 2
+      el.scrollLeft = targetScroll
+      setVisibleIndex(targetIdx)
+    }
+
+    // Try multiple times to catch layout settled
+    const t1 = setTimeout(scrollInitial, 100)
+    const t2 = setTimeout(scrollInitial, 500)
+    const t3 = setTimeout(scrollInitial, 1000)
 
     return () => {
-      emblaApi.off('select', onSelect)
-      emblaApi.off('reInit', onSelect)
+      clearTimeout(t1)
+      clearTimeout(t2)
+      clearTimeout(t3)
     }
-  }, [emblaApi, onSelect])
-
-  // Initial scroll to playing (or nearest upcoming) artist
-  useEffect(() => {
-    if (!ready || !sortedArtists.length || !emblaApi) return
-
-    const time = getSyncedTime()
-    let targetIdx = sortedArtists.findIndex(a => {
-      const s = new Date(a.startTime).getTime()
-      const e = new Date(a.endTime).getTime()
-      return time >= s && time < e
-    })
-    if (targetIdx < 0) {
-      targetIdx = sortedArtists.findIndex(a => new Date(a.startTime).getTime() > time)
-    }
-    if (targetIdx < 0) targetIdx = 0
-
-    // Ensure Embla is ready and snap points exist
-    const timer = setTimeout(() => {
-      if (emblaApi && emblaApi.scrollSnapList().length > 0) {
-        emblaApi.scrollTo(targetIdx, true)
-      }
-    }, 150)
-
-    return () => clearTimeout(timer)
-  }, [TOTAL_CARDS, ready, emblaApi, sortedArtists])
+  }, [TOTAL_CARDS, ready, sortedArtists])
 
   const scrollToArtist = useCallback(
     (index: number) => {
-      if (!emblaApi) return
-      emblaApi.scrollTo(index, false)
+      const el = scrollRef.current
+      if (!el) return
+      const targetScroll =
+        CARD_WIDTH * (TOTAL_CARDS + index) - el.clientWidth / 2 + CARD_WIDTH / 2
+      el.scrollTo({ left: targetScroll, behavior: "smooth" })
     },
-    [emblaApi]
+    [TOTAL_CARDS]
   )
 
   const getStatus = useCallback(
     (index: number): "played" | "playing" | "upcoming" => {
-      if (TOTAL_CARDS === 0) return "upcoming"
       const realIndex = index % TOTAL_CARDS
       if (currentPlayingIndex >= 0) {
         if (realIndex < currentPlayingIndex) return "played"
@@ -184,6 +269,11 @@ export function RadioPlayer() {
     if (currentPlayingIndex >= 0) return null
     return sortedArtists.find((a) => new Date(a.startTime).getTime() > now) || null
   }, [currentPlayingIndex, sortedArtists, now])
+
+  const tripleArtists = useMemo(() => {
+    if (!sortedArtists.length) return []
+    return [...sortedArtists, ...sortedArtists, ...sortedArtists]
+  }, [sortedArtists])
 
   // ── GUARD: Only after ALL hooks ─────────────────────────────────────────────
   if (!ready || !sortedArtists.length) {
@@ -225,44 +315,42 @@ export function RadioPlayer() {
         <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-[#99CCCC]/5 rounded-full blur-[100px]" />
       </div>
 
-      {/* Embla Carousel Area */}
-      <div className="absolute inset-0 pt-16 pb-16 flex items-center overflow-hidden">
-        <div className="w-full h-full overflow-hidden" ref={emblaRef}>
-          <div className="flex touch-pan-y pt-4 pb-4">
-            {sortedArtists.map((artist, i) => {
-              const realIndex = i % TOTAL_CARDS
+      {/* Horizontal scroll area */}
+      <div
+        ref={scrollRef}
+        className="absolute inset-0 pt-16 pb-16 flex items-center overflow-x-auto overflow-y-hidden scroll-smooth select-none"
+        style={{
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+          scrollSnapType: "x mandatory"
+        }}
+      >
+        <div className="flex items-center px-[40dvw]" style={{ minWidth: "max-content" }}>
+          {tripleArtists.map((artist, i) => {
+            const realIndex = i % TOTAL_CARDS
+            const centerOffset = getCenterOffset(i)
 
-              const prevArtist = i === 0 ? null : sortedArtists[(i - 1) % TOTAL_CARDS]
-              const isFirstOfDay = !prevArtist || localDate(prevArtist.startTime) !== localDate(artist.startTime)
-
-              return (
-                <div key={`${artist.id}-${i}`} className="flex-shrink-0 flex flex-col justify-center px-4" style={{ flex: '0 0 344px' }}>
-                  {isFirstOfDay && (
-                    <div className="flex items-center gap-2 mb-3 pl-1">
-                      <div className="w-2 h-2 rotate-45 bg-[#99CCCC]" />
-                      <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#99CCCC]">
-                        {new Date(artist.startTime).toLocaleDateString("en-US", {
-                          day: "numeric",
-                          month: "long",
-                        }).toUpperCase()}
-                      </span>
-                      <div className="flex-1 h-px bg-[#2a2a2a]" />
-                    </div>
-                  )}
-
-                  <ArtistCardWrapper
-                    emblaApi={emblaApi}
-                    index={i}
-                    artist={artist}
-                    status={getStatus(i)}
-                    progress={realIndex === currentPlayingIndex ? progress : 0}
-                    isFavorite={userFavorites.includes(artist.id)}
-                    toggleFavorite={toggleFavorite}
-                  />
-                </div>
-              )
-            })}
-          </div>
+            return (
+              <div
+                key={`${artist.id}-${i}`}
+                ref={(el) => { cardRefs.current[i] = el }}
+                className="flex-shrink-0 flex items-center justify-center"
+                style={{
+                  width: CARD_WIDTH,
+                  scrollSnapAlign: "center"
+                }}
+              >
+                <ArtistCard
+                  artist={artist}
+                  status={getStatus(i)}
+                  progress={realIndex === currentPlayingIndex ? progress : 0}
+                  isFavorite={userFavorites.includes(artist.id)}
+                  onToggleFavorite={toggleFavorite}
+                  centerOffset={centerOffset}
+                />
+              </div>
+            )
+          })}
         </div>
       </div>
 
@@ -290,71 +378,6 @@ export function RadioPlayer() {
         <ReactionPicker isFixed={false} />
       </div>
 
-    </div>
-  )
-}
-
-function ArtistCardWrapper({ emblaApi, index, artist, status, progress, isFavorite, toggleFavorite }: any) {
-  const [scale, setScale] = useState(1)
-  const [opacity, setOpacity] = useState(1)
-
-  const applyStyles = useCallback(() => {
-    if (!emblaApi) return
-
-    // Easier way: emblaApi.scrollProgress() vs slide snap positions
-    const snapList = emblaApi.scrollSnapList();
-    if (!snapList || snapList.length === 0) return;
-
-    const snapPos = snapList[index];
-
-    // Safety check: snapPos could be undefined if Embla is not ready
-    if (typeof snapPos === 'undefined') {
-      setScale(1);
-      setOpacity(1);
-      return;
-    }
-
-    const currentScroll = emblaApi.scrollProgress();
-    const diff = Math.abs(currentScroll - snapPos);
-    // Handle loop wrap around
-    const normalizedDiff = diff > 0.5 ? 1 - diff : diff;
-
-    // Scale from 1.0 at center to 0.85 at sides
-    const s = 1 - (normalizedDiff * 0.4);
-    const o = 1 - (normalizedDiff * 1.5);
-
-    const safeScale = isNaN(s) ? 1 : Math.max(0.85, s);
-    const safeOpacity = isNaN(o) ? 1 : Math.max(0.4, o);
-
-    setScale(safeScale)
-    setOpacity(safeOpacity)
-  }, [emblaApi, index])
-
-  useEffect(() => {
-    if (!emblaApi) return
-    applyStyles()
-    emblaApi.on('scroll', applyStyles)
-    emblaApi.on('reInit', applyStyles)
-    return () => {
-      emblaApi.off('scroll', applyStyles)
-      emblaApi.off('reInit', applyStyles)
-    }
-  }, [emblaApi, applyStyles])
-
-  return (
-    <div style={{
-      transform: `scale(${scale})`,
-      opacity: opacity,
-      transition: 'transform 0.1s ease-out, opacity 0.1s ease-out',
-      willChange: 'transform, opacity'
-    }}>
-      <ArtistCard
-        artist={artist}
-        status={status}
-        progress={progress}
-        isFavorite={isFavorite}
-        onToggleFavorite={toggleFavorite}
-      />
     </div>
   )
 }

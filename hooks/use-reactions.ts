@@ -55,10 +55,23 @@ export function useReactions() {
     useEffect(() => {
         mountedRef.current = true
         connect()
+
+        // Listen for local echo events
+        const handleLocal = (e: any) => {
+            if (e.detail) {
+                setReactions(prev => {
+                    const next = [...prev, e.detail as Reaction]
+                    return next.slice(-50)
+                })
+            }
+        }
+        window.addEventListener("local-reaction", handleLocal)
+
         return () => {
             mountedRef.current = false
             if (reconnectRef.current) clearTimeout(reconnectRef.current)
             wsRef.current?.close()
+            window.removeEventListener("local-reaction", handleLocal)
         }
     }, [connect])
 
@@ -66,12 +79,5 @@ export function useReactions() {
         setReactions(prev => prev.filter(r => r.id !== id))
     }, [])
 
-    const addLocalReaction = useCallback((reaction: Reaction) => {
-        setReactions(prev => {
-            const next = [...prev, reaction]
-            return next.slice(-50)
-        })
-    }, [])
-
-    return { reactions, removeReaction, addLocalReaction }
+    return { reactions, removeReaction }
 }

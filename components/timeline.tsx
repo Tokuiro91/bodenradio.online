@@ -1,3 +1,5 @@
+"use client"
+
 import { useCallback, useMemo, useRef, useEffect } from "react"
 import type { Artist } from "@/lib/artists-data"
 import { getSyncedTime } from "@/hooks/use-server-time"
