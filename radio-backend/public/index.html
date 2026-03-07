@@ -209,6 +209,15 @@
     </div>
 
     <script>
+        // Check for token in URL (for auto-login via iframe)
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlToken = urlParams.get('token');
+        if (urlToken) {
+            localStorage.setItem('token', urlToken);
+            // Clean up URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
         let token = localStorage.getItem('token');
         let calendar;
         let activePlaylistId = null;

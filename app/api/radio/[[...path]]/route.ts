@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const RADIO_BACKEND = 'http://163.245.219.4:8080/api';
+const RADIO_BACKEND = 'http://127.0.0.1:8080/api';
 
 async function proxyRequest(req: Request, context: any) {
     const params = await context.params;
@@ -23,13 +23,7 @@ async function proxyRequest(req: Request, context: any) {
     try {
         let body: any = undefined;
         if (req.method !== 'GET' && req.method !== 'HEAD') {
-            const contentType = req.headers.get('content-type');
-            if (contentType?.includes('multipart/form-data')) {
-                // For file uploads, we need to pass the form data
-                body = await req.formData();
-            } else {
-                body = await req.blob();
-            }
+            body = await req.arrayBuffer();
         }
 
         const response = await fetch(targetUrl, {
