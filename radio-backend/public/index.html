@@ -237,6 +237,14 @@
                     <div id="playlist-list"
                         class="space-y-1 h-64 overflow-y-auto pr-2 custom-scrollbar text-[10px] font-mono"></div>
                 </div>
+
+                <!-- Preview Player -->
+                <div id="preview-container" class="glass p-4 hidden">
+                    <h2 class="text-[8px] mb-2 font-bold text-[#737373] uppercase tracking-widest">ПРЕДПРОСЛУШИВАНИЕ
+                    </h2>
+                    <div id="preview-title" class="text-[9px] mb-2 truncate font-mono text-[#99CCCC]">...</div>
+                    <audio id="audio-preview" controls class="w-full h-8 brightness-75 invert hue-rotate-180"></audio>
+                </div>
             </div>
 
             <!-- Calendar Area -->
@@ -349,7 +357,9 @@
         }
 
         const _apiFetch = async (endpoint, options = {}) => {
-            options.headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
+            // Support token in query for audio streaming
+            const currentToken = token || new URLSearchParams(window.location.search).get('token');
+            options.headers = { ...options.headers, 'Authorization': `Bearer ${currentToken}` };
             const res = await fetch(`/api${endpoint}`, options);
             if (res.status === 401) { logout(); throw new Error('Auth failed'); }
             if (!res.ok) { const json = await res.json().catch(() => ({})); alert(json.error || 'API Error'); throw new Error(json.error); }
@@ -411,11 +421,25 @@
             tracksData = await api('/tracks');
             const list = document.getElementById('track-list');
             list.innerHTML = tracksData.map(t => `
-                <div class="flex justify-between items-center bg-[#121212] p-2 rounded border border-gray-800 mb-1">
-                    <span class="truncate pr-2 flex-1" title="${t.originalname}">${t.originalname.substring(0, 25)}</span>
-                    <button onclick="deleteTrack(${t.id})" class="text-red-500 hover:text-red-400 font-bold ml-2">&times;</button>
+                <div class="flex justify-between items-center bg-[#0a0a0a] p-2 border border-[#1a1a1a] mb-1 group">
+                    <button onclick="playTrack(${t.id}, '${t.originalname.replace(/'/g, "\\'")}')" class="text-[#99CCCC] hover:scale-110 transition-transform mr-2">▶</button>
+                    <span class="truncate pr-2 flex-1 text-gray-400 group-hover:text-white transition-colors" title="${t.originalname}">${t.originalname.substring(0, 25)}</span>
+                    <button onclick="deleteTrack(${t.id})" class="text-red-900 hover:text-red-500 font-bold ml-2 opacity-50 hover:opacity-100 transition-opacity">&times;</button>
                 </div>
             `).join('');
+        }
+
+        function playTrack(id, title) {
+            const container = document.getElementById('preview-container');
+            const player = document.getElementById('audio-preview');
+            const titleEl = document.getElementById('preview-title');
+
+            container.classList.remove('hidden');
+            titleEl.innerText = title;
+
+            // Set source with token for auth
+            player.src = `/api/tracks/${id}/stream?token=${token}`;
+            player.play();
         }
 
         async function uploadTracks() {
@@ -494,9 +518,10 @@
             const plContainer = document.getElementById('modal-pl-tracks');
 
             allContainer.innerHTML = tracksData.map(t => `
-                <div class="flex justify-between bg-gray-900 p-1 mb-1 rounded hover:bg-gray-800 cursor-pointer" onclick="addToPlaylist(${t.id})">
-                    <span class="truncate" title="${t.originalname}">${t.originalname}</span>
-                    <span class="text-green-500 font-bold">+</span>
+                <div class="flex justify-between bg-gray-900 p-1 mb-1 rounded hover:bg-gray-800 cursor-pointer group">
+                    <button onclick="event.stopPropagation(); playTrack(${t.id}, '${t.originalname.replace(/'/g, "\\'")}')" class="text-[#99CCCC] mr-2">▶</button>
+                    <span class="truncate pr-2 flex-1" title="${t.originalname}" onclick="addToPlaylist(${t.id})">${t.originalname}</span>
+                    <span class="text-green-500 font-bold" onclick="addToPlaylist(${t.id})">+</span>
                 </div>
             `).join('');
 
