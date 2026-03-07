@@ -77,7 +77,7 @@ export function RadioPlayer() {
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const cardRefs = useRef<(HTMLDivElement | null)[]>([])
-  const CARD_WIDTH = 406
+  const CARD_WIDTH = 450
 
   const sortedArtists = useMemo(
     () => [...artists].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()),
@@ -102,25 +102,47 @@ export function RadioPlayer() {
     return () => clearInterval(interval)
   }, [sortedArtists, ready])
 
-  // Infinite scroll
+  // Calculate center offsets for all cards based on scroll position
+  const [scrollX, setScrollX] = useState(0)
+
   useEffect(() => {
     if (!ready) return
     const el = scrollRef.current
     if (!el) return
+
     const handleScroll = () => {
-      const scrollLeft = el.scrollLeft
+      const x = el.scrollLeft
+      setScrollX(x)
+
+      // Infinite loop jump
       const maxScroll = el.scrollWidth - el.clientWidth
-      const idx = Math.round(scrollLeft / CARD_WIDTH) % TOTAL_CARDS
-      setVisibleIndex(Math.max(0, Math.min(idx, TOTAL_CARDS - 1)))
-      if (scrollLeft <= 0) {
+      if (x <= 0) {
         el.scrollLeft = CARD_WIDTH * TOTAL_CARDS
-      } else if (scrollLeft >= maxScroll - 10) {
+      } else if (x >= maxScroll - 2) {
         el.scrollLeft = CARD_WIDTH * TOTAL_CARDS
       }
+
+      // Update visible index based on center
+      const centerX = x + el.clientWidth / 2
+      const idx = Math.floor(centerX / CARD_WIDTH) % TOTAL_CARDS
+      setVisibleIndex(idx)
     }
+
     el.addEventListener("scroll", handleScroll, { passive: true })
     return () => el.removeEventListener("scroll", handleScroll)
-  }, [TOTAL_CARDS, ready])
+  }, [TOTAL_CARDS, ready, CARD_WIDTH])
+
+  const getCenterOffset = (index: number) => {
+    const el = scrollRef.current
+    if (!el) return 0
+    // Each container is exactly CARD_WIDTH
+    const cardCenter = (index * CARD_WIDTH) + (CARD_WIDTH / 2)
+    const viewportCenter = scrollX + el.clientWidth / 2
+    const dist = Math.abs(cardCenter - viewportCenter)
+    // Range of influence: 1.2 cards
+    const threshold = CARD_WIDTH * 1.5
+    return Math.max(0, 1 - dist / threshold)
+  }
 
   // Drag scroll (LMB hold + drag)
   useEffect(() => {
@@ -137,6 +159,7 @@ export function RadioPlayer() {
       scrollStart = el.scrollLeft
       el.style.cursor = "grabbing"
       el.style.userSelect = "none"
+      el.style.scrollSnapType = "none"
     }
     const onMouseMove = (e: MouseEvent) => {
       if (!isDragging) return
@@ -147,6 +170,7 @@ export function RadioPlayer() {
       isDragging = false
       el.style.cursor = ""
       el.style.userSelect = ""
+      el.style.scrollSnapType = "x mandatory"
     }
 
     el.addEventListener("mousedown", onMouseDown)
@@ -167,7 +191,14 @@ export function RadioPlayer() {
     const onWheel = (e: WheelEvent) => {
       if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
       e.preventDefault()
+      el.style.scrollSnapType = "none"
       el.scrollLeft += e.deltaY
+
+      // Resume snap after a short delay
+      clearTimeout((el as any).snapTimeout)
+        ; (el as any).snapTimeout = setTimeout(() => {
+          el.style.scrollSnapType = "x mandatory"
+        }, 500)
     }
     el.addEventListener("wheel", onWheel, { passive: false })
     return () => el.removeEventListener("wheel", onWheel)
@@ -175,34 +206,45 @@ export function RadioPlayer() {
 
   // Initial scroll to playing (or nearest upcoming) artist — centered
   useEffect(() => {
-    if (!ready) return
+    if (!ready || !sortedArtists.length) return
 
-    // Delay to ensure layout has painted before reading clientWidth
-    const timer = setTimeout(() => {
+    const scrollInitial = () => {
       const el = scrollRef.current
       if (!el) return
 
       // Find the live artist index, or the nearest upcoming one
-      const now = getSyncedTime()
+      const nowMs = getSyncedTime()
       let targetIdx = sortedArtists.findIndex(a => {
         const s = new Date(a.startTime).getTime()
         const e = new Date(a.endTime).getTime()
-        return now >= s && now < e
+        return nowMs >= s && nowMs < e
       })
       if (targetIdx < 0) {
-        targetIdx = sortedArtists.findIndex(a => new Date(a.startTime).getTime() > now)
+        targetIdx = sortedArtists.findIndex(a => new Date(a.startTime).getTime() > nowMs)
       }
       if (targetIdx < 0) targetIdx = 0
 
       // Center the card: shift to the 2nd copy (middle of 3×) and center the target card
       const targetScroll =
         CARD_WIDTH * (TOTAL_CARDS + targetIdx) - el.clientWidth / 2 + CARD_WIDTH / 2
-      el.scrollLeft = targetScroll
-    }, 100)
 
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [TOTAL_CARDS, ready])
+      el.scrollTo({ left: targetScroll, behavior: "instant" })
+      setScrollX(targetScroll)
+      setVisibleIndex(targetIdx)
+    }
+
+    // Capture initial load
+    scrollInitial()
+    const t1 = setTimeout(scrollInitial, 150)
+    const t2 = setTimeout(scrollInitial, 1000)
+
+    window.addEventListener('resize', scrollInitial)
+    return () => {
+      clearTimeout(t1)
+      clearTimeout(t2)
+      window.removeEventListener('resize', scrollInitial)
+    }
+  }, [TOTAL_CARDS, ready, sortedArtists])
 
   const scrollToArtist = useCallback(
     (index: number) => {
