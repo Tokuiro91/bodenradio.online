@@ -56,7 +56,8 @@ export default function AdminPage() {
 
   const [editingId, setEditingId] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<"artists" | "admins" | "analytics" | "stickers" | "artist-db" | "listeners" | "radio-schedule">("analytics")
-  const [formError, setFormError] = useState("")
+  const [dbSearchQuery, setDbSearchQuery] = useState("")
+  const [artistsSearchQuery, setArtistsSearchQuery] = useState("")
 
   // Form state
   const [form, setForm] = useState({ ...defaultForm })
@@ -281,8 +282,16 @@ export default function AdminPage() {
     )
   }
 
+  const filteredDbArtists = dbArtists.filter(a =>
+    a.name.toLowerCase().includes(dbSearchQuery.toLowerCase()) ||
+    a.show.toLowerCase().includes(dbSearchQuery.toLowerCase())
+  )
+
   const sortedArtists = [...artists].sort(
     (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+  ).filter(a =>
+    a.name.toLowerCase().includes(artistsSearchQuery.toLowerCase()) ||
+    a.show.toLowerCase().includes(artistsSearchQuery.toLowerCase())
   )
 
   return (
@@ -395,7 +404,18 @@ export default function AdminPage() {
 
       {activeTab === "artist-db" && (
         <div className="px-6 py-6">
-          <h2 className="text-sm font-semibold mb-4 text-[#99CCCC] font-mono">БАЗА АРТИСТОВ ({dbArtists.length})</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-[#99CCCC] font-mono">БАЗА АРТИСТОВ ({filteredDbArtists.length})</h2>
+            <div className="flex items-center bg-black border border-[#1a1a1a] rounded-sm px-2 py-1">
+              <Search size={12} className="text-[#444] mr-2" />
+              <input
+                value={dbSearchQuery}
+                onChange={(e) => setDbSearchQuery(e.target.value)}
+                placeholder="Поиск в базе..."
+                className="bg-transparent border-none outline-none text-[10px] font-mono uppercase text-white w-48"
+              />
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <div
               className="border border-dashed border-[#2a2a2a] rounded-sm p-4 h-32 flex flex-col items-center justify-center cursor-pointer hover:border-[#99CCCC] transition group"
@@ -403,13 +423,12 @@ export default function AdminPage() {
                 setActiveTab("artists")
                 setForm({ ...defaultForm })
                 setEditingId(null)
-                // When we have a dedicated form, we can just open it. For now direct to Schedule tab.
               }}
             >
               <p className="text-[#737373] font-mono text-xs uppercase group-hover:text-[#99CCCC] text-center mb-1">+ Создать в расписании</p>
               <p className="text-[9px] text-[#444] text-center px-4">Артисты автоматически добавляются в базу при сохранении в расписание</p>
             </div>
-            {dbArtists.map(a => (
+            {filteredDbArtists.map(a => (
               <div key={a.id} className="border border-[#2a2a2a] bg-[#0a0a0a] rounded-sm overflow-hidden flex flex-col group relative">
                 <div className="w-full h-32 relative bg-[#111]">
                   {a.image && <Image src={a.image} alt={a.name} fill className="object-cover" unoptimized />}
@@ -557,7 +576,18 @@ export default function AdminPage() {
           </div>
 
           <section className="flex-1 overflow-hidden">
-            <h2 className="text-sm font-semibold mb-3 font-mono text-[#737373]">LIVE GRID / SCHEDULE </h2>
+            <div className="flex items-center justify-between mb-3 ">
+              <h2 className="text-sm font-semibold font-mono text-[#737373]">LIVE GRID / SCHEDULE </h2>
+              <div className="flex items-center bg-black border border-[#1a1a1a] rounded-sm px-2 py-1">
+                <Search size={12} className="text-[#444] mr-2" />
+                <input
+                  value={artistsSearchQuery}
+                  onChange={(e) => setArtistsSearchQuery(e.target.value)}
+                  placeholder="Поиск в сетке..."
+                  className="bg-transparent border-none outline-none text-[10px] font-mono uppercase text-white w-32"
+                />
+              </div>
+            </div>
             <div className="max-h-[85vh] overflow-y-auto space-y-2 pr-2">
               {sortedArtists.map((artist) => (
                 <div key={artist.id} className={`p-4 border group transition-colors flex items-center justify-between ${editingId === artist.id ? 'border-[#dc2626] bg-[#111]' : 'border-[#1a1a1a] bg-[#080808] hover:border-[#333]'}`}>

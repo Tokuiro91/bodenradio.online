@@ -39,12 +39,15 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   git checkout BODEN-STADT
   git pull origin BODEN-STADT
   git stash pop || true
-  echo "   → npm install..."
+  echo "   → npm install for root..."
   npm ci --legacy-peer-deps --silent
+  echo "   → npm install for backend..."
+  cd radio-backend && npm install --silent && cd ..
   echo "   → next build..."
   npm run build
   echo "   → перезапуск PM2..."
   pm2 restart agileradio
+  pm2 restart agileradio-backend
   echo "   → PM2 статус:"
   pm2 list
 ENDSSH

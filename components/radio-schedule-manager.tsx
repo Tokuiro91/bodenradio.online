@@ -64,6 +64,14 @@ export function RadioScheduleManager({ dbArtists, artists, setArtists }: {
     const [schError, setSchError] = useState("")
     const [syncToTimeline, setSyncToTimeline] = useState(true)
     const [selectedArtistId, setSelectedArtistId] = useState<string | number | null>(null)
+    const [itemSearchQuery, setItemSearchQuery] = useState("")
+
+    const filteredTracksSelection = tracks.filter(t =>
+        t.originalname.toLowerCase().includes(itemSearchQuery.toLowerCase())
+    )
+    const filteredPlaylistsSelection = playlists.filter(p =>
+        p.name.toLowerCase().includes(itemSearchQuery.toLowerCase())
+    )
 
     const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -216,7 +224,8 @@ export function RadioScheduleManager({ dbArtists, artists, setArtists }: {
     }
 
     const scheduleEvent = async () => {
-        if (!schItemId || !schStart) return setSchError("Fill required fields")
+        if (!schItemId) return setSchError("Выберите элемент (трек или плейлист)")
+        if (!schStart) return setSchError("Укажите время начала")
         setSchError("")
 
         const startTime = new Date(schStart).getTime()
@@ -481,18 +490,29 @@ export function RadioScheduleManager({ dbArtists, artists, setArtists }: {
                                 </div>
                                 <div>
                                     <label className="block text-[9px] uppercase font-mono text-[#444] mb-1">Элемент</label>
-                                    <select
-                                        className="w-full bg-black border border-[#1a1a1a] rounded-sm px-2 py-1.5 text-xs text-white"
-                                        value={schItemId}
-                                        onChange={(e) => setSchItemId(e.target.value)}
-                                    >
-                                        <option value="">-- Выбрать --</option>
-                                        {schType === 'track' ? (
-                                            tracks.map(t => <option key={t.id} value={t.id}>{t.originalname}</option>)
-                                        ) : (
-                                            playlists.map(p => <option key={p.id} value={p.id}>{p.name}</option>)
-                                        )}
-                                    </select>
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex items-center bg-black border border-[#1a1a1a] rounded-sm px-2 py-1">
+                                            <Search size={12} className="text-[#444] mr-2" />
+                                            <input
+                                                value={itemSearchQuery}
+                                                onChange={(e) => setItemSearchQuery(e.target.value)}
+                                                placeholder="Поиск трека/сета..."
+                                                className="bg-transparent border-none outline-none text-[10px] font-mono uppercase text-white w-full"
+                                            />
+                                        </div>
+                                        <select
+                                            className="w-full bg-black border border-[#1a1a1a] rounded-sm px-2 py-1.5 text-xs text-white"
+                                            value={schItemId}
+                                            onChange={(e) => setSchItemId(e.target.value)}
+                                        >
+                                            <option value="">-- Выбрать ({schType === 'track' ? filteredTracksSelection.length : filteredPlaylistsSelection.length}) --</option>
+                                            {schType === 'track' ? (
+                                                filteredTracksSelection.map(t => <option key={t.id} value={t.id}>{t.originalname}</option>)
+                                            ) : (
+                                                filteredPlaylistsSelection.map(p => <option key={p.id} value={p.id}>{p.name}</option>)
+                                            )}
+                                        </select>
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-[9px] uppercase font-mono text-[#444] mb-1">Начало (Время VPS: {formatTime(Date.now())})</label>

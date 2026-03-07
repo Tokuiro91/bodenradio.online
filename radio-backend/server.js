@@ -154,7 +154,14 @@ app.post('/api/schedule', auth, (req, res) => {
             [title, type, item_id, start_time, end_time],
             function (err) {
                 if (err) return res.status(500).json({ error: err.message });
-                res.json({ id: this.lastID });
+                res.json({
+                    id: this.lastID,
+                    title,
+                    type,
+                    item_id,
+                    start_time,
+                    end_time
+                });
             }
         );
     });
