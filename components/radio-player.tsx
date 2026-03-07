@@ -77,7 +77,7 @@ export function RadioPlayer() {
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const cardRefs = useRef<(HTMLDivElement | null)[]>([])
-  const CARD_WIDTH = 450
+  const CARD_WIDTH = 336 // 312px card + 24px gap
 
   const sortedArtists = useMemo(
     () => [...artists].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()),
@@ -115,17 +115,20 @@ export function RadioPlayer() {
       setScrollX(x)
 
       // Infinite loop jump
+      const groupWidth = TOTAL_CARDS * CARD_WIDTH
       const maxScroll = el.scrollWidth - el.clientWidth
-      if (x <= 0) {
-        el.scrollLeft = CARD_WIDTH * TOTAL_CARDS
-      } else if (x >= maxScroll - 2) {
-        el.scrollLeft = CARD_WIDTH * TOTAL_CARDS
+      if (x < 100) {
+        el.scrollLeft = x + groupWidth
+      } else if (x > maxScroll - 100) {
+        el.scrollLeft = x - groupWidth
       }
 
-      // Update visible index based on center
-      const centerX = x + el.clientWidth / 2
-      const idx = Math.floor(centerX / CARD_WIDTH) % TOTAL_CARDS
-      setVisibleIndex(idx)
+      // Update visible index based on center of viewport
+      const viewportCenter = x + el.clientWidth / 2
+      // Each card is at: 32 + i * CARD_WIDTH [to] 32 + i * CARD_WIDTH + 312
+      // Middle of card i is: 32 + i * CARD_WIDTH + 156
+      const idx = Math.floor((viewportCenter - 32 - 156) / CARD_WIDTH) % TOTAL_CARDS
+      setVisibleIndex(idx >= 0 ? idx : 0)
     }
 
     el.addEventListener("scroll", handleScroll, { passive: true })
@@ -135,11 +138,10 @@ export function RadioPlayer() {
   const getCenterOffset = (index: number) => {
     const el = scrollRef.current
     if (!el) return 0
-    // Each container is exactly CARD_WIDTH
-    const cardCenter = (index * CARD_WIDTH) + (CARD_WIDTH / 2)
+    // Middle of card i is: 32 + i * CARD_WIDTH + 156
+    const cardCenter = 32 + index * CARD_WIDTH + 156
     const viewportCenter = scrollX + el.clientWidth / 2
     const dist = Math.abs(cardCenter - viewportCenter)
-    // Range of influence: 1.2 cards
     const threshold = CARD_WIDTH * 1.5
     return Math.max(0, 1 - dist / threshold)
   }
@@ -227,35 +229,29 @@ export function RadioPlayer() {
       }
       if (targetIdx < 0) targetIdx = 0
 
-      // CORRECT FORMULA INCLUDING 40dvw PADDING:
-      // paddingLeft = 0.4 * viewportWidth
-      // cardCenterInContainer = paddingLeft + (TOTAL_CARDS + targetIdx) * CARD_WIDTH + CARD_WIDTH / 2
-      // scrollLeft = cardCenterInContainer - viewportWidth / 2
-      const paddingLeft = 0.4 * viewportWidth
-      const targetScroll =
-        paddingLeft + (TOTAL_CARDS + targetIdx) * CARD_WIDTH + (CARD_WIDTH / 2) - (viewportWidth / 2)
+      // CENTER FORMULA for 312px card with 24px gap and 32px initial padding:
+      // cardCenterInContainer = 32 + index * (312 + 24) + 312 / 2
+      const targetScroll = 32 + (TOTAL_CARDS + targetIdx) * CARD_WIDTH + 156 - viewportWidth / 2
 
       el.scrollTo({ left: targetScroll, behavior: "instant" })
       setScrollX(targetScroll)
       setVisibleIndex(targetIdx)
     }
 
-    // Multiple passes to ensure we catch the late-loading layout/fonts
+    // Multiple passes to ensure we catch layout settled (esp. after time sync)
     scrollInitial()
     const t1 = setTimeout(scrollInitial, 150)
-    const t2 = setTimeout(scrollInitial, 600)
-    const t3 = setTimeout(scrollInitial, 1500)
-    const t4 = setTimeout(scrollInitial, 3000)
+    const t2 = setTimeout(scrollInitial, 800)
+    const t3 = setTimeout(scrollInitial, 2000)
 
     window.addEventListener('resize', scrollInitial)
     return () => {
       clearTimeout(t1)
       clearTimeout(t2)
       clearTimeout(t3)
-      clearTimeout(t4)
       window.removeEventListener('resize', scrollInitial)
     }
-  }, [TOTAL_CARDS, ready, sortedArtists])
+  }, [TOTAL_CARDS, ready, sortedArtists, offset])
 
   const scrollToArtist = useCallback(
     (index: number) => {
