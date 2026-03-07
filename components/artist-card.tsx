@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import Image from "next/image"
 import { Clock, ExternalLink, Star } from "lucide-react"
 import type { Artist } from "@/lib/artists-data"
+import { SolariText } from "@/components/solari-text"
 import Lottie from "lottie-react"
 import {
   Tooltip,
@@ -72,17 +73,9 @@ interface ArtistCardProps {
   progress?: number
   isFavorite?: boolean
   onToggleFavorite?: (id: number) => void
-  centerOffset?: number // 0 (far) to 1 (centered)
 }
 
-export function ArtistCard({
-  artist,
-  status,
-  progress: externalProgress = 0,
-  isFavorite,
-  onToggleFavorite,
-  centerOffset = 1
-}: ArtistCardProps) {
+export function ArtistCard({ artist, status, progress: externalProgress = 0, isFavorite, onToggleFavorite }: ArtistCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [now, setNow] = useState(getSyncedTime())
 
@@ -167,14 +160,10 @@ export function ArtistCard({
     <TooltipProvider delayDuration={300}>
       <div
         onClick={handleCardClick}
-        className="relative flex-shrink-0 cursor-pointer transition-all duration-500 ease-out group font-sans"
+        className={`relative flex-shrink-0 cursor-pointer transition-all duration-500 ease-out group font-sans ${isAd ? 'hover:scale-[1.02]' : ''}`}
         style={{
-          // Dramatic width transition: 40px (strip) to 450px (hero)
-          width: `${40 + (Math.pow(centerOffset, 2.5) * 410)}px`,
-          height: expanded ? "500px" : "450px",
-          filter: `grayscale(${Math.max(0, 1 - centerOffset * 1.5)})`,
-          opacity: 0.2 + (centerOffset * 0.8),
-          zIndex: centerOffset > 0.8 ? 10 : 0
+          width: expanded ? "344px" : "312px",
+          height: expanded ? "480px" : "436px",
         }}
       >
         <div className="relative w-full h-full overflow-hidden rounded-sm border border-[#2a2a2a]/50">
@@ -199,7 +188,7 @@ export function ArtistCard({
                 className={`object-cover transition-all duration-700 ${effectiveStatus === "played" && !isAd ? "grayscale brightness-50" : ""
                   } ${effectiveStatus === "upcoming" && !isAd ? "brightness-90" : ""} ${expanded && !isAd ? "brightness-50" : ""
                   }`}
-                sizes="500px"
+                sizes="344px"
               />
             )}
 
@@ -281,26 +270,17 @@ export function ArtistCard({
           )}
 
           {/* INFO */}
-          <div
-            className="absolute bottom-0 left-0 right-0 p-5 transition-opacity duration-300"
-            style={{ opacity: centerOffset > 0.8 ? (centerOffset - 0.8) / 0.2 : 0 }}
-          >
+          <div className="absolute bottom-0 left-0 right-0 p-5">
             {!isAd && (
               <p className="text-[10px] uppercase tracking-widest text-[#737373] mb-1">
                 {artist.location}
               </p>
             )}
-            <h3
-              className={`${isAd ? 'text-3xl' : 'text-2xl'} font-bold text-[#99CCCC] leading-tight mb-1 transition-all duration-500`}
-              style={{
-                transform: `translateY(${(1 - centerOffset) * 20}px) scale(${0.8 + centerOffset * 0.2})`,
-                filter: `blur(${(1 - centerOffset) * 4}px)`
-              }}
-            >
-              {artist.name}
+            <h3 className={`${isAd ? 'text-2xl' : 'text-xl'} font-bold text-[#99CCCC] leading-tight mb-0.5`}>
+              <SolariText text={artist.name} stagger={30} />
             </h3>
-            <p className={`${isAd ? 'text-base text-[#99CCCC]' : 'text-sm text-[#a3a3a3]'} tracking-widest font-mono uppercase transition-all duration-500`}>
-              {artist.show}
+            <p className={`${isAd ? 'text-sm text-[#99CCCC]' : 'text-xs text-[#a3a3a3]'} tracking-wide`}>
+              <SolariText text={artist.show} stagger={20} />
             </p>
 
             {/* Social links & Favorites */}
