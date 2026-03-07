@@ -12,7 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 const JWT_SECRET = 'boden_radio_secret_key_123!';
-const MUSIC_DIR = process.env.MUSIC_DIR || path.join(__dirname, '../public/uploads/audio');
+const MUSIC_DIR = '/var/radio/music';
 const PORT = process.env.PORT || 8080;
 
 // Setup Multer for track uploads
@@ -40,10 +40,24 @@ async function syncTracksWithDisk() {
             return;
         }
         const files = fs.readdirSync(MUSIC_DIR).filter(f => f.toLowerCase().endsWith('.mp3'));
+
+        // Remove tracks from DB that are not on disk
+        db.all('SELECT id, filename FROM tracks', [], (err, rows) => {
+            if (rows) {
+                rows.forEach(row => {
+                    if (!files.includes(row.filename)) {
+                        console.log(`🗑️ Removing missing track from DB: ${row.filename}`);
+                        db.run('DELETE FROM tracks WHERE id = ?', [row.id]);
+                        db.run('DELETE FROM playlist_tracks WHERE track_id = ?', [row.id]);
+                    }
+                });
+            }
+        });
+
+        // Add new tracks from disk
         for (const file of files) {
             const fullPath = path.join(MUSIC_DIR, file);
             const stats = fs.statSync(fullPath);
-            // We use INSERT OR IGNORE to avoid duplicates if DB exists
             db.run(`INSERT OR IGNORE INTO tracks (filename, originalname, size) VALUES (?, ?, ?)`,
                 [file, file, stats.size]);
         }

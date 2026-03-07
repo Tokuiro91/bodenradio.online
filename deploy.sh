@@ -44,6 +44,20 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   cd radio-backend && npm install --silent && cd ..
   echo "   → next build..."
   npm run build
+  
+  echo "   → Unifying audio directories (/var/radio/music)..."
+  # Unify with liquidsoap if dir exists
+  mkdir -p /var/radio/music
+  chown -R liquidsoap:liquidsoap /var/radio/music || true
+  chmod -R 775 /var/radio/music
+  # Move existing files from old uploads to unified dir
+  if [ -d "public/uploads/audio" ]; then
+    find public/uploads/audio -name "*.mp3" -exec mv {} /var/radio/music/ \; 2>/dev/null || true
+  fi
+  # Re-create and symlink for backward compatibility (web access)
+  mkdir -p public/uploads/audio
+  ln -sf /var/radio/music/*.mp3 public/uploads/audio/ 2>/dev/null || true
+
   echo "   → перезапуск PM2..."
   pm2 restart agileradio
   pm2 restart agileradio-backend
