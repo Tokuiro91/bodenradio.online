@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import Image from "next/image"
 import {
   Play,
@@ -92,6 +92,9 @@ export function MobileRadio() {
   const [touchDelta, setTouchDelta] = useState(0)
   const [isSwiping, setIsSwiping] = useState(false)
   const [userFavorites, setUserFavorites] = useState<number[]>([])
+
+  const miniTimelineRef = useRef<HTMLDivElement>(null)
+  const MINI_BAR_WIDTH = 24
 
   // Load user favorites
   useEffect(() => {
@@ -200,6 +203,17 @@ export function MobileRadio() {
     const interval = setInterval(tick, 1000)
     return () => clearInterval(interval)
   }, [sortedArtists, ready])
+
+  // Mini-timeline auto-centering
+  useEffect(() => {
+    const el = miniTimelineRef.current
+    if (!el) return
+    const targetIdx = viewIndex >= 0 ? viewIndex : currentPlayingIndex
+    if (targetIdx < 0) return
+
+    const scrollLeft = (targetIdx * MINI_BAR_WIDTH) + (MINI_BAR_WIDTH / 2) - (el.clientWidth / 2)
+    el.scrollTo({ left: scrollLeft, behavior: 'smooth' })
+  }, [viewIndex, currentPlayingIndex])
 
   const getStatus = useCallback(
     (i: number): "played" | "playing" | "upcoming" => {
@@ -653,30 +667,39 @@ export function MobileRadio() {
           </div>
         </div>
 
-        {/* Mini timeline - MOVED DOWN */}
-        <div className="flex items-end gap-px h-4">
-          {sortedArtists.map((_, i) => {
-            const isPlayed = currentPlayingIndex >= 0 && i < currentPlayingIndex
-            const isCurrentPlaying = i === currentPlayingIndex
-            const isViewing = i === viewIndex
-            return (
-              <button
-                key={i}
-                onClick={() => {
-                  setViewIndex(i)
-                  setExpanded(false)
-                }}
-                className={`flex-1 rounded-t-sm transition-all duration-200 ${isCurrentPlaying
-                  ? "bg-[#99CCCC] h-full"
-                  : isPlayed
-                    ? "bg-[#737373] h-3/5"
-                    : "bg-[#2a2a2a] h-2/5"
-                  } ${isViewing ? "ring-1 ring-[#e5e5e5]" : ""}`}
-                style={{ minHeight: "3px" }}
-                aria-label={`Artist ${i + 1}`}
-              />
-            )
-          })}
+        {/* Mini timeline - Scrollable and centering */}
+        <div
+          ref={miniTimelineRef}
+          className="w-full overflow-x-auto overflow-y-hidden scrollbar-hide"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          <div
+            className="flex items-end gap-px h-4"
+            style={{ width: TOTAL * MINI_BAR_WIDTH, minWidth: '100%' }}
+          >
+            {sortedArtists.map((_, i) => {
+              const isPlayed = currentPlayingIndex >= 0 && i < currentPlayingIndex
+              const isCurrentPlaying = i === currentPlayingIndex
+              const isViewing = i === viewIndex
+              return (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setViewIndex(i)
+                    setExpanded(false)
+                  }}
+                  className={`flex-shrink-0 rounded-t-sm transition-all duration-200 ${isCurrentPlaying
+                    ? "bg-[#99CCCC] h-full"
+                    : isPlayed
+                      ? "bg-[#737373] h-3/5"
+                      : "bg-[#2a2a2a] h-2/5"
+                    } ${isViewing ? "ring-1 ring-[#e5e5e5]" : ""}`}
+                  style={{ width: MINI_BAR_WIDTH - 1, minHeight: "3px" }}
+                  aria-label={`Artist ${i + 1}`}
+                />
+              )
+            })}
+          </div>
         </div>
       </div>
     </div>

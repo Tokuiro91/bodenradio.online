@@ -175,30 +175,29 @@ export function RadioPlayer() {
 
   // Initial scroll to playing (or nearest upcoming) artist — centered
   useEffect(() => {
-    if (!ready) return
+    if (!ready || !sortedArtists.length) return
+
+    const el = scrollRef.current
+    if (!el) return
+
+    // Find the live artist index, or the nearest upcoming one
+    const now = getSyncedTime()
+    let targetIdx = sortedArtists.findIndex(a => {
+      const s = new Date(a.startTime).getTime()
+      const e = new Date(a.endTime).getTime()
+      return now >= s && now < e
+    })
+    if (targetIdx < 0) {
+      targetIdx = sortedArtists.findIndex(a => new Date(a.startTime).getTime() > now)
+    }
+    if (targetIdx < 0) targetIdx = 0
 
     // Delay to ensure layout has painted before reading clientWidth
     const timer = setTimeout(() => {
-      const el = scrollRef.current
-      if (!el) return
-
-      // Find the live artist index, or the nearest upcoming one
-      const now = getSyncedTime()
-      let targetIdx = sortedArtists.findIndex(a => {
-        const s = new Date(a.startTime).getTime()
-        const e = new Date(a.endTime).getTime()
-        return now >= s && now < e
-      })
-      if (targetIdx < 0) {
-        targetIdx = sortedArtists.findIndex(a => new Date(a.startTime).getTime() > now)
-      }
-      if (targetIdx < 0) targetIdx = 0
-
-      // Center the card: shift to the 2nd copy (middle of 3×) and center the target card
       const targetScroll =
         CARD_WIDTH * (TOTAL_CARDS + targetIdx) - el.clientWidth / 2 + CARD_WIDTH / 2
       el.scrollLeft = targetScroll
-    }, 100)
+    }, 200)
 
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
