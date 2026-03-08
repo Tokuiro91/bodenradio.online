@@ -157,6 +157,33 @@ export default function AdminPage() {
     if (d.admins) setAdminEmails(d.admins)
   }
 
+  const togglePremium = async (email: string, current: boolean) => {
+    try {
+      const res = await fetch("/api/listeners", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, isPremium: !current }),
+      })
+      if (res.ok) {
+        setListeners(prev => prev.map(l => l.email === email ? { ...l, isPremium: !current } : l))
+      }
+    } catch (e) { }
+  }
+
+  const deleteListenerRecord = async (email: string) => {
+    if (!confirm(`Вы уверены, что хотите удалить слушателя ${email}?`)) return
+    try {
+      const res = await fetch("/api/listeners", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+      if (res.ok) {
+        setListeners(prev => prev.filter(l => l.email !== email))
+      }
+    } catch (e) { }
+  }
+
   const syncAllToDatabase = async () => {
     if (!confirm("Add all scheduled artists to Database?")) return
     const artistsData = artists.filter(a => !!a.name).map(a => ({
@@ -586,6 +613,8 @@ export default function AdminPage() {
                   <th className="px-4 py-3 border-b border-[#2a2a2a]">Провайдер</th>
                   <th className="px-4 py-3 border-b border-[#2a2a2a]">Роль</th>
                   <th className="px-4 py-3 border-b border-[#2a2a2a]">Избранные</th>
+                  <th className="px-4 py-3 border-b border-[#2a2a2a]">Премиум</th>
+                  <th className="px-4 py-3 border-b border-[#2a2a2a] text-right">Действия</th>
                 </tr>
               </thead>
               <tbody>
@@ -596,6 +625,22 @@ export default function AdminPage() {
                     <td className="px-4 py-3 uppercase text-[10px]">{l.provider}</td>
                     <td className="px-4 py-3 uppercase text-[10px]">{l.role}</td>
                     <td className="px-4 py-3 text-[10px] font-mono">{l.favoriteArtists?.length || 0}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => togglePremium(l.email, !!l.isPremium)}
+                        className={`text-[9px] font-bold px-2 py-1 rounded-sm transition ${l.isPremium ? "bg-[#99CCCC] text-black" : "bg-[#1a1a1a] text-[#737373] border border-[#2a2a2a]"}`}
+                      >
+                        {l.isPremium ? "ACTIVE" : "OFF"}
+                      </button>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => deleteListenerRecord(l.email)}
+                        className="text-[9px] text-red-500/50 hover:text-red-500 uppercase tracking-widest font-bold transition"
+                      >
+                        Удалить
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

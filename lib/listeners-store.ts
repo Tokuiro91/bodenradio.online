@@ -13,6 +13,7 @@ export interface Listener {
     favoriteArtists: number[] // IDs
     role: "listener"
     provider: "credentials" | "google" | "apple"
+    isPremium?: boolean
 }
 
 function ensureDirectoryExistence(filePath: string) {
@@ -67,6 +68,20 @@ export async function createListener(data: {
 
 export function findListenerByEmail(email: string): Listener | undefined {
     return getListeners().find((l) => l.email === email.toLowerCase())
+}
+
+export function deleteListener(email: string) {
+    const listeners = getListeners()
+    const next = listeners.filter(l => l.email.toLowerCase() !== email.toLowerCase())
+    saveListeners(next)
+}
+
+export function updateListener(email: string, data: Partial<Listener>) {
+    const listeners = getListeners()
+    const index = listeners.findIndex(l => l.email.toLowerCase() === email.toLowerCase())
+    if (index === -1) return
+    listeners[index] = { ...listeners[index], ...data }
+    saveListeners(listeners)
 }
 
 export function toggleFavoriteArtist(email: string, artistId: number): number[] {
