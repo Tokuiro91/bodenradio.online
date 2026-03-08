@@ -722,11 +722,11 @@ export default function AdminPage() {
                 <div className="grid grid-cols-2 gap-4 border-t border-[#1a1a1a] pt-4">
                   <div>
                     <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Start Broadcast</label>
-                    <input type="datetime-local" step="60" required value={form.start} onChange={(e) => setForm(f => ({ ...f, start: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                    <input type="datetime-local" step="1" required value={form.start} onChange={(e) => setForm(f => ({ ...f, start: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
                   </div>
                   <div>
                     <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">End Broadcast</label>
-                    <input type="datetime-local" step="60" required value={form.end} onChange={(e) => setForm(f => ({ ...f, end: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                    <input type="datetime-local" step="1" required value={form.end} onChange={(e) => setForm(f => ({ ...f, end: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
                   </div>
                 </div>
               )}
@@ -870,11 +870,11 @@ export default function AdminPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Campaign Start</label>
-                      <input type="datetime-local" step="60" required value={form.campaignStart} onChange={(e) => setForm(f => ({ ...f, campaignStart: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                      <input type="datetime-local" step="1" required value={form.campaignStart} onChange={(e) => setForm(f => ({ ...f, campaignStart: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
                     </div>
                     <div>
                       <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Campaign End</label>
-                      <input type="datetime-local" step="60" required value={form.campaignEnd} onChange={(e) => setForm(f => ({ ...f, campaignEnd: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                      <input type="datetime-local" step="1" required value={form.campaignEnd} onChange={(e) => setForm(f => ({ ...f, campaignEnd: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
                     </div>
                   </div>
                 </>
@@ -884,11 +884,11 @@ export default function AdminPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Start Broadcast</label>
-                    <input type="datetime-local" step="60" required value={form.start} onChange={(e) => setForm(f => ({ ...f, start: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                    <input type="datetime-local" step="1" required value={form.start} onChange={(e) => setForm(f => ({ ...f, start: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
                   </div>
                   <div>
                     <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">End Broadcast</label>
-                    <input type="datetime-local" step="60" required value={form.end} onChange={(e) => setForm(f => ({ ...f, end: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                    <input type="datetime-local" step="1" required value={form.end} onChange={(e) => setForm(f => ({ ...f, end: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
                   </div>
                 </div>
               )}
