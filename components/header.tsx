@@ -134,8 +134,7 @@ export function Header({
               </Link>
               {status === "authenticated" && (
                 <Link
-                  href="https://docs.google.com/forms/d/e/1FAIpQLSeNXZg7A7khDEHWm1y1o5K-ArPgZrOh-oxNZqiWeQnUpHw-sQ/viewform?usp=publish-editor"
-                  target="_blank"
+                  href="/mix-submission"
                   className="text-xl font-mono hover:text-[#99CCCC] transition-colors border-b border-[#2a2a2a] pb-2 text-orange-500/80"
                 >
                   MIX SUBMISSION
