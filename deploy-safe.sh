@@ -62,6 +62,7 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << EN
   # Обновляем код (сбрасываем artists.json чтобы не было конфликта — у нас есть бэкап)
   echo "   → git pull..."
   git reset --hard HEAD
+  git clean -fd
   git pull origin BODEN-STADT
 
   # Прокидываем переменные окружения
