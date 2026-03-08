@@ -89,21 +89,9 @@ export default function ProfilePage() {
                     </div>
                 </header>
 
-                {/* NOTIFICATIONS */}
                 <section className="space-y-4">
                     <h2 className="text-[#99CCCC] font-mono text-xs uppercase tracking-[0.2em]">Settings</h2>
                     <PushSubscriptionManager />
-                    <div className="flex items-center justify-between bg-[#111] border border-[#2a2a2a] p-6 rounded-sm">
-                        <div className="space-y-0.5">
-                            <Label className="text-sm font-bold uppercase tracking-wide">Email Notifications</Label>
-                            <p className="text-[10px] text-[#737373] uppercase tracking-wider">Stay tuned for future updates.</p>
-                        </div>
-                        <Switch
-                            disabled
-                            checked={false}
-                            className="data-[state=checked]:bg-[#99CCCC]"
-                        />
-                    </div>
                 </section>
 
                 <section>

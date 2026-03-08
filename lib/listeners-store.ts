@@ -61,6 +61,7 @@ export async function createListener(data: {
         favoriteArtists: data.favoriteArtists || [],
         role: "listener",
         provider: data.provider,
+        pushEnabled: true,
     }
 
     listeners.push(newListener)
