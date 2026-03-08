@@ -524,7 +524,7 @@ export function MobileRadio() {
                 {/* Social links & Favorites — Hide for ads */}
                 {!isAd && (
                   <div
-                    className="flex items-center gap-4 mt-3"
+                    className="flex items-center gap-2 mt-3"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <button
@@ -584,16 +584,23 @@ export function MobileRadio() {
                   </div>
                 )}
 
-                <div className="overflow-hidden transition-all duration-500" style={{
+                <div className="overflow-hidden transition-all duration-500 relative" style={{
                   maxHeight: expanded ? "140px" : "0px",
                   opacity: expanded ? 1 : 0,
                   marginTop: expanded ? "10px" : "0px",
                 }}>
-                  <div className="border-t border-[#ffffff]/20 pt-2 h-full max-h-[140px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#99CCCC]/40 scrollbar-track-transparent pr-2" style={{ touchAction: 'pan-y', overscrollBehaviorY: 'contain' }}>
+                  <div className="border-t border-[#ffffff]/20 pt-2 h-full max-h-[140px] overflow-y-auto scrollbar-none pr-1" style={{ touchAction: 'pan-y', overscrollBehaviorY: 'contain' }}>
                     <p className="text-[11px] text-[#a3a3a3] leading-relaxed">
                       {artist.description}
                     </p>
                   </div>
+                  {/* Stylish scroll arrows */}
+                  {expanded && (
+                    <div className="absolute right-0 top-3 bottom-0 flex flex-col justify-between py-2 pointer-events-none opacity-40">
+                      <ChevronUp className="w-2.5 h-2.5 text-[#99CCCC]" />
+                      <ChevronDown className="w-2.5 h-2.5 text-[#99CCCC]" />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -627,40 +634,38 @@ export function MobileRadio() {
         className="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-[#1a1a1a]/80 text-[#e5e5e5] z-20 active:bg-[#99CCCC] transition-colors"
         aria-label="Next"
       >
-        <ChevronRight className="w-4 h-4" />
-      </button>
-    </div>
-
-      {/* Bottom control bar */ }
-  <div className="bg-[#0a0a0a] border-t border-[#2a2a2a] px-3 pt-4 pb-[max(env(safe-area-inset-bottom),1rem)] z-20 flex flex-col gap-4">
-
-    {/* Controls row */}
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-1 text-[10px] text-[#737373] font-mono">
-        <Clock className="w-3 h-3" />
-        {viewIndex + 1}/{TOTAL}
-      </div>
-
-      {/* Play button */}
-      <button
-        onClick={togglePlay}
-        className="w-12 h-12 flex items-center justify-center rounded-full bg-[#99CCCC] text-[#ffffff] active:scale-95 transition-transform shadow-lg shadow-[#99CCCC]/20"
-        aria-label={isPlaying ? "Pause" : "Play"}
-      >
-        {isPlaying ? (
-          <Pause className="w-5 h-5" />
-        ) : (
-          <Play className="w-5 h-5 ml-0.5" />
-        )}
       </button>
 
-      {/* Reactions instead of Volume */}
-      <div className="flex items-center justify-center w-10">
-        <ReactionPicker isFixed={false} className="!p-0 !bg-transparent !border-none !shadow-none" />
-      </div>
-    </div>
+      {/* Bottom control bar */}
+      <div className="bg-[#0a0a0a] border-t border-[#2a2a2a] px-3 pt-4 pb-[max(env(safe-area-inset-bottom),1rem)] z-20 flex flex-col gap-4">
 
-  </div>
+        {/* Controls row */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1 text-[10px] text-[#737373] font-mono">
+            <Clock className="w-3 h-3" />
+            {viewIndex + 1}/{TOTAL}
+          </div>
+
+          {/* Play button */}
+          <button
+            onClick={togglePlay}
+            className="w-12 h-12 flex items-center justify-center rounded-full bg-[#99CCCC] text-[#ffffff] active:scale-95 transition-transform shadow-lg shadow-[#99CCCC]/20"
+            aria-label={isPlaying ? "Pause" : "Play"}
+          >
+            {isPlaying ? (
+              <Pause className="w-5 h-5" />
+            ) : (
+              <Play className="w-5 h-5 ml-0.5" />
+            )}
+          </button>
+
+          {/* Reactions instead of Volume */}
+          <div className="flex items-center justify-center w-10">
+            <ReactionPicker isFixed={false} className="!p-0 !bg-transparent !border-none !shadow-none" />
+          </div>
+        </div>
+
+      </div>
     </div >
   )
 }
