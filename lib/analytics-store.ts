@@ -21,6 +21,7 @@ export interface AnalyticsSession {
     country?: string
     city?: string
     totalDurationMs: number
+    isRegistered?: boolean
 }
 
 export interface AnalyticsEvent {

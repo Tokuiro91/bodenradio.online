@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { AnalyticsSession, AnalyticsEvent, updateSession, appendEvent, getSessions } from "@/lib/analytics-store"
+import { auth } from "@/lib/auth"
 
 export async function POST(req: Request) {
     try {
@@ -10,10 +11,27 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
         }
 
+        const serverSession = await auth()
+        const isRegistered = !!serverSession?.user && serverSession.user.role === "listener"
+
         const now = Date.now()
         const ip = req.headers.get("x-forwarded-for") || "unknown"
-        const vercelCountry = req.headers.get("x-vercel-ip-country")
-        const vercelCity = req.headers.get("x-vercel-ip-city")
+        let country = req.headers.get("x-vercel-ip-country") || undefined
+        let city = req.headers.get("x-vercel-ip-city") ? decodeURIComponent(req.headers.get("x-vercel-ip-city")!) : undefined
+
+        // Fallback geo-location if not on Vercel
+        if (!country && ip !== "unknown" && ip !== "127.0.0.1" && !ip.startsWith("192.168.")) {
+            try {
+                const geoRes = await fetch(`http://ip-api.com/json/${ip.split(",")[0].trim()}`)
+                const geoData = await geoRes.json()
+                if (geoData.status === "success") {
+                    country = geoData.countryCode
+                    city = geoData.city
+                }
+            } catch (err) {
+                console.error("Geo-location fallback failed:", err)
+            }
+        }
 
         // Determine source
         let source: AnalyticsSession["source"] = "direct"
@@ -42,13 +60,15 @@ export async function POST(req: Request) {
                 userAgent: userAgent || req.headers.get("user-agent") || "unknown",
                 referrer: referrer || "",
                 source,
-                country: vercelCountry || undefined,
-                city: vercelCity ? decodeURIComponent(vercelCity) : undefined,
+                country,
+                city,
                 totalDurationMs: 0,
+                isRegistered,
             }
         } else {
             // Update existing session
             session.lastActive = now
+            session.isRegistered = isRegistered // keep updated
             if (clientDurationMs) {
                 session.totalDurationMs = Math.max(session.totalDurationMs, clientDurationMs)
             } else {
