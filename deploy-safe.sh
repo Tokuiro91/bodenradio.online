@@ -29,7 +29,7 @@ else
   git commit -m "$COMMIT_MSG"
   echo "   ✅ Закоммичено: $COMMIT_MSG"
 fi
-git push origin main
+git push origin BODEN-STADT
 echo "   ✅ Push на GitHub выполнен"
 
 # ── 2. Обновляем сервер БЕЗ потери данных ────────────────────
@@ -49,7 +49,7 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   echo "   → git pull..."
   git checkout -- data/artists.json 2>/dev/null || true
   git checkout -- data/artist-db.json 2>/dev/null || true
-  git pull origin main
+  git pull origin BODEN-STADT
 
   echo "   → npm install..."
   npm ci --legacy-peer-deps --silent
