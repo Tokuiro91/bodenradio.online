@@ -75,6 +75,7 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << EN
   echo "NEXTAUTH_URL=\"$NEXTAUTH_URL\"" >> .env.local
   echo "AUTH_URL=\"$AUTH_URL\"" >> .env.local
   echo "AUTH_TRUST_HOST=\"$AUTH_TRUST_HOST\"" >> .env.local
+  echo "GMAIL_USER=\"$GMAIL_USER\"" >> .env.local
   echo "GMAIL_APP_PASSWORD=\"$GMAIL_APP_PASSWORD\"" >> .env.local
   echo "   ✅ .env.local обновлён"
 
