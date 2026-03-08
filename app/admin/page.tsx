@@ -715,8 +715,14 @@ export default function AdminPage() {
               </div>
 
               <div>
-                <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Image URL</label>
-                <input value={form.image} onChange={(e) => setForm(f => ({ ...f, image: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Visual Resource (Image URL)</label>
+                {form.image && (
+                  <div className="relative w-full h-24 mb-2 border border-[#1a1a1a] rounded-sm overflow-hidden">
+                    <Image src={form.image} alt="preview" fill className="object-cover" unoptimized />
+                  </div>
+                )}
+                <button type="button" onClick={() => imageInputRef.current?.click()} className="w-full py-1.5 border border-[#1a1a1a] rounded-sm text-[10px] font-mono text-[#737373] hover:text-white transition">UPLOAD FILE</button>
+                <input value={form.image} onChange={(e) => setForm(f => ({ ...f, image: e.target.value }))} className="mt-2 w-full bg-black border border-[#1a1a1a] rounded-sm px-2 py-1 text-[10px] font-mono text-[#737373]" placeholder="Paste URL manually..." />
               </div>
 
               <div>
@@ -864,7 +870,6 @@ export default function AdminPage() {
                   </div>
                 )}
                 <button type="button" onClick={() => imageInputRef.current?.click()} className="w-full py-1.5 border border-[#1a1a1a] rounded-sm text-[10px] font-mono text-[#737373] hover:text-white transition">UPLOAD FILE</button>
-                <input ref={imageInputRef} type="file" className="hidden" onChange={handleImageFile} />
                 <input value={form.image} onChange={(e) => setForm(f => ({ ...f, image: e.target.value }))} className="mt-2 w-full bg-black border border-[#1a1a1a] rounded-sm px-2 py-1 text-[10px] font-mono text-[#737373]" placeholder="Paste URL manually..." />
               </div>
 
@@ -936,6 +941,8 @@ export default function AdminPage() {
           </section>
         </main>
       )}
+      <input ref={imageInputRef} type="file" className="hidden" onChange={handleImageFile} />
+      <input ref={audioInputRef} type="file" className="hidden" onChange={handleAudioFile} />
     </div>
   )
 }
