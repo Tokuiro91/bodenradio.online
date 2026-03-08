@@ -80,6 +80,7 @@ export default function AdminPage() {
   const [newAdminEmail, setNewAdminEmail] = useState("")
   const [adminError, setAdminError] = useState("")
   const [formError, setFormError] = useState("")
+  const [isBroadcasting, setIsBroadcasting] = useState(false)
 
   const [dbArtists, setDbArtists] = useState<DBArtist[]>([])
   const [listeners, setListeners] = useState<Listener[]>([])
@@ -315,6 +316,24 @@ export default function AdminPage() {
     setForm({ ...defaultForm })
     if (imageInputRef.current) imageInputRef.current.value = ""
     if (audioInputRef.current) audioInputRef.current.value = ""
+  }
+
+  const sendPushBroadcast = async () => {
+    if (!confirm("Вы уверены, что хотите отправить пуш-уведомление ВСЕМ пользователям?")) return
+    setIsBroadcasting(true)
+    try {
+      const res = await fetch("/api/admin/push/broadcast", { method: "POST" })
+      const data = await res.json()
+      if (data.ok) {
+        alert(`Пуш отправлен! Успешно: ${data.successCount}, Ошибок: ${data.failureCount}`)
+      } else {
+        alert("Ошибка: " + data.error)
+      }
+    } catch (err) {
+      alert("Ошибка сети")
+    } finally {
+      setIsBroadcasting(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -598,6 +617,21 @@ export default function AdminPage() {
               </li>
             ))}
           </ul>
+
+          <div className="mt-12 pt-8 border-t border-[#1a1a1a]">
+            <h2 className="text-sm font-semibold mb-2 text-[#99CCCC] font-mono uppercase">System Broadcast</h2>
+            <p className="text-[10px] text-[#737373] mb-4 uppercase font-mono tracking-tight leading-relaxed">
+              Отправить Push-уведомление всем зарегистрированным пользователям,<br />
+              у которых включен прием уведомлений.
+            </p>
+            <button
+              onClick={sendPushBroadcast}
+              disabled={isBroadcasting}
+              className={`px-4 py-3 text-[10px] font-mono font-bold uppercase tracking-[0.2em] rounded-sm transition ${isBroadcasting ? 'bg-[#1a1a1a] text-[#444]' : 'bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-500 hover:text-white'}`}
+            >
+              {isBroadcasting ? "BROADCASTING..." : "SEND WELCOME PUSH"}
+            </button>
+          </div>
         </div>
       )}
 
