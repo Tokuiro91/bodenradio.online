@@ -224,7 +224,10 @@ export default function AdminPage() {
       const res = await fetch("/api/artists", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(nextArtists),
+        body: JSON.stringify({
+          artists: nextArtists,
+          newId: newArtist.id
+        }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))

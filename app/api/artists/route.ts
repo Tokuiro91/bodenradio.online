@@ -68,23 +68,27 @@ export async function POST(request: Request) {
         }
 
         // ── Overlap validation ──────────────────────────────────────────────
-        // Only check the NEW or EDITED artist against all others.
-        // This prevents false positives from pre-existing overlaps in the dataset.
+        // Check ONLY the new/edited artist against all others to prevent 
+        // blocking edits due to existing overlaps elsewhere.
         if (newId !== null) {
             const target = artists.find((a) => a.id === newId)
-            if (target) {
+            if (target && target.type === 'artist') {
                 const tStart = new Date(target.startTime).getTime()
                 const tEnd = new Date(target.endTime).getTime()
+
                 if (!isNaN(tStart) && !isNaN(tEnd)) {
                     for (const other of artists) {
-                        if (other.id === target.id) continue
+                        if (other.id === target.id || other.type !== 'artist') continue
+
                         const oStart = new Date(other.startTime).getTime()
                         const oEnd = new Date(other.endTime).getTime()
+
                         if (isNaN(oStart) || isNaN(oEnd)) continue
+
                         if (slotsOverlap(tStart, tEnd, oStart, oEnd)) {
                             return NextResponse.json(
                                 {
-                                    error: `Конфликт слотов: "${target.name}" пересекается с "${other.name}".`,
+                                    error: `Конфликт во времени: "${target.name}" пересекается с "${other.name}". Пожалуйста, выберите другое время.`,
                                     conflict: { a: target.name, b: other.name },
                                 },
                                 { status: 409 }
