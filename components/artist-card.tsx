@@ -366,7 +366,10 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="border-t border-[#99CCCC]/40 pt-3 h-full max-h-[160px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#99CCCC]/40 scrollbar-track-transparent pr-2">
+                <div
+                  className="border-t border-[#99CCCC]/40 pt-3 h-full max-h-[160px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#99CCCC]/40 scrollbar-track-transparent pr-2"
+                  style={{ touchAction: 'pan-y', overscrollBehaviorY: 'contain' }}
+                >
                   <p className="text-xs text-[#a3a3a3] leading-relaxed">
                     {artist.description}
                   </p>
