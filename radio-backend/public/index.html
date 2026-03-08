@@ -293,9 +293,18 @@
                                 </select>
                             </div>
                             <div class="lg:col-span-2">
-                                <label class="text-[8px] text-gray-500 block mb-1">ЭЛЕМЕНТ</label>
-                                <select id="sch-item" class="input-dark text-[10px]" onchange="if(this.value==='UPLOAD_NEW') document.getElementById('sch-immediate-upload').click()"></select>
-                                <input type="file" id="sch-immediate-upload" class="hidden" onchange="handleImmediateUpload()">
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="text-[8px] text-gray-500 block">ЭЛЕМЕНТ</label>
+                                    <button type="button"
+                                        onclick="document.getElementById('sch-immediate-upload').click()"
+                                        class="text-[8px] bg-[#99CCCC]/20 text-[#99CCCC] px-1.5 py-0.5 rounded-sm border border-[#99CCCC]/30 hover:bg-[#99CCCC]/40 transition">
+                                        + ЗАГРУЗИТЬ АУДИО
+                                    </button>
+                                </div>
+                                <select id="sch-item" class="input-dark text-[10px]"
+                                    onchange="if(this.value==='UPLOAD_NEW') document.getElementById('sch-immediate-upload').click()"></select>
+                                <input type="file" id="sch-immediate-upload" class="hidden"
+                                    onchange="handleImmediateUpload()">
                             </div>
                             <div>
                                 <label class="text-[8px] text-gray-500 block mb-1">НАЧАЛО</label>
@@ -580,14 +589,14 @@
                 const res = await api('/tracks', { method: 'POST', body: formData }, true);
                 await loadTracks();
                 await loadScheduleItems();
-                
+
                 // Find the new track and select it
                 const newFilename = res.files[0];
                 const newTrack = tracksData.find(t => t.filename === newFilename);
                 if (newTrack) {
                     sel.value = newTrack.id;
                 }
-            } catch (e) { 
+            } catch (e) {
                 sel.value = "";
                 alert("Upload failed");
             } finally {

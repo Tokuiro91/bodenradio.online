@@ -35,7 +35,8 @@ function calcProgress(artist: { startTime: string; endTime: string }): number {
 /** Local calendar date string — so grouping respects the user's timezone */
 function localDate(iso: string): string {
   const d = new Date(iso)
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+  if (isNaN(d.getTime())) return ""
+  return d.toISOString().split("T")[0]
 }
 
 export function RadioPlayer() {

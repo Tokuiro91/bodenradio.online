@@ -404,7 +404,7 @@ export default function AdminPage() {
         bandcampUrl: form.bandcampUrl || "",
       }
 
-      const existingId = dbEditingId || form.dbId || dbArtists.find(a => a.name === form.name)?.id
+      const existingId = dbEditingId || form.dbId || dbArtists.find(a => a.name.toLowerCase().trim() === form.name.toLowerCase().trim())?.id
 
       if (existingId) {
         // Update existing master record
