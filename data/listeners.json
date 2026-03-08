@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "id": "sobaka@sobaka.com",
+    "email": "sobaka@sobaka.com",
+    "name": "Sobaka",
+    "favoriteArtists": [],
+    "role": "listener",
+    "provider": "google",
+    "pushEnabled": true
+  }
+]

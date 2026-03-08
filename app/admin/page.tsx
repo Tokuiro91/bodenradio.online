@@ -81,7 +81,7 @@ export default function AdminPage() {
   const [adminError, setAdminError] = useState("")
   const [formError, setFormError] = useState("")
   const [isBroadcasting, setIsBroadcasting] = useState(false)
-  const [broadcastTitle, setBroadcastTitle] = useState("BØDEN Radio")
+  const [broadcastTitle, setBroadcastTitle] = useState("")
   const [broadcastBody, setBroadcastBody] = useState("BODEN Radio 2026 Welcome!")
 
   const [dbArtists, setDbArtists] = useState<DBArtist[]>([])
