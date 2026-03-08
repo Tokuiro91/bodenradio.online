@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react"
 import { Bell, BellOff, Loader2 } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
@@ -104,6 +105,23 @@ export function PushSubscriptionManager() {
         }
     }
 
+    const sendTestPush = async () => {
+        setLoading(true)
+        try {
+            const res = await fetch("/api/test/push", { method: "POST" })
+            if (res.ok) {
+                toast.success("Test notification sent!")
+            } else {
+                const data = await res.json()
+                toast.error(data.error || "Failed to send test push")
+            }
+        } catch {
+            toast.error("Error sending test push")
+        } finally {
+            setLoading(false)
+        }
+    }
+
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
         return null
     }
@@ -119,6 +137,17 @@ export function PushSubscriptionManager() {
                     <p className="text-[9px] text-[#737373] uppercase tracking-wider">
                         {isSubscribed ? "Alerts enabled for your favorite artists" : "Stay informed when your favorites are live"}
                     </p>
+                    {isSubscribed && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={sendTestPush}
+                            disabled={loading}
+                            className="mt-3 w-full border-[#99CCCC]/30 text-[#99CCCC] text-[10px] uppercase font-bold tracking-widest hover:bg-[#99CCCC]/10"
+                        >
+                            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Send Test Notification"}
+                        </Button>
+                    )}
                 </div>
             </div>
             {loading ? (
