@@ -297,9 +297,34 @@ export default function AdminPage() {
       isLottie: form.type === 'ad' ? form.isLottie : undefined,
     }
 
+    if (dbEditingId === "new") {
+      // Create only master
+      fetch("/api/artist-db", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          location: form.location || "Earth",
+          show: form.show || "Новый сет",
+          image: form.image || "/artists/artist-1.jpg",
+          description: form.description || "...",
+          audioUrl: form.audioUrl || "",
+          instagramUrl: form.instagramUrl || "",
+          soundcloudUrl: form.soundcloudUrl || "",
+          bandcampUrl: form.bandcampUrl || "",
+        }),
+      }).then(r => r.json()).then(newA => {
+        if (newA && newA.id) {
+          setDbArtists(prev => [...prev, newA])
+          resetForm()
+        }
+      }).catch(() => { })
+      return
+    }
+
     const nextArtists = isEditing
       ? artists.map((a) => (a.id === editingId ? newArtist : a))
-      : [...artists, newArtist]
+      : (dbEditingId && !isEditing ? artists : [...artists, newArtist])
 
     try {
       const res = await fetch("/api/artists", {
@@ -548,13 +573,24 @@ export default function AdminPage() {
             <div
               className="border border-dashed border-[#2a2a2a] rounded-sm p-4 h-32 flex flex-col items-center justify-center cursor-pointer hover:border-[#99CCCC] transition group"
               onClick={() => {
+                setDbEditingId("new")
+                setEditingId(null)
+                setForm({ ...defaultForm })
+                setActiveTab("artists")
+              }}
+            >
+              <p className="text-[#99CCCC] font-mono text-xs uppercase group-hover:text-white text-center mb-1">+ Создать Мастера</p>
+              <p className="text-[9px] text-[#444] text-center px-4">Добавить артиста в базу без публикации в сетку</p>
+            </div>
+            <div
+              className="border border-[#111] bg-[#080808] rounded-sm p-4 h-32 flex flex-col items-center justify-center cursor-pointer hover:border-[#737373] transition group"
+              onClick={() => {
                 setActiveTab("artists")
                 setForm({ ...defaultForm })
                 setEditingId(null)
               }}
             >
-              <p className="text-[#737373] font-mono text-xs uppercase group-hover:text-[#99CCCC] text-center mb-1">+ Создать в расписании</p>
-              <p className="text-[9px] text-[#444] text-center px-4">Артисты автоматически добавляются в базу при сохранении в расписание</p>
+              <p className="text-[#737373] font-mono text-xs uppercase group-hover:text-white text-center mb-1">+ В расписание</p>
             </div>
             {filteredDbArtists.map(a => (
               <div key={a.id} className="border border-[#2a2a2a] bg-[#0a0a0a] rounded-sm overflow-hidden flex flex-col group relative">
@@ -589,12 +625,12 @@ export default function AdminPage() {
         <main className="px-6 py-6 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
           <div className="flex-1">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold">{form.type === 'ad' ? 'ADVERTISEMENT SETUP' : 'ARTIST SETUP'}</h2>
-              <p className="text-[11px] text-[#6b7280]">Slot usage: <span className="text-[#e5e5e5]">{artists.length}</span> / {MAX_ARTISTS}</p>
+              <h2 className="text-sm font-semibold text-[#99CCCC] font-mono tracking-widest uppercase">{dbEditingId ? 'MASTER EDITOR' : (form.type === 'ad' ? 'ADVERTISEMENT SETUP' : 'ARTIST SETUP')}</h2>
+              {!dbEditingId && <p className="text-[11px] text-[#6b7280]">Slot usage: <span className="text-[#e5e5e5]">{artists.length}</span> / {MAX_ARTISTS}</p>}
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4 text-sm bg-[#0a0a0a] p-4 border border-[#1a1a1a] rounded-sm">
-              {isSuperAdmin && (
+              {isSuperAdmin && !dbEditingId && (
                 <div>
                   <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Entry Type</label>
                   <div className="flex gap-2">
@@ -604,7 +640,7 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {form.type === 'artist' && dbArtists.length > 0 && !editingId && (
+              {form.type === 'artist' && dbArtists.length > 0 && !editingId && !dbEditingId && (
                 <div>
                   <label className="block mb-2 text-[10px] uppercase font-mono text-[#99CCCC]">Выбрать из Базы</label>
                   <select
@@ -646,8 +682,8 @@ export default function AdminPage() {
                 <input value={form.show} onChange={(e) => setForm(f => ({ ...f, show: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
               </div>
 
-              {/* Social Links (Moved up for better visibility) */}
-              {form.type !== 'ad' && (
+              {/* Social Media Links */}
+              {form.type === 'artist' && (
                 <div className="grid grid-cols-3 gap-2 py-2 border-y border-[#1a1a1a]">
                   <div>
                     <label className="block mb-1 text-[9px] uppercase font-mono text-[#99CCCC]">Instagram</label>
@@ -687,7 +723,7 @@ export default function AdminPage() {
                 </>
               )}
 
-              {form.type !== 'ad' && (
+              {form.type !== 'ad' && !dbEditingId && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Start Broadcast</label>
@@ -731,7 +767,7 @@ export default function AdminPage() {
 
               <div className="flex gap-2">
                 <button type="submit" className="flex-1 py-2 bg-[#99CCCC] text-black font-bold text-[10px] font-mono uppercase tracking-widest hover:bg-white transition">
-                  {dbEditingId ? 'Update Master' : (editingId ? 'Save Entry' : 'Create Entry')}
+                  {dbEditingId === "new" ? "Create Master" : (dbEditingId ? 'Update Master' : (editingId ? 'Save Entry' : 'Create Entry'))}
                 </button>
                 {(editingId || dbEditingId) && <button type="button" onClick={resetForm} className="px-4 py-2 border border-[#2a2a2a] text-[10px] font-mono uppercase text-[#737373]">Cancel</button>}
               </div>
@@ -780,8 +816,7 @@ export default function AdminPage() {
             </div>
           </section>
         </main>
-      )
-      }
-    </div >
+      )}
+    </div>
   )
 }
