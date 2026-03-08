@@ -17,6 +17,7 @@ import {
 import { ReactionPicker } from "@/components/reaction-picker"
 
 import type { Artist } from "@/lib/artists-data"
+import { isArtistInRollingWindow } from "@/lib/artists-data"
 import { useArtists } from "@/lib/use-artists"
 import { useAudioEngine } from "@/hooks/use-audio-engine"
 import {
@@ -132,10 +133,13 @@ export function MobileRadio() {
     const update = () => {
       const nowMs = getSyncedTime()
       const next = artists.filter(a => {
-        if (a.type !== 'ad') return true
-        const startMs = a.campaignStart ? new Date(a.campaignStart).getTime() : 0
-        const endMs = a.campaignEnd ? new Date(a.campaignEnd).getTime() : Infinity
-        return nowMs >= startMs && nowMs <= endMs
+        if (!isArtistInRollingWindow(a, nowMs)) return false
+        if (a.type === 'ad') {
+          const startMs = a.campaignStart ? new Date(a.campaignStart).getTime() : 0
+          const endMs = a.campaignEnd ? new Date(a.campaignEnd).getTime() : Infinity
+          return nowMs >= startMs && nowMs <= endMs
+        }
+        return true
       })
       setFilteredArtists(next)
     }

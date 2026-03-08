@@ -8,6 +8,7 @@ import { useArtists } from "@/lib/use-artists"
 import { Clock, ExternalLink } from "lucide-react"
 import { ReactionPicker } from "@/components/reaction-picker"
 import type { Artist } from "@/lib/artists-data"
+import { isArtistInRollingWindow } from "@/lib/artists-data"
 import { useAudioEngine } from "@/hooks/use-audio-engine"
 import { useServerTimeSync, setGlobalTimeOffset, getSyncedTime } from "@/hooks/use-server-time"
 
@@ -79,10 +80,11 @@ export function RadioPlayer() {
   const cardRefs = useRef<(HTMLDivElement | null)[]>([])
   const CARD_WIDTH = 336 // 312px card + 24px gap
 
-  const sortedArtists = useMemo(
-    () => [...artists].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()),
-    [artists]
-  )
+  const sortedArtists = useMemo(() => {
+    const rawSorted = [...artists].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+    const syncedNow = getSyncedTime()
+    return rawSorted.filter(a => isArtistInRollingWindow(a, syncedNow))
+  }, [artists, Math.floor(now / 60000)]) // Re-filter every minute or when artists change
 
   const TOTAL_CARDS = sortedArtists.length
 

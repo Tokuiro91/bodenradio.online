@@ -85,7 +85,14 @@ export function useArtists() {
       }
     }
     load()
-    return () => { cancelled = true }
+
+    // Polling every 5 minutes to fetch future sets
+    const pollInterval = setInterval(load, 5 * 60 * 1000)
+
+    return () => {
+      cancelled = true
+      clearInterval(pollInterval)
+    }
   }, [writeToStorage])
 
   // Sync across tabs

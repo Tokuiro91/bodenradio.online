@@ -22,6 +22,19 @@ export interface Artist {
   isLottie?: boolean
 }
 
+const ROLL_WINDOW_PAST_MS = 8 * 60 * 60 * 1000   // 8 hours
+const ROLL_WINDOW_FUTURE_MS = 16 * 60 * 60 * 1000 // 16 hours
+
+export function isArtistInRollingWindow(artist: Artist, nowMs: number): boolean {
+  if (artist.type === 'ad') return true // Ads usually have their own campaign logic
+
+  const startMs = new Date(artist.startTime).getTime()
+  const endMs = new Date(artist.endTime).getTime()
+
+  // Card is shown if it ended less than 8h ago AND starts less than 16h from now
+  return endMs > nowMs - ROLL_WINDOW_PAST_MS && startMs < nowMs + ROLL_WINDOW_FUTURE_MS
+}
+
 const artistNames = [
   "JULIA GOVOR", "RE:BOOT", "KAGO DO", "KIRILL MATVEEV", "KEVIN REIS",
   "VSEVOLOD", "ANNA LEAH", "DMITRY MOLOSH", "SOLAR FIELDS", "NICK WARREN",
