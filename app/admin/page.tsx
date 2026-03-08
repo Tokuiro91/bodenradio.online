@@ -330,64 +330,55 @@ export default function AdminPage() {
       isLottie: form.type === 'ad' ? form.isLottie : undefined,
     }
 
+    // ── CASE 1: ONLY EDITING MASTER RECORD ──────────────────────────
     if (dbEditingId === "new") {
-      // Create only master
-      fetch("/api/artist-db", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.name,
-          location: form.location || "Earth",
-          show: form.show || "Новый сет",
-          image: form.image || "/artists/artist-1.jpg",
-          description: form.description || "...",
-          audioUrl: form.audioUrl || "",
-          instagramUrl: form.instagramUrl || "",
-          soundcloudUrl: form.soundcloudUrl || "",
-          bandcampUrl: form.bandcampUrl || "",
-        }),
-      }).then(r => r.json()).then(newA => {
+      try {
+        const res = await fetch("/api/artist-db", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: form.name,
+            location: form.location || "Earth",
+            show: form.show || "Новый сет",
+            image: form.image || "/artists/artist-1.jpg",
+            description: form.description || "...",
+            audioUrl: form.audioUrl || "",
+            instagramUrl: form.instagramUrl || "",
+            soundcloudUrl: form.soundcloudUrl || "",
+            bandcampUrl: form.bandcampUrl || "",
+          }),
+        })
+        const newA = await res.json()
         if (newA && newA.id) {
           setDbArtists(prev => [...prev, newA])
+          alert("Артист успешно добавлен в базу!")
           resetForm()
+          setIsDbModalOpen(false)
+        } else {
+          setFormError("Ошибка при создании мастера")
         }
-      }).catch(() => { })
+      } catch (e) {
+        setFormError("Ошибка сети")
+      }
       return
     }
 
+    // ── CASE 2: SCHEDULING (MIGHT ALSO SYNC MASTER) ───────────────────
     const nextArtists = isEditing
       ? artists.map((a) => (a.id === editingId ? newArtist : a))
       : (dbEditingId && !isEditing ? artists : [...artists, newArtist])
 
-    try {
-      const res = await fetch("/api/artists", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          artists: nextArtists,
-          newId: newArtist.id
-        }),
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        setFormError(data.error ?? `Ошибка сервера (${res.status})`)
-        return
-      }
-    } catch {
-      setFormError("Нет соединения с сервером")
-      return
-    }
-
+    // Update state (sets local and triggers server persistence via useArtists hook)
     setArtists(nextArtists)
 
-    // Trigger Radio Schedule Sync
+    // Trigger Radio Schedule Sync for the backend playback engine
     fetch("/api/radio/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ artists: nextArtists }),
     }).catch(() => { })
 
-    // ── MASTER DB SYNC ──────────────────────────────────────────────
+    // Optionally sync with Master Database if Artist type
     if (form.type === 'artist' && form.name) {
       const artistData = {
         name: form.name,
@@ -404,7 +395,6 @@ export default function AdminPage() {
       const existingId = dbEditingId || form.dbId || dbArtists.find(a => a.name.toLowerCase().trim() === form.name.toLowerCase().trim())?.id
 
       if (existingId) {
-        // Update existing master record
         fetch("/api/artist-db", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -412,14 +402,9 @@ export default function AdminPage() {
         }).then(r => r.json()).then(updatedA => {
           if (updatedA && updatedA.id) {
             setDbArtists(prev => prev.map(a => a.id === updatedA.id ? updatedA : a))
-            // If we were ONLY editing the master record, we can stop here
-            if (dbEditingId && !isEditing) {
-              resetForm()
-            }
           }
         }).catch(() => { })
       } else {
-        // Create new master record
         fetch("/api/artist-db", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -427,17 +412,12 @@ export default function AdminPage() {
         }).then(r => r.json()).then(newA => {
           if (newA && newA.id) {
             setDbArtists(prev => [...prev, newA])
-            // Link the same ID if we just created it while scheduling
-            newArtist.dbId = newA.id
           }
         }).catch(() => { })
       }
     }
 
-    if (dbEditingId && !isEditing) return // Skip schedule saving if only editing master
-
-    // ── SCHEDULE SAVING ─────────────────────────────────────────────
-
+    alert(isEditing ? "Запись обновлена!" : "Артист добавлен в расписание!")
     resetForm()
     setIsDbModalOpen(false)
   }
@@ -710,11 +690,11 @@ export default function AdminPage() {
                 <div className="grid grid-cols-2 gap-4 border-t border-[#1a1a1a] pt-4">
                   <div>
                     <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Start Broadcast</label>
-                    <input type="datetime-local" step="1" value={form.start} onChange={(e) => setForm(f => ({ ...f, start: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                    <input type="datetime-local" step="60" required value={form.start} onChange={(e) => setForm(f => ({ ...f, start: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
                   </div>
                   <div>
                     <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">End Broadcast</label>
-                    <input type="datetime-local" step="1" value={form.end} onChange={(e) => setForm(f => ({ ...f, end: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                    <input type="datetime-local" step="60" required value={form.end} onChange={(e) => setForm(f => ({ ...f, end: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
                   </div>
                 </div>
               )}
@@ -852,11 +832,11 @@ export default function AdminPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Campaign Start</label>
-                      <input type="datetime-local" value={form.campaignStart} onChange={(e) => setForm(f => ({ ...f, campaignStart: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                      <input type="datetime-local" step="60" required value={form.campaignStart} onChange={(e) => setForm(f => ({ ...f, campaignStart: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
                     </div>
                     <div>
                       <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Campaign End</label>
-                      <input type="datetime-local" value={form.campaignEnd} onChange={(e) => setForm(f => ({ ...f, campaignEnd: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                      <input type="datetime-local" step="60" required value={form.campaignEnd} onChange={(e) => setForm(f => ({ ...f, campaignEnd: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
                     </div>
                   </div>
                 </>
@@ -866,11 +846,11 @@ export default function AdminPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Start Broadcast</label>
-                    <input type="datetime-local" step="1" value={form.start} onChange={(e) => setForm(f => ({ ...f, start: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                    <input type="datetime-local" step="60" required value={form.start} onChange={(e) => setForm(f => ({ ...f, start: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
                   </div>
                   <div>
                     <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">End Broadcast</label>
-                    <input type="datetime-local" step="1" value={form.end} onChange={(e) => setForm(f => ({ ...f, end: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                    <input type="datetime-local" step="60" required value={form.end} onChange={(e) => setForm(f => ({ ...f, end: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
                   </div>
                 </div>
               )}
