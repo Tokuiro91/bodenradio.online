@@ -68,8 +68,8 @@ export function AnalyticsDashboard() {
                                 key={p}
                                 onClick={() => setPeriod(p)}
                                 className={`px-3 py-1 text-[10px] uppercase tracking-widest rounded-sm transition ${period === p
-                                        ? "bg-[#2a2a2a] text-[#99CCCC]"
-                                        : "text-[#737373] hover:text-[#e5e5e5]"
+                                    ? "bg-[#2a2a2a] text-[#99CCCC]"
+                                    : "text-[#737373] hover:text-[#e5e5e5]"
                                     }`}
                             >
                                 {p === "day" ? "День" : p === "week" ? "Неделя" : p === "month" ? "Месяц" : "Все"}
@@ -182,8 +182,5 @@ export function AnalyticsDashboard() {
                 </div>
             </div>
         </div>
-    )
-}
-        </div >
     )
 }
