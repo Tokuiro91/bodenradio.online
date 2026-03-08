@@ -367,14 +367,14 @@ export function RadioPlayer() {
               >
                 {isFirstOfDay && (
                   <div className="flex items-center gap-2 mb-3 pl-1">
-                    <div className="w-2 h-2 rotate-45 bg-[#99CCCC]" />
-                    <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#99CCCC]">
+                    <div className="w-1.5 h-1.5 rotate-45 bg-[#99CCCC]" />
+                    <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#99CCCC] font-bold">
                       {new Date(artist.startTime).toLocaleDateString("en-US", {
                         day: "numeric",
                         month: "long",
                       }).toUpperCase()}
                     </span>
-                    <div className="flex-1 h-px bg-[#2a2a2a]" />
+                    <div className="flex-1 h-px bg-[#2a2a2a]/50" />
                   </div>
                 )}
 

@@ -65,6 +65,9 @@ export default function AdminPage() {
 
   // Form state
   const [form, setForm] = useState({ ...defaultForm })
+  const [dbPage, setDbPage] = useState(1)
+  const DB_ITEMS_PER_PAGE = 20
+  const [isDbModalOpen, setIsDbModalOpen] = useState(false)
 
   // Upload states
   const [imageUploading, setImageUploading] = useState(false)
@@ -154,6 +157,39 @@ export default function AdminPage() {
     if (d.admins) setAdminEmails(d.admins)
   }
 
+  const syncAllToDatabase = async () => {
+    if (!confirm("Add all scheduled artists to Database?")) return
+    for (const a of artists) {
+      if (!a.name) continue
+      const artistData = {
+        name: a.name,
+        location: a.location || "Earth",
+        show: a.show || "Новый сет",
+        image: a.image || "/artists/artist-1.jpg",
+        description: a.description || "...",
+        audioUrl: a.audioUrl || "",
+        instagramUrl: a.instagramUrl || "",
+        soundcloudUrl: a.soundcloudUrl || "",
+        bandcampUrl: a.bandcampUrl || "",
+      }
+      const existing = dbArtists.find(db => db.name === a.name)
+      if (existing) {
+        await fetch("/api/artist-db", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: existing.id, ...artistData }),
+        })
+      } else {
+        await fetch("/api/artist-db", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(artistData),
+        })
+      }
+    }
+    fetch("/api/artist-db").then(r => r.json()).then(setDbArtists)
+  }
+
   const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -227,7 +263,7 @@ export default function AdminPage() {
       bandcampUrl: a.bandcampUrl ?? "",
       dbId: a.id,
     })
-    setActiveTab("artists")
+    setIsDbModalOpen(true)
   }
 
   const handleDbScheduleNew = (a: DBArtist) => {
@@ -246,7 +282,7 @@ export default function AdminPage() {
       bandcampUrl: a.bandcampUrl ?? "",
       dbId: a.id,
     })
-    setActiveTab("artists")
+    setIsDbModalOpen(true)
   }
 
   const resetForm = () => {
@@ -406,6 +442,7 @@ export default function AdminPage() {
     // ── SCHEDULE SAVING ─────────────────────────────────────────────
 
     resetForm()
+    setIsDbModalOpen(false)
   }
 
   const handleDelete = (id: number) => {
@@ -439,6 +476,9 @@ export default function AdminPage() {
     a.name.toLowerCase().includes(dbSearchQuery.toLowerCase()) ||
     a.show.toLowerCase().includes(dbSearchQuery.toLowerCase())
   )
+
+  const totalDbPages = Math.ceil(filteredDbArtists.length / DB_ITEMS_PER_PAGE)
+  const paginatedDbArtists = filteredDbArtists.slice((dbPage - 1) * DB_ITEMS_PER_PAGE, dbPage * DB_ITEMS_PER_PAGE)
 
   const sortedArtists = [...artists].sort(
     (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
@@ -558,12 +598,18 @@ export default function AdminPage() {
       {activeTab === "artist-db" && (
         <div className="px-6 py-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-[#99CCCC] font-mono">БАЗА АРТИСТОВ ({filteredDbArtists.length})</h2>
+            <div className="flex items-center gap-4">
+              <h2 className="text-sm font-semibold text-[#99CCCC] font-mono">БАЗА АРТИСТОВ ({filteredDbArtists.length})</h2>
+              <button onClick={syncAllToDatabase} className="text-[10px] bg-[#1a1a1a] text-[#737373] hover:text-white px-2 py-1 rounded-sm border border-[#2a2a2a] transition">Sync All from Grid</button>
+            </div>
             <div className="flex items-center bg-black border border-[#1a1a1a] rounded-sm px-2 py-1">
               <Search size={12} className="text-[#444] mr-2" />
               <input
                 value={dbSearchQuery}
-                onChange={(e) => setDbSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setDbSearchQuery(e.target.value)
+                  setDbPage(1)
+                }}
                 placeholder="Поиск в базе..."
                 className="bg-transparent border-none outline-none text-[10px] font-mono uppercase text-white w-48"
               />
@@ -576,23 +622,13 @@ export default function AdminPage() {
                 setDbEditingId("new")
                 setEditingId(null)
                 setForm({ ...defaultForm })
-                setActiveTab("artists")
+                setIsDbModalOpen(true)
               }}
             >
               <p className="text-[#99CCCC] font-mono text-xs uppercase group-hover:text-white text-center mb-1">+ Создать Мастера</p>
               <p className="text-[9px] text-[#444] text-center px-4">Добавить артиста в базу без публикации в сетку</p>
             </div>
-            <div
-              className="border border-[#111] bg-[#080808] rounded-sm p-4 h-32 flex flex-col items-center justify-center cursor-pointer hover:border-[#737373] transition group"
-              onClick={() => {
-                setActiveTab("artists")
-                setForm({ ...defaultForm })
-                setEditingId(null)
-              }}
-            >
-              <p className="text-[#737373] font-mono text-xs uppercase group-hover:text-white text-center mb-1">+ В расписание</p>
-            </div>
-            {filteredDbArtists.map(a => (
+            {paginatedDbArtists.map(a => (
               <div key={a.id} className="border border-[#2a2a2a] bg-[#0a0a0a] rounded-sm overflow-hidden flex flex-col group relative">
                 <div className="w-full h-32 relative bg-[#111]">
                   {a.image && <Image src={a.image} alt={a.name} fill className="object-cover" unoptimized />}
@@ -617,6 +653,112 @@ export default function AdminPage() {
                 </button>
               </div>
             ))}
+          </div>
+
+          {totalDbPages > 1 && (
+            <div className="mt-8 flex items-center justify-center gap-2">
+              <button
+                disabled={dbPage === 1}
+                onClick={() => setDbPage(p => p - 1)}
+                className="px-3 py-1 border border-[#2a2a2a] rounded-sm text-xs disabled:opacity-30 hover:bg-[#111]"
+              >
+                Prev
+              </button>
+              <span className="text-xs font-mono text-[#737373]">
+                {dbPage} / {totalDbPages}
+              </span>
+              <button
+                disabled={dbPage === totalDbPages}
+                onClick={() => setDbPage(p => p + 1)}
+                className="px-3 py-1 border border-[#2a2a2a] rounded-sm text-xs disabled:opacity-30 hover:bg-[#111]"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {isDbModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#050505] border border-[#2a2a2a] w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 relative rounded-sm shadow-2xl">
+            <button
+              onClick={() => { setIsDbModalOpen(false); resetForm(); }}
+              className="absolute top-4 right-4 text-[#737373] hover:text-white"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            <h2 className="text-sm font-semibold mb-6 text-[#99CCCC] font-mono uppercase tracking-widest">
+              {dbEditingId === "new" ? "Create New Master" : (dbEditingId ? "Edit Master Record" : "Schedule Artist")}
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Reuse form fields from the main view but condensed if needed */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Name</label>
+                  <input value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                </div>
+                <div>
+                  <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Show</label>
+                  <input value={form.show} onChange={(e) => setForm(f => ({ ...f, show: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Location</label>
+                <input value={form.location} onChange={(e) => setForm(f => ({ ...f, location: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+              </div>
+
+              {!dbEditingId && (
+                <div className="grid grid-cols-2 gap-4 border-t border-[#1a1a1a] pt-4">
+                  <div>
+                    <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Start Broadcast</label>
+                    <input type="datetime-local" step="1" value={form.start} onChange={(e) => setForm(f => ({ ...f, start: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">End Broadcast</label>
+                    <input type="datetime-local" step="1" value={form.end} onChange={(e) => setForm(f => ({ ...f, end: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-3 gap-2 py-4 border-y border-[#1a1a1a]">
+                <div>
+                  <label className="block mb-1 text-[9px] uppercase font-mono text-[#99CCCC]">Instagram</label>
+                  <input value={form.instagramUrl} onChange={(e) => setForm(f => ({ ...f, instagramUrl: e.target.value }))} className="w-full bg-black border border-[#1a1a1a] rounded-sm px-2 py-1 text-[10px] font-mono" />
+                </div>
+                <div>
+                  <label className="block mb-1 text-[9px] uppercase font-mono text-[#99CCCC]">Soundcloud</label>
+                  <input value={form.soundcloudUrl} onChange={(e) => setForm(f => ({ ...f, soundcloudUrl: e.target.value }))} className="w-full bg-black border border-[#1a1a1a] rounded-sm px-2 py-1 text-[10px] font-mono" />
+                </div>
+                <div>
+                  <label className="block mb-1 text-[9px] uppercase font-mono text-[#99CCCC]">Bandcamp</label>
+                  <input value={form.bandcampUrl} onChange={(e) => setForm(f => ({ ...f, bandcampUrl: e.target.value }))} className="w-full bg-black border border-[#1a1a1a] rounded-sm px-2 py-1 text-[10px] font-mono" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Image URL</label>
+                <input value={form.image} onChange={(e) => setForm(f => ({ ...f, image: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+              </div>
+
+              <div>
+                <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Audio URL</label>
+                <input value={form.audioUrl} onChange={(e) => setForm(f => ({ ...f, audioUrl: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+              </div>
+
+              <div>
+                <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Description</label>
+                <textarea value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} className="w-full h-24 bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button type="submit" className="flex-1 py-3 bg-[#99CCCC] text-black font-bold text-[10px] font-mono uppercase tracking-widest hover:bg-white transition">
+                  {dbEditingId === "new" ? "Create Master" : (dbEditingId ? "Update Master" : "Add to Schedule")}
+                </button>
+                <button type="button" onClick={() => { setIsDbModalOpen(false); resetForm(); }} className="px-6 py-3 border border-[#2a2a2a] text-[10px] font-mono uppercase text-[#737373]">Cancel</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

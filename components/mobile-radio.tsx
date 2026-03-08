@@ -260,6 +260,16 @@ export function MobileRadio() {
     setIsMuted(!isMuted)
   }
 
+  const isFirstOfItsDay = useMemo(() => {
+    if (viewIndex === 0) return true
+    const curr = sortedArtists[viewIndex]
+    const prev = sortedArtists[viewIndex - 1]
+    if (!curr || !prev) return true
+    const d1 = new Date(curr.startTime)
+    const d2 = new Date(prev.startTime)
+    return d1.getFullYear() !== d2.getFullYear() || d1.getMonth() !== d2.getMonth() || d1.getDate() !== d2.getDate()
+  }, [viewIndex, sortedArtists])
+
   // --- Lottie Loader for mobile --- MUST be before any early return (Rules of Hooks)
   const currentArtistForLottie = sortedArtists[viewIndex]
   const [lottieData, setLottieData] = useState<any>(null)
@@ -599,10 +609,10 @@ export function MobileRadio() {
           </div>
 
           {/* Day label */}
-          {!isAd && (
+          {isFirstOfItsDay && !isAd && (
             <div className="mt-2 flex items-center gap-1.5 justify-center">
               <div className="w-1.5 h-1.5 rotate-45 bg-[#99CCCC]" />
-              <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-[#737373]">
+              <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-[#99CCCC] font-bold">
                 {new Date(artist.startTime).toLocaleDateString("en-US", {
                   day: "numeric",
                   month: "long",

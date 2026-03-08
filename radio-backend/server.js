@@ -21,7 +21,14 @@ const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, MUSIC_DIR),
     filename: (req, file, cb) => {
         const cleanName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-        cb(null, `${Date.now()}_${cleanName}`);
+        const fullPath = path.join(MUSIC_DIR, cleanName);
+        if (fs.existsSync(fullPath)) {
+            const ext = path.extname(cleanName);
+            const base = path.basename(cleanName, ext);
+            cb(null, `${base}_${Date.now()}${ext}`);
+        } else {
+            cb(null, cleanName);
+        }
     }
 });
 const upload = multer({ storage });

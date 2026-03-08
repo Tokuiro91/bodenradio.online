@@ -294,7 +294,8 @@
                             </div>
                             <div class="lg:col-span-2">
                                 <label class="text-[8px] text-gray-500 block mb-1">ЭЛЕМЕНТ</label>
-                                <select id="sch-item" class="input-dark text-[10px]"></select>
+                                <select id="sch-item" class="input-dark text-[10px]" onchange="if(this.value==='UPLOAD_NEW') document.getElementById('sch-immediate-upload').click()"></select>
+                                <input type="file" id="sch-immediate-upload" class="hidden" onchange="handleImmediateUpload()">
                             </div>
                             <div>
                                 <label class="text-[8px] text-gray-500 block mb-1">НАЧАЛО</label>
@@ -563,6 +564,38 @@
             }
         }
 
+        async function handleImmediateUpload() {
+            const fileInp = document.getElementById('sch-immediate-upload');
+            const files = fileInp.files;
+            if (!files.length) return;
+
+            const sel = document.getElementById('sch-item');
+            const origTxt = sel.options[sel.selectedIndex].text;
+            sel.options[sel.selectedIndex].text = 'Uploading...';
+            sel.disabled = true;
+
+            const formData = new FormData();
+            formData.append('files', files[0]);
+            try {
+                const res = await api('/tracks', { method: 'POST', body: formData }, true);
+                await loadTracks();
+                await loadScheduleItems();
+                
+                // Find the new track and select it
+                const newFilename = res.files[0];
+                const newTrack = tracksData.find(t => t.filename === newFilename);
+                if (newTrack) {
+                    sel.value = newTrack.id;
+                }
+            } catch (e) { 
+                sel.value = "";
+                alert("Upload failed");
+            } finally {
+                sel.disabled = false;
+                fileInp.value = '';
+            }
+        }
+
         async function deleteTrack(id) {
             if (confirm('Delete track permanently?')) {
                 await api(`/tracks/${id}`, { method: 'DELETE' });
@@ -690,6 +723,7 @@
             if (type === 'playlist') {
                 playlistsData.forEach(p => { sel.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
             } else {
+                sel.innerHTML = '<option value="UPLOAD_NEW">-- ЗАГРУЗИТЬ НОВЫЙ --</option>';
                 tracksData.forEach(t => { sel.innerHTML += `<option value="${t.id}">${t.originalname}</option>`; });
             }
         }
