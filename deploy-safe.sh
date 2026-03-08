@@ -50,6 +50,16 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   git reset --hard HEAD
   git pull origin BODEN-STADT
 
+  # Прокидываем переменные окружения
+  echo "   ⚙️ Настройка переменных окружения..."
+  echo "NEXT_PUBLIC_VAPID_PUBLIC_KEY=\"$NEXT_PUBLIC_VAPID_PUBLIC_KEY\"" > .env.local
+  echo "VAPID_PRIVATE_KEY=\"$VAPID_PRIVATE_KEY\"" >> .env.local
+  echo "VAPID_SUBJECT=\"$VAPID_SUBJECT\"" >> .env.local
+  echo "ADMIN_EMAILS=\"$ADMIN_EMAILS\"" >> .env.local
+  echo "NEXTAUTH_SECRET=\"$NEXTAUTH_SECRET\"" >> .env.local
+  echo "NEXTAUTH_URL=\"$NEXTAUTH_URL\"" >> .env.local
+  echo "   ✅ .env.local обновлён"
+
   echo "   → npm install..."
   npm ci --legacy-peer-deps --silent
 

@@ -15,7 +15,7 @@ import { X } from "lucide-react"
 
 export default function ProfilePage() {
     const { data: session, status } = useSession()
-    const { artists } = useArtists()
+    const { artists, ready } = useArtists()
     const router = useRouter()
 
     const [profile, setProfile] = useState({
@@ -106,10 +106,15 @@ export default function ProfilePage() {
                     </div>
                 </section>
 
-                {/* FAVORITE ARTISTS */}
                 <section>
                     <h2 className="text-[#99CCCC] font-mono text-xs uppercase tracking-[0.2em] mb-4">My Favorites</h2>
-                    {favorites.length === 0 ? (
+                    {!ready ? (
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className="aspect-square bg-[#1a1a1a] rounded-sm animate-pulse" />
+                            ))}
+                        </div>
+                    ) : favorites.length === 0 ? (
                         <div className="text-center py-12 border border-dashed border-[#2a2a2a] rounded-sm">
                             <p className="text-[#737373] text-[10px] uppercase tracking-widest">You haven't added any favorites yet.</p>
                             <Button variant="link" className="text-[#99CCCC] mt-2 text-[10px] uppercase tracking-widest" onClick={() => router.push("/")}>Explore Artists</Button>

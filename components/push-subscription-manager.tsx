@@ -42,7 +42,8 @@ export function PushSubscriptionManager() {
 
     const subscribe = async () => {
         if (!VAPID_PUBLIC_KEY) {
-            toast.error("VAPID public key not found")
+            console.error("VAPID public key missing. Check your environment variables.")
+            toast.error("Push system configuration missing. Contact admin.")
             return
         }
 
