@@ -81,6 +81,8 @@ export default function AdminPage() {
   const [adminError, setAdminError] = useState("")
   const [formError, setFormError] = useState("")
   const [isBroadcasting, setIsBroadcasting] = useState(false)
+  const [broadcastTitle, setBroadcastTitle] = useState("BØDEN Radio")
+  const [broadcastBody, setBroadcastBody] = useState("BODEN Radio 2026 Welcome!")
 
   const [dbArtists, setDbArtists] = useState<DBArtist[]>([])
   const [listeners, setListeners] = useState<Listener[]>([])
@@ -322,7 +324,11 @@ export default function AdminPage() {
     if (!confirm("Вы уверены, что хотите отправить пуш-уведомление ВСЕМ пользователям?")) return
     setIsBroadcasting(true)
     try {
-      const res = await fetch("/api/admin/push/broadcast", { method: "POST" })
+      const res = await fetch("/api/admin/push/broadcast", {
+        method: "POST",
+        body: JSON.stringify({ title: broadcastTitle, body: broadcastBody }),
+        headers: { "Content-Type": "application/json" }
+      })
       const data = await res.json()
       if (data.ok) {
         alert(`Пуш отправлен! Успешно: ${data.successCount}, Ошибок: ${data.failureCount}`)
@@ -624,6 +630,26 @@ export default function AdminPage() {
               Отправить Push-уведомление всем зарегистрированным пользователям,<br />
               у которых включен прием уведомлений.
             </p>
+
+            <div className="space-y-4 mb-6 max-w-sm">
+              <div>
+                <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Заголовок Пуша</label>
+                <input
+                  value={broadcastTitle}
+                  onChange={(e) => setBroadcastTitle(e.target.value)}
+                  className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]"
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Текст Пуша</label>
+                <textarea
+                  value={broadcastBody}
+                  onChange={(e) => setBroadcastBody(e.target.value)}
+                  className="w-full h-16 bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]"
+                />
+              </div>
+            </div>
+
             <button
               onClick={sendPushBroadcast}
               disabled={isBroadcasting}

@@ -19,12 +19,17 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
+        const { title, body } = await req.json()
+        if (!title || !body) {
+            return NextResponse.json({ error: "Title and body are required" }, { status: 400 })
+        }
+
         const listeners = getListeners()
         const eligibleListeners = listeners.filter(l => l.pushEnabled && l.pushSubscriptions && l.pushSubscriptions.length > 0)
 
         const payload = JSON.stringify({
-            title: "BØDEN Radio",
-            body: "BODEN Radio 2026 Welcome!",
+            title: title || "BØDEN Radio",
+            body: body || "BODEN Radio 2026 Welcome!",
             icon: "/icons/icon-192.png",
             url: "/"
         })
