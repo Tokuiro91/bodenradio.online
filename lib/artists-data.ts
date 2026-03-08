@@ -20,6 +20,7 @@ export interface Artist {
   campaignStart?: string
   campaignEnd?: string
   isLottie?: boolean
+  dbId?: string
 }
 
 const ROLL_WINDOW_PAST_MS = 8 * 60 * 60 * 1000   // 8 hours

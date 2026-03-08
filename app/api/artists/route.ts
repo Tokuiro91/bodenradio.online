@@ -75,6 +75,14 @@ export async function POST(request: Request) {
                 const tEnd = new Date(target.endTime).getTime()
 
                 if (!isNaN(tStart) && !isNaN(tEnd)) {
+                    // Sanity check: start must be before end
+                    if (tStart >= tEnd) {
+                        return NextResponse.json(
+                            { error: `Ошибка: время начала (${new Date(tStart).toLocaleTimeString()}) должно быть раньше времени окончания.` },
+                            { status: 400 }
+                        )
+                    }
+
                     for (const other of artists) {
                         if (other.id === target.id) continue
                         if (!other.startTime || !other.endTime) continue

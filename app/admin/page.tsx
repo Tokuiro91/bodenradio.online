@@ -38,6 +38,7 @@ const defaultForm = {
   campaignStart: "",
   campaignEnd: "",
   isLottie: false,
+  dbId: "",
 }
 
 export default function AdminPage() {
@@ -57,6 +58,7 @@ export default function AdminPage() {
   }, [status, router])
 
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [dbEditingId, setDbEditingId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<"artists" | "admins" | "analytics" | "stickers" | "artist-db" | "listeners" | "radio-schedule">("analytics")
   const [dbSearchQuery, setDbSearchQuery] = useState("")
   const [artistsSearchQuery, setArtistsSearchQuery] = useState("")
@@ -89,6 +91,44 @@ export default function AdminPage() {
       fetch("/api/listeners").then(r => r.json()).then(setListeners).catch(() => { })
     }
   }, [activeTab, listeners.length])
+
+  // Handle cross-iframe sync from Radio Dashboard
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'SYNC_SCHEDULE') {
+        const { event: syncEvent } = event.data
+        if (syncEvent && syncEvent.artist_id) {
+          const artistId = parseInt(syncEvent.artist_id)
+          setArtists(prev => {
+            const next = prev.map(a => {
+              if (a.id === artistId) {
+                return {
+                  ...a,
+                  startTime: new Date(syncEvent.start_time).toISOString(),
+                  endTime: new Date(syncEvent.end_time).toISOString(),
+                }
+              }
+              return a
+            })
+
+            // Persist the sync automatically
+            fetch("/api/artists", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                artists: next,
+                newId: artistId
+              }),
+            }).catch(err => console.error("Sync persist error:", err))
+
+            return next
+          })
+        }
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [setArtists])
 
   const addAdmin = async () => {
     if (!newAdminEmail.includes("@")) {
@@ -167,11 +207,51 @@ export default function AdminPage() {
       campaignStart: artist.campaignStart?.slice(0, 19) ?? "",
       campaignEnd: artist.campaignEnd?.slice(0, 19) ?? "",
       isLottie: !!artist.isLottie,
+      dbId: artist.dbId ?? "",
     })
+  }
+
+  const handleDbEdit = (a: DBArtist) => {
+    setDbEditingId(a.id)
+    setEditingId(null)
+    setForm({
+      ...defaultForm,
+      name: a.name,
+      location: a.location,
+      show: a.show,
+      image: a.image,
+      audioUrl: a.audioUrl ?? "",
+      description: a.description,
+      instagramUrl: a.instagramUrl ?? "",
+      soundcloudUrl: a.soundcloudUrl ?? "",
+      bandcampUrl: a.bandcampUrl ?? "",
+      dbId: a.id,
+    })
+    setActiveTab("artists")
+  }
+
+  const handleDbScheduleNew = (a: DBArtist) => {
+    setEditingId(null)
+    setDbEditingId(null)
+    setForm({
+      ...defaultForm,
+      name: a.name,
+      location: a.location,
+      show: a.show,
+      image: a.image,
+      audioUrl: a.audioUrl ?? "",
+      description: a.description,
+      instagramUrl: a.instagramUrl ?? "",
+      soundcloudUrl: a.soundcloudUrl ?? "",
+      bandcampUrl: a.bandcampUrl ?? "",
+      dbId: a.id,
+    })
+    setActiveTab("artists")
   }
 
   const resetForm = () => {
     setEditingId(null)
+    setDbEditingId(null)
     setForm({ ...defaultForm })
     if (imageInputRef.current) imageInputRef.current.value = ""
     if (audioInputRef.current) audioInputRef.current.value = ""
@@ -195,6 +275,7 @@ export default function AdminPage() {
 
     const newArtist: Artist = {
       id: editingId ?? (artists.length ? Math.max(...artists.map((a) => a.id)) + 1 : 0),
+      dbId: form.dbId || undefined,
       name: form.name || (form.type === 'ad' ? "Untitled Ad" : "Без имени"),
       location: form.location || "Earth",
       show: form.show || (form.type === 'ad' ? "Advertisement" : "Новый сет"),
@@ -248,29 +329,56 @@ export default function AdminPage() {
       body: JSON.stringify({ artists: nextArtists }),
     }).catch(() => { })
 
-    // Auto-save Artist to DB if it's a new artist or edited one and it's an 'artist' type
+    // ── MASTER DB SYNC ──────────────────────────────────────────────
     if (form.type === 'artist' && form.name) {
-      const exists = dbArtists.some(a => a.name === form.name && a.show === form.show)
-      if (!exists) {
+      const artistData = {
+        name: form.name,
+        location: form.location || "Earth",
+        show: form.show || "Новый сет",
+        image: form.image || "/artists/artist-1.jpg",
+        description: form.description || "...",
+        audioUrl: form.audioUrl || "",
+        instagramUrl: form.instagramUrl || "",
+        soundcloudUrl: form.soundcloudUrl || "",
+        bandcampUrl: form.bandcampUrl || "",
+      }
+
+      const existingId = dbEditingId || form.dbId || dbArtists.find(a => a.name === form.name)?.id
+
+      if (existingId) {
+        // Update existing master record
+        fetch("/api/artist-db", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: existingId, ...artistData }),
+        }).then(r => r.json()).then(updatedA => {
+          if (updatedA && updatedA.id) {
+            setDbArtists(prev => prev.map(a => a.id === updatedA.id ? updatedA : a))
+            // If we were ONLY editing the master record, we can stop here
+            if (dbEditingId && !isEditing) {
+              resetForm()
+            }
+          }
+        }).catch(() => { })
+      } else {
+        // Create new master record
         fetch("/api/artist-db", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: form.name,
-            location: form.location || "Earth",
-            show: form.show || "Новый сет",
-            image: form.image || "/artists/artist-1.jpg",
-            description: form.description || "...",
-            audioUrl: form.audioUrl || "",
-            instagramUrl: form.instagramUrl || "",
-            soundcloudUrl: form.soundcloudUrl || "",
-            bandcampUrl: form.bandcampUrl || "",
-          }),
+          body: JSON.stringify(artistData),
         }).then(r => r.json()).then(newA => {
-          if (newA && newA.id) setDbArtists(prev => [...prev, newA])
+          if (newA && newA.id) {
+            setDbArtists(prev => [...prev, newA])
+            // Link the same ID if we just created it while scheduling
+            newArtist.dbId = newA.id
+          }
         }).catch(() => { })
       }
     }
+
+    if (dbEditingId && !isEditing) return // Skip schedule saving if only editing master
+
+    // ── SCHEDULE SAVING ─────────────────────────────────────────────
 
     resetForm()
   }
@@ -457,9 +565,15 @@ export default function AdminPage() {
                   <h3 className="font-bold text-[11px] uppercase truncate">{a.name}</h3>
                   <p className="text-[10px] text-[#737373] truncate w-full">{a.show}</p>
                 </div>
+                <div className="mt-auto p-2 grid grid-cols-2 gap-2 border-t border-[#1a1a1a]">
+                  <button onClick={() => handleDbEdit(a)} className="py-1 text-[8px] uppercase font-mono bg-[#111] text-[#99CCCC] border border-[#1a1a1a] hover:bg-[#1a1a1a] transition">Edit Master</button>
+                  <button onClick={() => handleDbScheduleNew(a)} className="py-1 text-[8px] uppercase font-mono bg-[#99CCCC] text-black font-bold hover:bg-white transition">+ To Grid</button>
+                </div>
                 <button
                   onClick={() => {
-                    fetch(`/api/artist-db?id=${a.id}`, { method: "DELETE" }).then(() => setDbArtists(curr => curr.filter(x => x.id !== a.id)))
+                    if (confirm(`Delete ${a.name} from base?`)) {
+                      fetch(`/api/artist-db?id=${a.id}`, { method: "DELETE" }).then(() => setDbArtists(curr => curr.filter(x => x.id !== a.id)))
+                    }
                   }}
                   className="absolute top-2 right-2 p-1.5 bg-red-500/80 text-white rounded-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
                 >
@@ -532,6 +646,24 @@ export default function AdminPage() {
                 <input value={form.show} onChange={(e) => setForm(f => ({ ...f, show: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
               </div>
 
+              {/* Social Links (Moved up for better visibility) */}
+              {form.type !== 'ad' && (
+                <div className="grid grid-cols-3 gap-2 py-2 border-y border-[#1a1a1a]">
+                  <div>
+                    <label className="block mb-1 text-[9px] uppercase font-mono text-[#99CCCC]">Instagram</label>
+                    <input value={form.instagramUrl} onChange={(e) => setForm(f => ({ ...f, instagramUrl: e.target.value }))} className="w-full bg-black border border-[#1a1a1a] rounded-sm px-2 py-1 text-[10px] font-mono text-[#e5e5e5]" placeholder="URL" />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-[9px] uppercase font-mono text-[#99CCCC]">Soundcloud</label>
+                    <input value={form.soundcloudUrl} onChange={(e) => setForm(f => ({ ...f, soundcloudUrl: e.target.value }))} className="w-full bg-black border border-[#1a1a1a] rounded-sm px-2 py-1 text-[10px] font-mono text-[#e5e5e5]" placeholder="URL" />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-[9px] uppercase font-mono text-[#99CCCC]">Bandcamp</label>
+                    <input value={form.bandcampUrl} onChange={(e) => setForm(f => ({ ...f, bandcampUrl: e.target.value }))} className="w-full bg-black border border-[#1a1a1a] rounded-sm px-2 py-1 text-[10px] font-mono text-[#e5e5e5]" placeholder="URL" />
+                  </div>
+                </div>
+              )}
+
               {form.type === 'ad' && (
                 <>
                   <div>
@@ -581,7 +713,7 @@ export default function AdminPage() {
                 <input value={form.image} onChange={(e) => setForm(f => ({ ...f, image: e.target.value }))} className="mt-2 w-full bg-black border border-[#1a1a1a] rounded-sm px-2 py-1 text-[10px] font-mono text-[#737373]" placeholder="Paste URL manually..." />
               </div>
 
-              {/* Shared Audio/Desc (Hide audio for ads usually? or keep available) */}
+
               <div>
                 <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Broadcast Audio URL</label>
                 <input value={form.audioUrl} onChange={(e) => setForm(f => ({ ...f, audioUrl: e.target.value }))} className="w-full bg-black border border-[#1a1a1a] rounded-sm px-2 py-1 text-[10px] font-mono text-white" />
@@ -598,8 +730,10 @@ export default function AdminPage() {
               </div>
 
               <div className="flex gap-2">
-                <button type="submit" className="flex-1 py-2 bg-[#99CCCC] text-black font-bold text-[10px] font-mono uppercase tracking-widest hover:bg-white transition">{editingId ? 'Save Entry' : 'Create Entry'}</button>
-                {editingId && <button type="button" onClick={resetForm} className="px-4 py-2 border border-[#2a2a2a] text-[10px] font-mono uppercase text-[#737373]">Cancel</button>}
+                <button type="submit" className="flex-1 py-2 bg-[#99CCCC] text-black font-bold text-[10px] font-mono uppercase tracking-widest hover:bg-white transition">
+                  {dbEditingId ? 'Update Master' : (editingId ? 'Save Entry' : 'Create Entry')}
+                </button>
+                {(editingId || dbEditingId) && <button type="button" onClick={resetForm} className="px-4 py-2 border border-[#2a2a2a] text-[10px] font-mono uppercase text-[#737373]">Cancel</button>}
               </div>
               {formError && <p className="text-[10px] text-red-400 font-mono mt-2">{formError}</p>}
             </form>

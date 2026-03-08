@@ -18,26 +18,26 @@ import { getSyncedTime } from "@/hooks/use-server-time"
 
 function InstagramIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
       <circle cx="12" cy="12" r="4" />
-      <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" stroke="none" />
+      <circle cx="17.5" cy="6.5" r="0.2" fill="currentColor" stroke="none" />
     </svg>
   )
 }
 
 function SoundcloudIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M1.175 12.225c-.015 0-.030.01-.030.03l-.395 2.495.395 2.45c0 .02.015.03.030.03.02 0 .03-.01.03-.03l.45-2.45-.45-2.495c0-.02-.01-.03-.03-.03zm1.09-.42c-.02 0-.035.015-.035.035l-.34 2.91.34 2.855c0 .02.015.035.035.035s.035-.015.035-.035l.385-2.855-.385-2.91c0-.02-.015-.035-.035-.035zm1.11-.235c-.025 0-.04.015-.04.04L3 14.75l.335 2.82c0 .025.015.04.04.04s.04-.015.04-.04l.38-2.82-.38-2.74c0-.025-.015-.04-.04-.04zm1.12-.165c-.025 0-.045.02-.045.045l-.305 2.575.305 2.79c0 .025.02.045.045.045s.045-.02.045-.045l.345-2.79-.345-2.575c0-.025-.02-.045-.045-.045zm1.14-.105c-.03 0-.05.02-.05.05l-.275 2.43.275 2.755c0 .03.02.05.05.05s.05-.02.05-.05l.31-2.755-.31-2.43c0-.03-.02-.05-.05-.05zm1.16-.055c-.03 0-.055.025-.055.055l-.245 2.375.245 2.72c0 .03.025.055.055.055s.055-.025.055-.055l.28-2.72-.28-2.375c0-.03-.025-.055-.055-.055zm1.17-.02c-.035 0-.06.025-.06.06l-.215 2.32.215 2.685c0 .035.025.06.06.06s.06-.025.06-.06l.245-2.685-.245-2.32c0-.035-.025-.06-.06-.06zm2.47 8.22c.89 0 1.61-.72 1.61-1.61V5.6c0-.515-.305-.97-.76-1.18-.155-.07-.32-.105-.49-.105-.185 0-.36.04-.52.11-.405-1.08-1.455-1.85-2.69-1.85-1.575 0-2.85 1.28-2.85 2.855 0 .31.05.605.14.885-.035-.005-.07-.005-.105-.005-1.365 0-2.47 1.105-2.47 2.47 0 1.365 1.105 2.47 2.47 2.47h6.665z" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 19h5a4 4 0 00.83-7.91 3 3 0 00-5-1.74 3 3 0 00-5.83 1.65A4 4 0 007 19h5" />
     </svg>
   )
 }
 
 function BandcampIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M0 18.75l7.437-13.5H24l-7.438 13.5z" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 17l6-10h12l-6 10H3z" />
     </svg>
   )
 }

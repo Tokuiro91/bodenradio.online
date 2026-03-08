@@ -42,11 +42,13 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   # Бэкап данных которые НЕ должны перезаписываться
   echo "   💾 Сохраняем артистов и загруженные файлы..."
   cp -f data/artists.json /tmp/artists_backup.json 2>/dev/null && echo "   ✅ artists.json → /tmp/artists_backup.json" || echo "   ⚠️  artists.json не найден, пропускаем"
+  cp -f data/artist-db.json /tmp/artist_db_backup.json 2>/dev/null && echo "   ✅ artist-db.json → /tmp/artist_db_backup.json" || echo "   ⚠️  artist-db.json не найден, пропускаем"
   cp -rf public/uploads/ /tmp/uploads_backup/ 2>/dev/null && echo "   ✅ uploads/ → /tmp/uploads_backup/" || echo "   ⚠️  uploads/ не найден, пропускаем"
 
   # Обновляем код (сбрасываем artists.json чтобы не было конфликта — у нас есть бэкап)
   echo "   → git pull..."
   git checkout -- data/artists.json 2>/dev/null || true
+  git checkout -- data/artist-db.json 2>/dev/null || true
   git pull origin main
 
   echo "   → npm install..."
@@ -58,6 +60,7 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   # Восстанавливаем данные
   echo "   🔄 Восстанавливаем артистов и загруженные файлы..."
   cp -f /tmp/artists_backup.json data/artists.json 2>/dev/null && echo "   ✅ artists.json восстановлен" || echo "   ⚠️  Нечего восстанавливать"
+  cp -f /tmp/artist_db_backup.json data/artist-db.json 2>/dev/null && echo "   ✅ artist-db.json восстановлен" || echo "   ⚠️  Нечего восстанавливать"
   cp -rf /tmp/uploads_backup/. public/uploads/ 2>/dev/null && echo "   ✅ uploads/ восстановлены" || echo "   ⚠️  Нечего восстанавливать"
 
   # Перезапускаем
