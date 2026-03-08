@@ -68,17 +68,16 @@ export async function POST(request: Request) {
         }
 
         // ── Overlap validation ──────────────────────────────────────────────
-        // Check ONLY the new/edited artist against all others to prevent 
-        // blocking edits due to existing overlaps elsewhere.
         if (newId !== null) {
             const target = artists.find((a) => a.id === newId)
-            if (target && target.type === 'artist') {
+            if (target && target.startTime && target.endTime) {
                 const tStart = new Date(target.startTime).getTime()
                 const tEnd = new Date(target.endTime).getTime()
 
                 if (!isNaN(tStart) && !isNaN(tEnd)) {
                     for (const other of artists) {
-                        if (other.id === target.id || other.type !== 'artist') continue
+                        if (other.id === target.id) continue
+                        if (!other.startTime || !other.endTime) continue
 
                         const oStart = new Date(other.startTime).getTime()
                         const oEnd = new Date(other.endTime).getTime()
@@ -86,9 +85,11 @@ export async function POST(request: Request) {
                         if (isNaN(oStart) || isNaN(oEnd)) continue
 
                         if (slotsOverlap(tStart, tEnd, oStart, oEnd)) {
+                            const timeA = new Date(tStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                            const timeB = new Date(oStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
                             return NextResponse.json(
                                 {
-                                    error: `Конфликт во времени: "${target.name}" пересекается с "${other.name}". Пожалуйста, выберите другое время.`,
+                                    error: `Конфликт во времени: "${target.name}" (${timeA}) пересекается с "${other.name}" (${timeB}). Пожалуйста, выберите другое время.`,
                                     conflict: { a: target.name, b: other.name },
                                 },
                                 { status: 409 }

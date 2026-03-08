@@ -222,18 +222,35 @@ app.get('/api/schedule', auth, (req, res) => {
 app.post('/api/schedule/sync', auth, (req, res) => {
     const { events } = req.body; // array of { title, type, item_id, start_time, end_time }
 
+    if (!events || !events.length) {
+        db.run('DELETE FROM schedule', () => res.json({ success: true, count: 0 }));
+        return;
+    }
+
+    // Sort by start time to make overlap check easier
+    const sorted = [...events].sort((a, b) => a.start_time - b.start_time);
+
+    // Check for internal overlaps in the new list
+    for (let i = 0; i < sorted.length - 1; i++) {
+        const current = sorted[i];
+        const next = sorted[i + 1];
+        if (current.start_time < next.end_time && next.start_time < current.end_time) {
+            return res.status(400).json({
+                error: `Конфликт в списке синхронизации: "${current.title}" пересекается с "${next.title}"`
+            });
+        }
+    }
+
     db.serialize(() => {
         db.run('DELETE FROM schedule', (err) => {
             if (err) return res.status(500).json({ error: 'Failed to clear schedule' });
 
-            if (!events || !events.length) return res.json({ success: true, count: 0 });
-
             const stmt = db.prepare('INSERT INTO schedule (title, type, item_id, start_time, end_time) VALUES (?, ?, ?, ?, ?)');
-            events.forEach(ev => {
+            sorted.forEach(ev => {
                 stmt.run(ev.title, ev.type, ev.item_id, ev.start_time, ev.end_time);
             });
             stmt.finalize();
-            res.json({ success: true, count: events.length });
+            res.json({ success: true, count: sorted.length });
         });
     });
 });
@@ -241,9 +258,9 @@ app.post('/api/schedule/sync', auth, (req, res) => {
 app.post('/api/schedule', auth, (req, res) => {
     const { title, type, item_id, start_time, end_time } = req.body;
 
-    // Validation: no overlap
-    db.get('SELECT id FROM schedule WHERE (? < end_time AND ? > start_time)', [start_time, end_time], (err, row) => {
-        if (row) return res.status(400).json({ error: 'Schedule overlaps with existing event' });
+    // Validation: no overlap with existing database events
+    db.get('SELECT title FROM schedule WHERE (? < end_time AND ? > start_time)', [start_time, end_time], (err, row) => {
+        if (row) return res.status(400).json({ error: `Это время уже занято событием: "${row.title}"` });
 
         db.run('INSERT INTO schedule (title, type, item_id, start_time, end_time) VALUES (?, ?, ?, ?, ?)',
             [title, type, item_id, start_time, end_time],
@@ -267,8 +284,8 @@ app.put('/api/schedule/:id', auth, (req, res) => {
     const { id } = req.params;
 
     // Validation: no overlap (excluding self)
-    db.get('SELECT id FROM schedule WHERE id != ? AND (? < end_time AND ? > start_time)', [id, start_time, end_time], (err, row) => {
-        if (row) return res.status(400).json({ error: 'Schedule overlaps with existing event' });
+    db.get('SELECT title FROM schedule WHERE id != ? AND (? < end_time AND ? > start_time)', [id, start_time, end_time], (err, row) => {
+        if (row) return res.status(400).json({ error: `Новое время пересекается с событием: "${row.title}"` });
 
         db.run('UPDATE schedule SET title = ?, type = ?, item_id = ?, start_time = ?, end_time = ? WHERE id = ?',
             [title, type, item_id, start_time, end_time, id],
