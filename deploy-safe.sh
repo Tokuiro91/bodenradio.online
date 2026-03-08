@@ -17,9 +17,13 @@ COMMIT_MSG="${1:-update}"
 
 set -e
 
-# Загружаем локальные переменные из .env.local
+# Загружаем локальные переменные из .env.local (с поддержкой пробелов)
 if [ -f .env.local ]; then
-  export $(grep -v '^#' .env.local | xargs)
+  while read -r line || [ -n "$line" ]; do
+    [[ "$line" =~ ^#.*$ ]] && continue
+    [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+    export "$line"
+  done < .env.local
 fi
 
 # Для деплоя на VPS всегда используем продакшн URL
