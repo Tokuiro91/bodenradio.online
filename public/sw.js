@@ -80,3 +80,49 @@ self.addEventListener("fetch", (event) => {
             )
     )
 })
+
+// ── Push: show notification when received ────────────────────────────────────
+self.addEventListener("push", (event) => {
+    if (!event.data) return
+
+    try {
+        const data = event.data.json()
+        const options = {
+            body: data.body || "Set starts in 15 minutes!",
+            icon: data.icon || "/icons/icon-192.png",
+            badge: "/icons/badge-96.png",
+            data: {
+                url: data.url || "/"
+            },
+            vibrate: [100, 50, 100],
+        }
+
+        event.waitUntil(
+            self.registration.showNotification(data.title || "BØDEN Radio", options)
+        )
+    } catch (err) {
+        console.error("Push event error:", err)
+    }
+})
+
+// ── Notification Click: focus/open the application ───────────────────────────
+self.addEventListener("notificationclick", (event) => {
+    event.notification.close()
+    const urlToOpen = event.notification.data.url || "/"
+
+    event.waitUntil(
+        clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
+            // Check if there is already a window open with this URL
+            for (let i = 0; i < windowClients.length; i++) {
+                const client = windowClients[i]
+                if (client.url === urlToOpen && "focus" in client) {
+                    return client.focus()
+                }
+            }
+            // If not, open a new window
+            if (clients.openWindow) {
+                return clients.openWindow(urlToOpen)
+            }
+        })
+    )
+})

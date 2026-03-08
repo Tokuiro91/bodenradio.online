@@ -10,6 +10,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Switch } from "@/components/ui/switch"
 import Image from "next/image"
+import { PushSubscriptionManager } from "@/components/push-subscription-manager"
+import { X } from "lucide-react"
 
 export default function ProfilePage() {
     const { data: session, status } = useSession()
@@ -47,6 +49,17 @@ export default function ProfilePage() {
         signOut({ callbackUrl: "/" })
     }
 
+    const removeFavorite = async (artistId: number) => {
+        setFavorites(prev => prev.filter(id => id !== artistId))
+        try {
+            await fetch("/api/listeners/favorites", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ artistId }),
+            })
+        } catch { }
+    }
+
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-white p-4 pt-24 pb-20 max-w-2xl mx-auto">
             <div className="space-y-8">
@@ -77,16 +90,17 @@ export default function ProfilePage() {
                 </header>
 
                 {/* NOTIFICATIONS */}
-                <section className="bg-[#111] border border-[#2a2a2a] p-6 rounded-sm">
-                    <h2 className="text-[#99CCCC] font-mono text-xs uppercase tracking-[0.2em] mb-4">Settings</h2>
-                    <div className="flex items-center justify-between">
+                <section className="space-y-4">
+                    <h2 className="text-[#99CCCC] font-mono text-xs uppercase tracking-[0.2em]">Settings</h2>
+                    <PushSubscriptionManager />
+                    <div className="flex items-center justify-between bg-[#111] border border-[#2a2a2a] p-6 rounded-sm">
                         <div className="space-y-0.5">
                             <Label className="text-sm font-bold uppercase tracking-wide">Email Notifications</Label>
-                            <p className="text-[10px] text-[#737373] uppercase tracking-wider">Get notified when your favorite artists are live.</p>
+                            <p className="text-[10px] text-[#737373] uppercase tracking-wider">Stay tuned for future updates.</p>
                         </div>
                         <Switch
-                            checked={profile.notifications}
-                            onCheckedChange={v => setProfile({ ...profile, notifications: v })}
+                            disabled
+                            checked={false}
                             className="data-[state=checked]:bg-[#99CCCC]"
                         />
                     </div>
@@ -101,19 +115,24 @@ export default function ProfilePage() {
                             <Button variant="link" className="text-[#99CCCC] mt-2 text-[10px] uppercase tracking-widest" onClick={() => router.push("/")}>Explore Artists</Button>
                         </div>
                     ) : (
-                        <ScrollArea className="h-96">
-                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                                {artists.filter(a => favorites.includes(a.id)).map(artist => (
-                                    <div key={artist.id} className="relative aspect-square rounded-sm overflow-hidden group border border-[#1a1a1a]">
-                                        <Image src={artist.image} alt={artist.name} fill className="object-cover transition-transform group-hover:scale-110" />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent p-3 flex flex-col justify-end">
-                                            <span className="font-bold text-xs uppercase tracking-wide">{artist.name}</span>
-                                            <span className="text-[9px] text-white/50 uppercase tracking-widest truncate">{artist.show}</span>
-                                        </div>
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                            {artists.filter(a => favorites.includes(a.id)).map(artist => (
+                                <div key={artist.id} className="relative aspect-square rounded-sm overflow-hidden group border border-[#1a1a1a]">
+                                    <Image src={artist.image} alt={artist.name} fill className="object-cover transition-transform group-hover:scale-110" />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <button
+                                        onClick={() => removeFavorite(artist.id)}
+                                        className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-full text-white/40 hover:text-white transition-colors opacity-0 group-hover:opacity-100 z-10"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent p-3 flex flex-col justify-end">
+                                        <span className="font-bold text-xs uppercase tracking-wide text-[#99CCCC]">{artist.name}</span>
+                                        <span className="text-[9px] text-white/50 uppercase tracking-widest truncate">{artist.show}</span>
                                     </div>
-                                ))}
-                            </div>
-                        </ScrollArea>
+                                </div>
+                            ))}
+                        </div>
                     )}
                 </section>
 

@@ -14,6 +14,7 @@ export interface Listener {
     role: "listener"
     provider: "credentials" | "google" | "apple"
     isPremium?: boolean
+    pushSubscriptions?: any[] // Web Push subscriptions
 }
 
 function ensureDirectoryExistence(filePath: string) {
