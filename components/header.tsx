@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
 import { Play, Pause, Volume2, VolumeX, Clock, Menu } from "lucide-react"
 import {
   Sheet,
@@ -29,6 +30,7 @@ export function Header({
   onVolumeChange,
   onMuteToggle,
 }: HeaderProps) {
+  const { status } = useSession()
   const [showVolume, setShowVolume] = useState(false)
   const [time, setTime] = useState("")
   const [timeZoneOffset, setTimeZoneOffset] = useState("")
@@ -126,18 +128,13 @@ export function Header({
                 BØDEN
               </SheetTitle>
             </SheetHeader>
-            <div className="flex flex-col gap-6 mt-12">
-              <Link href="/login" className="text-xl font-mono hover:text-[#99CCCC] transition-colors border-b border-[#2a2a2a] pb-2">
-                LOGIN / JOIN
+            <div className="flex flex-col gap-6 mt-12 px-4">
+              <Link href={status === "authenticated" ? "/profile" : "/login"} className="text-xl font-mono hover:text-[#99CCCC] transition-colors border-b border-[#2a2a2a] pb-2">
+                {status === "authenticated" ? "PROFILE" : "LOGIN / JOIN"}
               </Link>
               <Link href="/about" className="text-xl font-mono hover:text-[#99CCCC] transition-colors border-b border-[#2a2a2a] pb-2">
                 ABOUT US
               </Link>
-              <div className="mt-auto pt-12">
-                <p className="text-[#737373] text-[10px] uppercase tracking-widest font-mono">
-                  Crafting independent radio culture since 2024
-                </p>
-              </div>
             </div>
           </SheetContent>
         </Sheet>

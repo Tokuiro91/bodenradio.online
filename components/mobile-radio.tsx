@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import { useSession } from "next-auth/react"
 import Image from "next/image"
 import {
   Play,
@@ -78,6 +79,7 @@ function calcProgress(artist: { startTime: string; endTime: string }): number {
 }
 
 export function MobileRadio() {
+  const { status: authStatus } = useSession()
   const { artists, ready } = useArtists()
   const [showVolume, setShowVolume] = useState(false)
   const [currentPlayingIndex, setCurrentPlayingIndex] = useState(-1)
@@ -342,18 +344,13 @@ export function MobileRadio() {
                 BØDEN
               </SheetTitle>
             </SheetHeader>
-            <div className="flex flex-col gap-6 mt-12">
-              <Link href="/login" className="text-xl font-mono hover:text-[#99CCCC] transition-colors border-b border-[#2a2a2a] pb-2">
-                LOGIN / JOIN
+            <div className="flex flex-col gap-6 mt-12 px-4">
+              <Link href={authStatus === "authenticated" ? "/profile" : "/login"} className="text-xl font-mono hover:text-[#99CCCC] transition-colors border-b border-[#2a2a2a] pb-2">
+                {authStatus === "authenticated" ? "PROFILE" : "LOGIN / JOIN"}
               </Link>
               <Link href="/about" className="text-xl font-mono hover:text-[#99CCCC] transition-colors border-b border-[#2a2a2a] pb-2">
                 ABOUT US
               </Link>
-              <div className="mt-auto pt-12">
-                <p className="text-[#737373] text-[10px] uppercase tracking-widest font-mono">
-                  Crafting independent radio culture since 2024
-                </p>
-              </div>
             </div>
           </SheetContent>
         </Sheet>
