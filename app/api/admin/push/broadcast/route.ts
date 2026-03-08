@@ -28,10 +28,9 @@ export async function POST(req: NextRequest) {
         const eligibleListeners = listeners.filter(l => l.pushEnabled && l.pushSubscriptions && l.pushSubscriptions.length > 0)
 
         const payload = JSON.stringify({
-            title: title || body,
-            body: title ? body : "",
+            title: title || "BØDEN Radio",
+            body: body,
             icon: "/icons/icon-192.png",
-            badge: "/icons/icon-192.png",
             url: "/"
         })
 
