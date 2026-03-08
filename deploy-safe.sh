@@ -17,6 +17,14 @@ COMMIT_MSG="${1:-update}"
 
 set -e
 
+# Загружаем локальные переменные из .env.local
+if [ -f .env.local ]; then
+  export $(grep -v '^#' .env.local | xargs)
+fi
+
+# Для деплоя на VPS всегда используем продакшн URL
+export NEXTAUTH_URL="https://bodenradio.online"
+
 echo "🚀 Безопасный деплой (артисты сохранятся)..."
 
 # ── 1. Коммитим и пушим локальные изменения ──────────────────
@@ -35,7 +43,7 @@ echo "   ✅ Push на GitHub выполнен"
 # ── 2. Обновляем сервер БЕЗ потери данных ────────────────────
 echo ""
 echo "🖥️  Шаг 2: Обновление VPS (с сохранением артистов)..."
-sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'ENDSSH'
+sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << ENDSSH
   set -e
   cd /var/www/agileradio
 
