@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-#  Agile Radio — Rollback Script
+#  Boden Radio — Rollback Script
 #  Использование: ./rollback.sh
 #  Показывает последние коммиты и откатывает на выбранный
 # ============================================================
@@ -10,7 +10,7 @@ VPS_USER="root"
 VPS_PASS="tYbrC2G70GY7"
 VPS_DIR="/var/www/agileradio"
 
-echo "🔄 Agile Radio — Откат версии"
+echo "🔄 Boden Radio — Откат версии"
 echo "================================"
 echo ""
 
@@ -76,7 +76,7 @@ ENDSSH
 
 echo ""
 echo "✅ Откат выполнен на: $COMMIT_HASH — $COMMIT_MSG"
-echo "   Сайт: https://agileradio.online"
+echo "   Сайт: http://bodenradio.online"
 echo ""
 echo "ℹ️  Чтобы вернуть VPS обратно в синхронизацию с GitHub, запусти:"
 echo "   ./deploy-safe.sh"

@@ -68,7 +68,6 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   pm2 list
 ENDSSH
 
-echo ""
 echo "✅ Безопасный деплой завершён!"
-echo "   Сайт: https://agileradio.online"
+echo "   Сайт: http://bodenradio.online"
 echo "   Артисты и загруженные файлы сохранены ✅"
