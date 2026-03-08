@@ -66,4 +66,4 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
 ENDSSH
 
 echo ""
-echo "✅ Деплой завершён! Сайт обновлён: https://bodenstadt.online"
+echo "✅ Деплой завершён! Сайт обновлён: https://bodenradio.online"

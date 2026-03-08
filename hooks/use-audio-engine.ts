@@ -31,7 +31,7 @@ function resolveStreamUrl(url: string): string {
 }
 
 function getAudioUrl(artist: Artist): string {
-    return artist.audioUrl || "http://163.245.219.4:9090/stream.mp3"
+    return artist.audioUrl || "http://bodenradio.online:9090/stream.mp3"
 }
 
 function findActiveArtist(artists: Artist[]): Artist | null {
