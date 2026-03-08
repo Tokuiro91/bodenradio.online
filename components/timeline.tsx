@@ -74,39 +74,62 @@ export function Timeline({
           const isVisible = realIndex === visibleIndex
           const innerProgress = isPlaying ? getArtistProgress(artist) : 0
 
+          const prevDateStr = realIndex > 0 ? localDate(artists[realIndex - 1].startTime) : null
+          const currentDateStr = localDate(artist.startTime)
+          const isFirstOfDay = prevDateStr !== currentDateStr
+
+          const startDate = new Date(artist.startTime)
+          const endDate = new Date(artist.endTime)
+          const dateLabel = startDate.toLocaleDateString("en-US", { day: "numeric", month: "short" }).toUpperCase()
+          const timeLabel = `${startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })} – ${endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}`
+
           return (
             <div
               key={realIndex}
-              className="relative flex-1 flex items-end px-[1px] group/segment h-full"
+              className="relative flex-1 flex flex-col items-center group/segment h-full"
             >
+              {/* Date Marker Above Slot */}
+              {isFirstOfDay && (
+                <div className="absolute top-1 left-[-4px] flex flex-col items-start opacity-40 group-hover/timeline:opacity-100 transition-opacity pointer-events-none">
+                  <div className="w-[1px] h-3 bg-[#99CCCC] mb-1" />
+                  <span className="text-[8px] font-mono whitespace-nowrap text-[#99CCCC] tracking-tighter">
+                    {dateLabel}
+                  </span>
+                </div>
+              )}
+
               {/* Floating Info on Hover */}
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 pb-2 opacity-0 group-hover/segment:opacity-100 transition-opacity pointer-events-none z-30 whitespace-nowrap">
-                <div className="text-[10px] font-mono text-[#99CCCC] flex flex-col items-center leading-tight bg-black/80 px-2 py-1 rounded-sm border border-[#2a2a2a] backdrop-blur-sm">
-                  <span className="mb-0.5">{new Date(artist.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
-                  <span className="text-white font-bold">{artist.name.toUpperCase()}</span>
+                <div className="text-[10px] font-mono text-[#99CCCC] flex flex-col items-center leading-tight bg-black/90 px-3 py-2 rounded-sm border border-[#2a2a2a] backdrop-blur-sm shadow-2xl">
+                  <span className="text-[8px] opacity-60 mb-0.5">{dateLabel} • {timeLabel}</span>
+                  <span className="text-white font-bold tracking-wider">{artist.name.toUpperCase()}</span>
+                  <span className="text-[9px] text-[#737373] mt-0.5">{artist.show}</span>
                 </div>
               </div>
 
-              {/* Base bar */}
-              <div
-                className={`w-full transition-all duration-300 rounded-t-[1px] ${isPlaying
-                  ? "bg-[#2a2a2a] h-3/4"
-                  : isPlayed
-                    ? "bg-[#737373] h-2/5"
-                    : "bg-[#2a2a2a] h-1/4"
-                  } ${isVisible ? "ring-1 ring-[#e5e5e5]/40" : ""} group-hover/segment:bg-[#99CCCC]/80 group-hover/segment:h-1/2`}
-              />
-
-              {/* Real-time fill for playing slot */}
-              {isPlaying && (
+              {/* Segment Container */}
+              <div className="relative w-full h-full flex items-end px-[1.5px] mt-auto">
+                {/* Base bar */}
                 <div
-                  className="absolute bottom-0 left-[1px] right-[1px] rounded-t-[1px] bg-[#99CCCC] transition-all duration-1000"
-                  style={{
-                    height: "75%",
-                    clipPath: `inset(0 ${(1 - innerProgress) * 100}% 0 0)`,
-                  }}
+                  className={`w-full transition-all duration-300 rounded-t-[1px] ${isPlaying
+                    ? "bg-[#2a2a2a] h-1/2"
+                    : isPlayed
+                      ? "bg-[#737373] h-1/5"
+                      : "bg-[#2a2a2a] h-[12%]"
+                    } ${isVisible ? "ring-1 ring-[#e5e5e5]/40" : ""} group-hover/segment:bg-[#99CCCC]/80 group-hover/segment:h-1/2`}
                 />
-              )}
+
+                {/* Real-time fill for playing slot */}
+                {isPlaying && (
+                  <div
+                    className="absolute bottom-0 left-[1.5px] right-[1.5px] rounded-t-[1px] bg-[#99CCCC] transition-all duration-1000"
+                    style={{
+                      height: "50%",
+                      clipPath: `inset(0 ${(1 - innerProgress) * 100}% 0 0)`,
+                    }}
+                  />
+                )}
+              </div>
             </div>
           )
         })}

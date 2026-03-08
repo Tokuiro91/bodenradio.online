@@ -375,21 +375,7 @@ export function RadioPlayer() {
                 ref={(el) => { cardRefs.current[i] = el }}
                 className="flex-shrink-0"
               >
-                {/* Fixed date label at the top */}
-                <div className="h-12 flex flex-col justify-end pb-3">
-                  {isFirstOfDay && (
-                    <div className="flex items-center gap-2 pl-1">
-                      <div className="w-1.5 h-1.5 rotate-45 bg-[#99CCCC]" />
-                      <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#99CCCC] font-bold">
-                        {new Date(artist.startTime).toLocaleDateString("en-US", {
-                          day: "numeric",
-                          month: "long",
-                        }).toUpperCase()}
-                      </span>
-                      <div className="flex-1 h-px bg-[#2a2a2a]/50" />
-                    </div>
-                  )}
-                </div>
+                <div className="h-4" />
 
                 {/* Sawtooth card with wave animation */}
                 <div
