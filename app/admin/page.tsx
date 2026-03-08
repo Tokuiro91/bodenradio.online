@@ -959,7 +959,7 @@ export default function AdminPage() {
                         {artist.type === 'ad' ? (
                           <span className="text-[#99CCCC]">CAMPAIGN: {artist.campaignEnd?.slice(5, 10) || 'UNTIL STOP'}</span>
                         ) : (
-                          <span className="text-[#737373]">{artist.startTime.slice(11, 16)} - {artist.endTime.slice(11, 16)} UTC</span>
+                          <span className="text-[#737373]">{new Date(artist.startTime).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })} - {new Date(artist.endTime).toLocaleString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} UTC</span>
                         )}
                       </div>
                     </div>
