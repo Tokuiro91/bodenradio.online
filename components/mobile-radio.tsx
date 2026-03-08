@@ -584,88 +584,83 @@ export function MobileRadio() {
                   </div>
                 )}
 
-                {/* Expanded description */}
-                {!isAd && (
-                  <div
-                    className="overflow-hidden transition-all duration-500"
-                    style={{
-                      maxHeight: expanded ? "100px" : "0px",
-                      opacity: expanded ? 1 : 0,
-                      marginTop: expanded ? "10px" : "0px",
-                    }}
-                  >
-                    <div className="border-t border-[#ffffff]/20 pt-2">
-                      <p className="text-[11px] text-[#a3a3a3] leading-relaxed">
-                        {artist.description}
-                      </p>
-                    </div>
+                <div className="overflow-hidden transition-all duration-500" style={{
+                  maxHeight: expanded ? "140px" : "0px",
+                  opacity: expanded ? 1 : 0,
+                  marginTop: expanded ? "10px" : "0px",
+                }}>
+                  <div className="border-t border-[#ffffff]/20 pt-2 h-full max-h-[140px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#99CCCC]/40 scrollbar-track-transparent pr-2" style={{ touchAction: 'pan-y', overscrollBehaviorY: 'contain' }}>
+                    <p className="text-[11px] text-[#a3a3a3] leading-relaxed">
+                      {artist.description}
+                    </p>
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
-
-          {/* Day label */}
-          {isFirstOfItsDay && !isAd && (
-            <div className="mt-2 flex items-center gap-1.5 justify-center">
-              <div className="w-1.5 h-1.5 rotate-45 bg-[#99CCCC]" />
-              <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-[#99CCCC] font-bold">
-                {new Date(artist.startTime).toLocaleDateString("en-US", {
-                  day: "numeric",
-                  month: "long",
-                }).toUpperCase()}
-              </span>
-            </div>
-          )}
         </div>
 
-        {/* Navigation arrows (for non-touch) */}
-        <button
-          onClick={() => navigate(-1)}
-          className="absolute left-1 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-[#1a1a1a]/80 text-[#e5e5e5] z-20 active:bg-[#99CCCC] transition-colors"
-          aria-label="Previous"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => navigate(1)}
-          className="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-[#1a1a1a]/80 text-[#e5e5e5] z-20 active:bg-[#99CCCC] transition-colors"
-          aria-label="Next"
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
+        {/* Day label - Show for all artists as requested */}
+        {!isAd && (
+          <div className="mt-2 flex items-center gap-1.5 justify-center">
+            <div className="w-1.5 h-1.5 rotate-45 bg-[#99CCCC]" />
+            <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-[#99CCCC] font-bold">
+              {new Date(artist.startTime).toLocaleDateString("en-US", {
+                day: "numeric",
+                month: "long",
+              }).toUpperCase()}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Bottom control bar */}
-      <div className="bg-[#0a0a0a] border-t border-[#2a2a2a] px-3 pt-4 pb-[max(env(safe-area-inset-bottom),1rem)] z-20 flex flex-col gap-4">
+      {/* Navigation arrows (for non-touch) */}
+      <button
+        onClick={() => navigate(-1)}
+        className="absolute left-1 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-[#1a1a1a]/80 text-[#e5e5e5] z-20 active:bg-[#99CCCC] transition-colors"
+        aria-label="Previous"
+      >
+        <ChevronLeft className="w-4 h-4" />
+      </button>
+      <button
+        onClick={() => navigate(1)}
+        className="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-[#1a1a1a]/80 text-[#e5e5e5] z-20 active:bg-[#99CCCC] transition-colors"
+        aria-label="Next"
+      >
+        <ChevronRight className="w-4 h-4" />
+      </button>
+    </div>
 
-        {/* Controls row */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 text-[10px] text-[#737373] font-mono">
-            <Clock className="w-3 h-3" />
-            {viewIndex + 1}/{TOTAL}
-          </div>
+      {/* Bottom control bar */ }
+  <div className="bg-[#0a0a0a] border-t border-[#2a2a2a] px-3 pt-4 pb-[max(env(safe-area-inset-bottom),1rem)] z-20 flex flex-col gap-4">
 
-          {/* Play button */}
-          <button
-            onClick={togglePlay}
-            className="w-12 h-12 flex items-center justify-center rounded-full bg-[#99CCCC] text-[#ffffff] active:scale-95 transition-transform shadow-lg shadow-[#99CCCC]/20"
-            aria-label={isPlaying ? "Pause" : "Play"}
-          >
-            {isPlaying ? (
-              <Pause className="w-5 h-5" />
-            ) : (
-              <Play className="w-5 h-5 ml-0.5" />
-            )}
-          </button>
+    {/* Controls row */}
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-1 text-[10px] text-[#737373] font-mono">
+        <Clock className="w-3 h-3" />
+        {viewIndex + 1}/{TOTAL}
+      </div>
 
-          {/* Reactions instead of Volume */}
-          <div className="flex items-center justify-center w-10">
-            <ReactionPicker isFixed={false} className="!p-0 !bg-transparent !border-none !shadow-none" />
-          </div>
-        </div>
+      {/* Play button */}
+      <button
+        onClick={togglePlay}
+        className="w-12 h-12 flex items-center justify-center rounded-full bg-[#99CCCC] text-[#ffffff] active:scale-95 transition-transform shadow-lg shadow-[#99CCCC]/20"
+        aria-label={isPlaying ? "Pause" : "Play"}
+      >
+        {isPlaying ? (
+          <Pause className="w-5 h-5" />
+        ) : (
+          <Play className="w-5 h-5 ml-0.5" />
+        )}
+      </button>
 
+      {/* Reactions instead of Volume */}
+      <div className="flex items-center justify-center w-10">
+        <ReactionPicker isFixed={false} className="!p-0 !bg-transparent !border-none !shadow-none" />
       </div>
     </div>
+
+  </div>
+    </div >
   )
 }
