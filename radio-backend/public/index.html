@@ -470,7 +470,7 @@
             // Support token in query for audio streaming
             const currentToken = token || new URLSearchParams(window.location.search).get('token');
             options.headers = { ...options.headers, 'Authorization': `Bearer ${currentToken}` };
-            const res = await fetch(`/api${endpoint}`, options);
+            const res = await fetch(`/api/radio${endpoint}`, options);
             if (res.status === 401) { logout(); throw new Error('Auth failed'); }
             if (!res.ok) { const json = await res.json().catch(() => ({})); alert(json.error || 'API Error'); throw new Error(json.error); }
             return res.json();
@@ -499,7 +499,7 @@
             const u = document.getElementById('username').value;
             const p = document.getElementById('password').value;
             try {
-                const res = await fetch('/api/login', {
+                const res = await fetch('/api/radio/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username: u, password: p })
@@ -548,7 +548,7 @@
             titleEl.innerText = title;
 
             // Set source with token for auth
-            player.src = `/api/tracks/${id}/stream?token=${token}`;
+            player.src = `/api/radio/tracks/${id}/stream?token=${token}`;
             player.play();
         }
 

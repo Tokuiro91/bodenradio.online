@@ -81,7 +81,7 @@ export function RadioScheduleManager({ dbArtists, artists, setArtists }: {
 
     // Use current host to determine the backend IP
     const backendUrl = typeof window !== 'undefined'
-        ? `${window.location.protocol}//${window.location.hostname}:8080/?token=${token}`
+        ? `/radio-admin/?token=${token}`
         : ""
 
     return (
