@@ -9,9 +9,9 @@
 #  → Артисты добавленные через админку НЕ пропадут
 # ============================================================
 
-VPS_IP="193.233.19.203"
+VPS_IP="163.245.219.4"
 VPS_USER="root"
-VPS_PASS="tYbrC2G70GY7"
+VPS_PASS="Tokuiro372510@"
 VPS_DIR="/var/www/agileradio"
 COMMIT_MSG="${1:-update}"
 
