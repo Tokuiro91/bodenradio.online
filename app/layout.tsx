@@ -3,7 +3,7 @@ import { Space_Grotesk, JetBrains_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { AnalyticsProvider } from "@/components/analytics-provider"
 import { NextAuthProvider } from "@/components/providers/session-provider"
-import { IosInstallPrompt } from "@/components/ios-install-prompt"
+import { PwaInstallPrompt } from "@/components/pwa-install-prompt"
 import "./globals.css"
 
 
@@ -73,7 +73,7 @@ export default function RootLayout({
       >
         <NextAuthProvider>
           {children}
-          <IosInstallPrompt />
+          <PwaInstallPrompt />
           <Analytics />
           <AnalyticsProvider />
         </NextAuthProvider>
