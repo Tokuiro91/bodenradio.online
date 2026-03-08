@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
-import { toggleFavoriteArtist, getListeners } from "@/lib/listeners-store"
+import { toggleFavoriteArtist, ensureListenerExists } from "@/lib/listeners-store"
 
 export async function GET(req: Request) {
     try {
@@ -9,10 +9,7 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
-        const listeners = getListeners()
-        const listener = listeners.find(l => l.email === session.user?.email)
-
-        if (!listener) return NextResponse.json({ favoriteArtists: [] })
+        const listener = ensureListenerExists(session.user.email, session.user.name || undefined)
 
         return NextResponse.json({ favoriteArtists: listener.favoriteArtists || [] })
     } catch (err: any) {

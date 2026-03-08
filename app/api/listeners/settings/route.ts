@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
-import { findListenerByEmail, updateListener } from "@/lib/listeners-store"
+import { findListenerByEmail, updateListener, ensureListenerExists } from "@/lib/listeners-store"
 
 export async function GET() {
     try {
@@ -9,10 +9,7 @@ export async function GET() {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
-        const listener = findListenerByEmail(session.user.email)
-        if (!listener) {
-            return NextResponse.json({ error: "Listener not found" }, { status: 404 })
-        }
+        const listener = ensureListenerExists(session.user.email, session.user.name || undefined)
 
         return NextResponse.json({
             pushEnabled: !!listener.pushEnabled

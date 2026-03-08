@@ -106,3 +106,22 @@ export function toggleFavoriteArtist(email: string, artistId: number): number[] 
     saveListeners(listeners)
     return newFavorites
 }
+export function ensureListenerExists(email: string, name?: string): Listener {
+    const existing = findListenerByEmail(email)
+    if (existing) return existing
+
+    const listeners = getListeners()
+    const newListener: Listener = {
+        id: email.toLowerCase(),
+        email: email.toLowerCase(),
+        name: name || email.split("@")[0],
+        favoriteArtists: [],
+        role: "listener",
+        provider: "google", // Default for auto-created
+        pushEnabled: true,
+    }
+
+    listeners.push(newListener)
+    saveListeners(listeners)
+    return newListener
+}

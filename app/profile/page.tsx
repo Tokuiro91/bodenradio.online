@@ -109,17 +109,20 @@ export default function ProfilePage() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                            {artists.filter(a => favorites.includes(a.id)).map(artist => (
+                            {artists.filter(a => favorites.map(fId => Number(fId)).includes(a.id)).map(artist => (
                                 <div key={artist.id} className="relative aspect-square rounded-sm overflow-hidden group border border-[#1a1a1a]">
                                     <Image src={artist.image} alt={artist.name} fill className="object-cover transition-transform group-hover:scale-110" />
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity" />
                                     <button
-                                        onClick={() => removeFavorite(artist.id)}
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            removeFavorite(artist.id)
+                                        }}
                                         className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-full text-white/40 hover:text-white transition-colors opacity-0 group-hover:opacity-100 z-10"
                                     >
                                         <X className="w-3 h-3" />
                                     </button>
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent p-3 flex flex-col justify-end">
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent p-3 flex flex-col justify-end pointer-events-none">
                                         <span className="font-bold text-xs uppercase tracking-wide text-[#99CCCC]">{artist.name}</span>
                                         <span className="text-[9px] text-white/50 uppercase tracking-widest truncate">{artist.show}</span>
                                     </div>
