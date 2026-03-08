@@ -262,6 +262,24 @@ app.post('/api/schedule', auth, (req, res) => {
     });
 });
 
+app.put('/api/schedule/:id', auth, (req, res) => {
+    const { title, type, item_id, start_time, end_time } = req.body;
+    const { id } = req.params;
+
+    // Validation: no overlap (excluding self)
+    db.get('SELECT id FROM schedule WHERE id != ? AND (? < end_time AND ? > start_time)', [id, start_time, end_time], (err, row) => {
+        if (row) return res.status(400).json({ error: 'Schedule overlaps with existing event' });
+
+        db.run('UPDATE schedule SET title = ?, type = ?, item_id = ?, start_time = ?, end_time = ? WHERE id = ?',
+            [title, type, item_id, start_time, end_time, id],
+            function (err) {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ success: true, id, title, type, item_id, start_time, end_time });
+            }
+        );
+    });
+});
+
 app.delete('/api/schedule/:id', auth, (req, res) => {
     db.run('DELETE FROM schedule WHERE id = ?', [req.params.id], () => res.json({ success: true }));
 });
