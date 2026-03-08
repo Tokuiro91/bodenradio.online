@@ -19,8 +19,16 @@ export async function POST(req: NextRequest) {
         }
 
         const listener = findListenerByEmail(session.user.email)
-        if (!listener || !listener.pushSubscriptions || listener.pushSubscriptions.length === 0) {
-            return NextResponse.json({ error: "No subscriptions found. Please enable notifications first." }, { status: 404 })
+        if (!listener) {
+            return NextResponse.json({ error: "Listener not found" }, { status: 404 })
+        }
+
+        if (!listener.pushEnabled) {
+            return NextResponse.json({ error: "Push notifications are disabled in your settings." }, { status: 400 })
+        }
+
+        if (!listener.pushSubscriptions || listener.pushSubscriptions.length === 0) {
+            return NextResponse.json({ error: "No browser subscriptions found. Please enable notifications first." }, { status: 404 })
         }
 
         const payload = JSON.stringify({

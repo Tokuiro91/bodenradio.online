@@ -103,10 +103,11 @@ app.prepare().then(() => {
                 if (timeToStart > alertThreshold - windowLimit && timeToStart <= alertThreshold) {
                     listeners.forEach(listener => {
                         const isFav = listener.favoriteArtists && listener.favoriteArtists.includes(artist.id)
+                        const isEnabled = listener.pushEnabled === true
                         const hasSubs = listener.pushSubscriptions && listener.pushSubscriptions.length > 0
                         const notificationKey = `${artist.id}-${listener.email}`
 
-                        if (isFav && hasSubs && !sentNotifications.has(notificationKey)) {
+                        if (isFav && hasSubs && isEnabled && !sentNotifications.has(notificationKey)) {
                             console.log(`[Push] Sending alert to ${listener.email} for ${artist.name}`)
 
                             const payload = JSON.stringify({

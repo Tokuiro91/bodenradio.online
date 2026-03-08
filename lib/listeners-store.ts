@@ -15,6 +15,7 @@ export interface Listener {
     provider: "credentials" | "google" | "apple"
     isPremium?: boolean
     pushSubscriptions?: any[] // Web Push subscriptions
+    pushEnabled?: boolean
 }
 
 function ensureDirectoryExistence(filePath: string) {

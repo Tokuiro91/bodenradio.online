@@ -24,6 +24,7 @@ function urlBase64ToUint8Array(base64String: string) {
 export function PushSubscriptionManager() {
     const { data: session } = useSession()
     const [isSubscribed, setIsSubscribed] = useState(false)
+    const [pushEnabled, setPushEnabled] = useState(false)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -32,13 +33,41 @@ export function PushSubscriptionManager() {
             return
         }
 
-        navigator.serviceWorker.ready.then((registration) => {
-            registration.pushManager.getSubscription().then((subscription) => {
+        const checkStatus = async () => {
+            try {
+                // Check browser subscription
+                const registration = await navigator.serviceWorker.ready
+                const subscription = await registration.pushManager.getSubscription()
                 setIsSubscribed(!!subscription)
+
+                // Check backend preference
+                const res = await fetch("/api/listeners/settings")
+                if (res.ok) {
+                    const data = await res.json()
+                    setPushEnabled(!!data.pushEnabled)
+                }
+            } catch (err) {
+                console.error("Status check error:", err)
+            } finally {
                 setLoading(false)
-            })
-        })
+            }
+        }
+
+        checkStatus()
     }, [])
+
+    const updateBackendPreference = async (enabled: boolean) => {
+        try {
+            await fetch("/api/listeners/settings", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ pushEnabled: enabled }),
+            })
+            setPushEnabled(enabled)
+        } catch (err) {
+            toast.error("Failed to update preferences")
+        }
+    }
 
     const subscribe = async () => {
         if (!VAPID_PUBLIC_KEY) {
@@ -63,6 +92,7 @@ export function PushSubscriptionManager() {
 
             if (res.ok) {
                 setIsSubscribed(true)
+                await updateBackendPreference(true)
                 toast.success("Notifications enabled!")
             } else {
                 throw new Error("Failed to save subscription")
@@ -89,6 +119,7 @@ export function PushSubscriptionManager() {
                 })
             }
             setIsSubscribed(false)
+            await updateBackendPreference(false)
             toast.success("Notifications disabled")
         } catch (err) {
             console.error("Unsubscription error:", err)
@@ -98,11 +129,19 @@ export function PushSubscriptionManager() {
         }
     }
 
-    const handleToggle = (checked: boolean) => {
+    const handleToggle = async (checked: boolean) => {
         if (checked) {
-            subscribe()
+            if (!isSubscribed) {
+                await subscribe()
+            } else {
+                await updateBackendPreference(true)
+                toast.success("Notifications enabled!")
+            }
         } else {
-            unsubscribe()
+            // We only toggle the master setting off, we don't necessarily need to unsubscribe from the browser
+            // but for a clean state it's better to keep it synced.
+            await updateBackendPreference(false)
+            toast.success("Notifications disabled")
         }
     }
 
@@ -127,18 +166,20 @@ export function PushSubscriptionManager() {
         return null
     }
 
+    const effectiveActive = isSubscribed && pushEnabled
+
     return (
         <div className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-sm border border-[#2a2a2a]">
             <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full ${isSubscribed ? "bg-[#99CCCC]/20 text-[#99CCCC]" : "bg-red-500/10 text-red-500/50"}`}>
-                    {isSubscribed ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+                <div className={`p-2 rounded-full ${effectiveActive ? "bg-[#99CCCC]/20 text-[#99CCCC]" : "bg-red-500/10 text-red-500/50"}`}>
+                    {effectiveActive ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
                 </div>
                 <div className="space-y-0.5">
                     <Label className="text-sm font-bold uppercase tracking-wide">PWA Notifications</Label>
                     <p className="text-[9px] text-[#737373] uppercase tracking-wider">
-                        {isSubscribed ? "Alerts enabled for your favorite artists" : "Stay informed when your favorites are live"}
+                        {effectiveActive ? "Alerts enabled for your favorite artists" : "Stay informed when your favorites are live"}
                     </p>
-                    {isSubscribed && (
+                    {effectiveActive && (
                         <Button
                             variant="outline"
                             size="sm"
@@ -155,7 +196,7 @@ export function PushSubscriptionManager() {
                 <Loader2 className="w-5 h-5 animate-spin text-[#737373]" />
             ) : (
                 <Switch
-                    checked={isSubscribed}
+                    checked={pushEnabled}
                     onCheckedChange={handleToggle}
                     className="data-[state=checked]:bg-[#99CCCC]"
                 />
