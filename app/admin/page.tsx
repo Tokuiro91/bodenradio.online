@@ -348,6 +348,12 @@ export default function AdminPage() {
             bandcampUrl: form.bandcampUrl || "",
           }),
         })
+
+        if (res.status === 401) {
+          setFormError("У вас нет прав для создания записи (нужна роль Admin)")
+          return
+        }
+
         const newA = await res.json()
         if (newA && newA.id) {
           setDbArtists(prev => [...prev, newA])
@@ -369,14 +375,21 @@ export default function AdminPage() {
       : (dbEditingId && !isEditing ? artists : [...artists, newArtist])
 
     // Update state (sets local and triggers server persistence via useArtists hook)
+    // IMPORTANT: setArtists in useArtists.ts performs a POST to /api/artists
     setArtists(nextArtists)
 
-    // Trigger Radio Schedule Sync for the backend playback engine
-    fetch("/api/radio/sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ artists: nextArtists }),
-    }).catch(() => { })
+    try {
+      // Trigger Radio Schedule Sync for the backend playback engine
+      const syncRes = await fetch("/api/radio/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ artists: nextArtists }),
+      })
+      if (syncRes.status === 401) {
+        setFormError("У вас нет прав для изменения расписания")
+        return
+      }
+    } catch (e) { }
 
     // Optionally sync with Master Database if Artist type
     if (form.type === 'artist' && form.name) {
@@ -394,27 +407,29 @@ export default function AdminPage() {
 
       const existingId = dbEditingId || form.dbId || dbArtists.find(a => a.name.toLowerCase().trim() === form.name.toLowerCase().trim())?.id
 
-      if (existingId) {
-        fetch("/api/artist-db", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: existingId, ...artistData }),
-        }).then(r => r.json()).then(updatedA => {
+      try {
+        if (existingId) {
+          const res = await fetch("/api/artist-db", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: existingId, ...artistData }),
+          })
+          const updatedA = await res.json()
           if (updatedA && updatedA.id) {
             setDbArtists(prev => prev.map(a => a.id === updatedA.id ? updatedA : a))
           }
-        }).catch(() => { })
-      } else {
-        fetch("/api/artist-db", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(artistData),
-        }).then(r => r.json()).then(newA => {
+        } else {
+          const res = await fetch("/api/artist-db", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(artistData),
+          })
+          const newA = await res.json()
           if (newA && newA.id) {
             setDbArtists(prev => [...prev, newA])
           }
-        }).catch(() => { })
-      }
+        }
+      } catch (e) { }
     }
 
     alert(isEditing ? "Запись обновлена!" : "Артист добавлен в расписание!")
@@ -483,8 +498,25 @@ export default function AdminPage() {
             )}
           </div>
         </div>
-        <button onClick={() => signOut({ callbackUrl: "/admin/login" })} className="text-xs text-[#737373] hover:text-white transition px-3 py-1 border border-[#2a2a2a] rounded-sm">Выйти</button>
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] font-mono text-white leading-tight">{session?.user?.email}</span>
+            <span className={`text-[8px] font-mono uppercase px-1 rounded-sm ${session?.user?.role === 'admin' ? 'bg-[#99CCCC]/20 text-[#99CCCC]' : 'bg-red-500/20 text-red-500'}`}>
+              Role: {session?.user?.role || 'Guest'}
+            </span>
+          </div>
+          <button onClick={() => signOut({ callbackUrl: "/admin/login" })} className="text-xs text-[#737373] hover:text-white transition px-3 py-1 border border-[#2a2a2a] rounded-sm">Выйти</button>
+        </div>
       </header>
+
+      {session?.user?.role !== "admin" && ready && status === "authenticated" && (
+        <div className="bg-red-500/10 border-b border-red-500/20 px-6 py-2 flex items-center justify-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></div>
+          <span className="text-[10px] font-mono text-red-400 uppercase tracking-widest">
+            Внимание: У вас нет прав администратора. Создание и редактирование отключено.
+          </span>
+        </div>
+      )}
 
       {activeTab === "radio-schedule" && (
         <div className="p-6">

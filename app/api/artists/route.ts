@@ -3,6 +3,7 @@ import fs from "fs"
 import path from "path"
 import { generateArtists } from "@/lib/artists-data"
 import type { Artist } from "@/lib/artists-data"
+import { auth } from "@/lib/auth"
 
 const DATA_FILE = path.join(process.cwd(), "data", "artists.json")
 
@@ -44,11 +45,16 @@ export async function GET() {
             "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
             "Pragma": "no-cache",
             "Expires": "0",
+            "X-Debug-TS": Date.now().toString()
         }
     })
 }
 
 export async function POST(request: Request) {
+    const session = await auth()
+    if (!session || session.user.role !== "admin") {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     try {
         const body = await request.json()
 
