@@ -47,8 +47,7 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
 
   # Обновляем код (сбрасываем artists.json чтобы не было конфликта — у нас есть бэкап)
   echo "   → git pull..."
-  git checkout -- data/artists.json 2>/dev/null || true
-  git checkout -- data/artist-db.json 2>/dev/null || true
+  git reset --hard HEAD
   git pull origin BODEN-STADT
 
   echo "   → npm install..."
