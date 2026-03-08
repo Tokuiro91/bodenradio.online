@@ -160,13 +160,18 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
     <TooltipProvider delayDuration={300}>
       <div
         onClick={handleCardClick}
-        className={`relative flex-shrink-0 cursor-pointer transition-all duration-500 ease-out group font-sans ${isAd ? 'hover:scale-[1.02]' : ''}`}
+        className={`relative flex-shrink-0 cursor-pointer transition-all duration-300 ease-out group font-sans
+          ${isAd ? "hover:scale-[1.02]" : "hover:scale-[1.08] hover:z-10"}
+        `}
         style={{
           width: expanded ? "344px" : "312px",
           height: expanded ? "480px" : "436px",
         }}
       >
-        <div className="relative w-full h-full overflow-hidden rounded-sm border border-[#2a2a2a]/50">
+        <div className={`relative w-full h-full overflow-hidden rounded-sm border transition-colors duration-300
+          ${expanded ? "border-[#99CCCC]/60" : "border-[#2a2a2a]/50"}
+          group-hover:border-[#99CCCC]
+        `}>
 
           {/* IMAGE / LOTTIE */}
           <div className="absolute inset-0">
@@ -353,12 +358,12 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
               <div
                 className="overflow-hidden transition-all duration-500"
                 style={{
-                  maxHeight: expanded ? "160px" : "0px",
+                  maxHeight: expanded ? "180px" : "0px",
                   opacity: expanded ? 1 : 0,
                   marginTop: expanded ? "12px" : "0px",
                 }}
               >
-                <div className="border-t border-[#99CCCC]/40 pt-3">
+                <div className="border-t border-[#99CCCC]/40 pt-3 h-full max-h-[160px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#99CCCC]/40 scrollbar-track-transparent pr-2">
                   <p className="text-xs text-[#a3a3a3] leading-relaxed">
                     {artist.description}
                   </p>
