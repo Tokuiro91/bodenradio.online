@@ -11,6 +11,8 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   Menu,
   ExternalLink,
   Star,
@@ -634,6 +636,7 @@ export function MobileRadio() {
         className="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-[#1a1a1a]/80 text-[#e5e5e5] z-20 active:bg-[#99CCCC] transition-colors"
         aria-label="Next"
       >
+        <ChevronRight className="w-4 h-4" />
       </button>
 
       {/* Bottom control bar */}
