@@ -587,6 +587,16 @@ export default function AdminPage() {
                 <input value={form.audioUrl} onChange={(e) => setForm(f => ({ ...f, audioUrl: e.target.value }))} className="w-full bg-black border border-[#1a1a1a] rounded-sm px-2 py-1 text-[10px] font-mono text-white" />
               </div>
 
+              <div>
+                <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Description</label>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
+                  className="w-full h-20 bg-black border border-[#1a1a1a] rounded-sm px-2 py-1 text-[10px] font-mono text-white outline-none focus:border-[#99CCCC]"
+                  placeholder="Enter broadcast description..."
+                />
+              </div>
+
               <div className="flex gap-2">
                 <button type="submit" className="flex-1 py-2 bg-[#99CCCC] text-black font-bold text-[10px] font-mono uppercase tracking-widest hover:bg-white transition">{editingId ? 'Save Entry' : 'Create Entry'}</button>
                 {editingId && <button type="button" onClick={resetForm} className="px-4 py-2 border border-[#2a2a2a] text-[10px] font-mono uppercase text-[#737373]">Cancel</button>}

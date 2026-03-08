@@ -247,52 +247,82 @@
                 </div>
             </div>
 
-            <!-- Calendar Area -->
+            <!-- Tab Area -->
             <div class="col-span-1 lg:col-span-3">
-                <div class="glass p-4 rounded-sm mb-4">
-                    <h2 class="text-[10px] mb-4 font-bold text-[#737373] border-l-2 border-[#99CCCC] pl-2">СОЗДАТЬ
-                        СОБЫТИЕ</h2>
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
-                        <div>
-                            <label class="text-[8px] text-gray-500 block mb-1">ТИП</label>
-                            <select id="sch-type" onchange="loadScheduleItems()" class="input-dark text-[10px]">
-                                <option value="track">ТРЕК</option>
-                                <option value="playlist">СЕТ</option>
-                            </select>
+                <div class="flex gap-6 mb-8 border-b border-[#1a1a1a]">
+                    <button onclick="switchMode('calendar')" id="tab-calendar"
+                        class="text-[10px] font-bold text-[#99CCCC] border-b-2 border-[#99CCCC] pb-3 uppercase tracking-[0.2em]">Календарь</button>
+                    <button onclick="switchMode('list')" id="tab-list"
+                        class="text-[10px] font-bold text-[#444] hover:text-[#99CCCC] pb-3 uppercase tracking-[0.2em] transition-colors">Список
+                        Эфира</button>
+                </div>
+
+                <div id="calendar-mode">
+                    <div class="glass p-4 rounded-sm mb-4">
+                        <h2 class="text-[10px] mb-4 font-bold text-[#737373] border-l-2 border-[#99CCCC] pl-2">СОЗДАТЬ
+                            СОБЫТИЕ</h2>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
+                            <div>
+                                <label class="text-[8px] text-gray-500 block mb-1">ТИП</label>
+                                <select id="sch-type" onchange="loadScheduleItems()" class="input-dark text-[10px]">
+                                    <option value="track">ТРЕК</option>
+                                    <option value="playlist">СЕТ</option>
+                                </select>
+                            </div>
+                            <div class="lg:col-span-2">
+                                <label class="text-[8px] text-gray-500 block mb-1">ЭЛЕМЕНТ</label>
+                                <select id="sch-item" class="input-dark text-[10px]"></select>
+                            </div>
+                            <div>
+                                <label class="text-[8px] text-gray-500 block mb-1">НАЧАЛО</label>
+                                <input type="datetime-local" id="sch-start" class="input-dark text-[10px]">
+                            </div>
+                            <div>
+                                <label class="text-[8px] text-gray-500 block mb-1">КОНЕЦ</label>
+                                <input type="datetime-local" id="sch-end" class="input-dark text-[10px]">
+                            </div>
+                            <div class="lg:col-span-2">
+                                <label class="text-[8px] text-gray-500 block mb-1">АРТИСТ (ДЛЯ САЙТА)</label>
+                                <select id="sch-artist" class="input-dark text-[10px] text-[#99CCCC]">
+                                    <option value="">-- НЕ ПРИВЯЗЫВАТЬ --</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center gap-2 pb-2">
+                                <input type="checkbox" id="sch-sync" checked class="accent-[#99CCCC]">
+                                <label for="sch-sync"
+                                    class="text-[8px] text-gray-500 cursor-pointer">СИНХРОНИЗИРОВАТЬ</label>
+                            </div>
+                            <div class="md:col-span-3 lg:col-span-6 flex justify-end mt-2">
+                                <button onclick="scheduleEvent()" class="btn btn-primary text-[10px]">ДОБАВИТЬ В
+                                    ЭФИР</button>
+                            </div>
                         </div>
-                        <div class="lg:col-span-2">
-                            <label class="text-[8px] text-gray-500 block mb-1">ЭЛЕМЕНТ</label>
-                            <select id="sch-item" class="input-dark text-[10px]"></select>
-                        </div>
-                        <div>
-                            <label class="text-[8px] text-gray-500 block mb-1">НАЧАЛО</label>
-                            <input type="datetime-local" id="sch-start" class="input-dark text-[10px]">
-                        </div>
-                        <div>
-                            <label class="text-[8px] text-gray-500 block mb-1">КОНЕЦ</label>
-                            <input type="datetime-local" id="sch-end" class="input-dark text-[10px]">
-                        </div>
-                        <div class="lg:col-span-2">
-                            <label class="text-[8px] text-gray-500 block mb-1">АРТИСТ (ДЛЯ САЙТА)</label>
-                            <select id="sch-artist" class="input-dark text-[10px] text-[#99CCCC]">
-                                <option value="">-- НЕ ПРИВЯЗЫВАТЬ --</option>
-                            </select>
-                        </div>
-                        <div class="flex items-center gap-2 pb-2">
-                            <input type="checkbox" id="sch-sync" checked class="accent-[#99CCCC]">
-                            <label for="sch-sync"
-                                class="text-[8px] text-gray-500 cursor-pointer">СИНХРОНИЗИРОВАТЬ</label>
-                        </div>
-                        <div class="md:col-span-3 lg:col-span-6 flex justify-end mt-2">
-                            <button onclick="scheduleEvent()" class="btn btn-primary text-[10px]">ДОБАВИТЬ В
-                                ЭФИР</button>
-                        </div>
+                    </div>
+
+                    <!-- Calendar View -->
+                    <div class="glass p-4 rounded-xl">
+                        <div id="calendar"></div>
                     </div>
                 </div>
 
-                <!-- Calendar View -->
-                <div class="glass p-4 rounded-xl">
-                    <div id="calendar"></div>
+                <div id="list-mode" class="hidden">
+                    <div class="glass p-4 rounded-sm mb-4">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-[10px] font-bold text-[#737373] border-l-2 border-[#99CCCC] pl-2 uppercase">
+                                ХРОНОЛОГИЯ ЭФИРА</h2>
+                            <div class="flex items-center gap-4">
+                                <span class="text-[9px] text-[#444] uppercase font-mono">ВЫБОР ДНЯ:</span>
+                                <input type="date" id="list-date" onchange="loadListView()"
+                                    class="input-dark w-40 text-[10px] border-[#333]">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass p-6 rounded-sm min-h-[500px]">
+                        <div id="schedule-list" class="space-y-4 max-h-[600px] overflow-y-auto pr-4 custom-scrollbar">
+                            <div class="text-center py-20 text-[#444] font-mono text-[10px] uppercase tracking-widest">
+                                Загрузка расписания...</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -637,6 +667,81 @@
                 document.getElementById('sch-start').value = '';
                 document.getElementById('sch-end').value = '';
             } catch (e) { }
+        }
+
+        /* TABS & LIST VIEW */
+        function switchMode(mode) {
+            if (mode === 'calendar') {
+                document.getElementById('calendar-mode').classList.remove('hidden');
+                document.getElementById('list-mode').classList.add('hidden');
+                document.getElementById('tab-calendar').classList.add('text-[#99CCCC]', 'border-b-2', 'border-[#99CCCC]');
+                document.getElementById('tab-calendar').classList.remove('text-[#444]');
+                document.getElementById('tab-list').classList.remove('text-[#99CCCC]', 'border-b-2', 'border-[#99CCCC]');
+                document.getElementById('tab-list').classList.add('text-[#444]');
+                if (calendar) calendar.render();
+            } else {
+                document.getElementById('calendar-mode').classList.add('hidden');
+                document.getElementById('list-mode').classList.remove('hidden');
+                document.getElementById('tab-list').classList.add('text-[#99CCCC]', 'border-b-2', 'border-[#99CCCC]');
+                document.getElementById('tab-list').classList.remove('text-[#444]');
+                document.getElementById('tab-calendar').classList.remove('text-[#99CCCC]', 'border-b-2', 'border-[#99CCCC]');
+                document.getElementById('tab-calendar').classList.add('text-[#444]');
+
+                // Set current date if empty
+                const dateInp = document.getElementById('list-date');
+                if (!dateInp.value) {
+                    dateInp.value = new Date().toISOString().split('T')[0];
+                }
+                loadListView();
+            }
+        }
+
+        async function loadListView() {
+            const dateStr = document.getElementById('list-date').value;
+            const start = new Date(dateStr + 'T00:00:00').getTime();
+            const end = start + 24 * 60 * 60 * 1000;
+
+            const listEl = document.getElementById('schedule-list');
+            listEl.innerHTML = '<div class="text-center py-20 text-[#444] font-mono text-[10px] uppercase tracking-widest">Загрузка...</div>';
+
+            try {
+                const schedule = await api(`/schedule?start=${start}&end=${end}`);
+                schedule.sort((a, b) => a.start_time - b.start_time);
+
+                if (schedule.length === 0) {
+                    listEl.innerHTML = '<div class="text-center py-20 text-[#444] font-mono text-[10px] uppercase tracking-widest">В этот день эфир не запланирован</div>';
+                    return;
+                }
+
+                listEl.innerHTML = schedule.map(s => {
+                    const st = new Date(s.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const et = new Date(s.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const isNow = Date.now() >= s.start_time && Date.now() <= s.end_time;
+
+                    return `
+                        <div class="flex items-center gap-6 p-4 border border-[#1a1a1a] bg-[#050505] group hover:border-[#333] transition-colors ${isNow ? 'border-l-4 border-l-[#99CCCC]' : ''}">
+                            <div class="w-24 text-[10px] font-mono text-[#737373] flex-shrink-0">
+                                ${st} — ${et}
+                            </div>
+                            <div class="flex-1">
+                                <span class="text-[11px] font-bold text-white uppercase tracking-wider">${s.title}</span>
+                                ${isNow ? '<span class="ml-3 text-[8px] bg-[#99CCCC] text-black px-1 py-0.5 font-bold animate-pulse">LIVE</span>' : ''}
+                            </div>
+                            <button onclick="deleteScheduleItem(${s.id})" class="text-[#444] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">УДАЛИТЬ</button>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                listEl.innerHTML = '<div class="text-center py-20 text-red-500 font-mono text-[10px] uppercase tracking-widest">Ошибка загрузки</div>';
+            }
+        }
+
+        async function deleteScheduleItem(id) {
+            if (confirm('Удалить это событие из эфира?')) {
+                await api(`/schedule/${id}`, { method: 'DELETE' });
+                loadListView();
+                if (calendar) calendar.refetchEvents();
+            }
         }
 
         async function loadEvents() { if (calendar) calendar.refetchEvents(); }
