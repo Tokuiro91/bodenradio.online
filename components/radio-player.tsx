@@ -195,6 +195,16 @@ export function RadioPlayer() {
     const el = scrollRef.current
     if (!el) return
     const onWheel = (e: WheelEvent) => {
+      // Check if the scroll target is within a scrollable vertical area (the card description)
+      const path = e.composedPath() as HTMLElement[]
+      const isScrollable = path.some(el => {
+        if (el.nodeType !== 1) return false
+        const style = window.getComputedStyle(el)
+        return (style.overflowY === 'auto' || style.overflowY === 'scroll') && el.scrollHeight > el.clientHeight
+      })
+
+      if (isScrollable) return // Let the browser handle vertical scroll inside the card
+
       if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
       e.preventDefault()
       el.style.scrollSnapType = "none"

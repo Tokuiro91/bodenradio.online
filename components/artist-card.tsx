@@ -161,7 +161,8 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
       <div
         onClick={handleCardClick}
         className={`relative flex-shrink-0 cursor-pointer transition-all duration-300 ease-out group font-sans
-          ${isAd ? "hover:scale-[1.02]" : "hover:scale-[1.08] hover:z-10"}
+          ${isAd ? "hover:scale-[1.02]" : "hover:scale-[1.08] hover:z-20"}
+          ${expanded ? "scale-[1.08] z-20" : ""}
         `}
         style={{
           width: expanded ? "344px" : "312px",
@@ -169,10 +170,10 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
         }}
       >
         <div className={`relative w-full h-full overflow-hidden rounded-sm border transition-colors duration-300
-          ${expanded ? "border-[#99CCCC]/60" : "border-[#2a2a2a]/50"}
+          ${expanded ? "border-[#99CCCC]" : "border-[#2a2a2a]/50"}
           group-hover:border-[#99CCCC]
         `}>
-
+          {/* ... existing layers ... */}
           {/* IMAGE / LOTTIE */}
           <div className="absolute inset-0">
             {isAd && artist.isLottie ? (
@@ -362,6 +363,7 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
                   opacity: expanded ? 1 : 0,
                   marginTop: expanded ? "12px" : "0px",
                 }}
+                onClick={(e) => e.stopPropagation()}
               >
                 <div className="border-t border-[#99CCCC]/40 pt-3 h-full max-h-[160px] overflow-y-auto scrollbar-thin scrollbar-thumb-[#99CCCC]/40 scrollbar-track-transparent pr-2">
                   <p className="text-xs text-[#a3a3a3] leading-relaxed">
