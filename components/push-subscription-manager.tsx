@@ -167,39 +167,61 @@ export function PushSubscriptionManager() {
     }
 
     const effectiveActive = isSubscribed && pushEnabled
+    const needsActivation = !isSubscribed && pushEnabled
 
     return (
-        <div className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-sm border border-[#2a2a2a]">
-            <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full ${effectiveActive ? "bg-[#99CCCC]/20 text-[#99CCCC]" : "bg-red-500/10 text-red-500/50"}`}>
-                    {effectiveActive ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+        <div className="flex flex-col gap-4 p-4 bg-[#1a1a1a] rounded-sm border border-[#2a2a2a]">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${effectiveActive ? "bg-[#99CCCC]/20 text-[#99CCCC]" : (needsActivation ? "bg-orange-500/20 text-orange-500" : "bg-red-500/10 text-red-500/50")}`}>
+                        {effectiveActive ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+                    </div>
+                    <div className="space-y-0.5">
+                        <Label className="text-sm font-bold uppercase tracking-wide">PWA Notifications</Label>
+                        <p className="text-[9px] text-[#737373] uppercase tracking-wider">
+                            {effectiveActive ? "Alerts enabled for your favorite artists" :
+                                needsActivation ? "Activation required on this device" :
+                                    "Stay informed when your favorites are live"}
+                        </p>
+                    </div>
                 </div>
-                <div className="space-y-0.5">
-                    <Label className="text-sm font-bold uppercase tracking-wide">PWA Notifications</Label>
-                    <p className="text-[9px] text-[#737373] uppercase tracking-wider">
-                        {effectiveActive ? "Alerts enabled for your favorite artists" : "Stay informed when your favorites are live"}
-                    </p>
-                    {effectiveActive && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={sendTestPush}
-                            disabled={loading}
-                            className="mt-3 w-full border-[#99CCCC]/30 text-[#99CCCC] text-[10px] uppercase font-bold tracking-widest hover:bg-[#99CCCC]/10"
-                        >
-                            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Send Test Notification"}
-                        </Button>
-                    )}
-                </div>
+                {loading ? (
+                    <Loader2 className="w-5 h-5 animate-spin text-[#737373]" />
+                ) : (
+                    <Switch
+                        checked={pushEnabled}
+                        onCheckedChange={handleToggle}
+                        className="data-[state=checked]:bg-[#99CCCC]"
+                    />
+                )}
             </div>
-            {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin text-[#737373]" />
-            ) : (
-                <Switch
-                    checked={pushEnabled}
-                    onCheckedChange={handleToggle}
-                    className="data-[state=checked]:bg-[#99CCCC]"
-                />
+
+            {needsActivation && !loading && (
+                <div className="pt-2 border-t border-[#2a2a2a]">
+                    <p className="text-[10px] text-orange-500/80 mb-3 uppercase font-mono leading-relaxed">
+                        Вы включили уведомления для аккаунта, но это устройство еще не подписано.
+                    </p>
+                    <Button
+                        onClick={subscribe}
+                        className="w-full bg-orange-500/10 text-orange-500 border border-orange-500/30 text-[10px] uppercase font-bold tracking-widest hover:bg-orange-500 hover:text-white transition-all h-10"
+                    >
+                        АКТИВИРОВАТЬ НА ЭТОМ УСТРОЙСТВЕ
+                    </Button>
+                </div>
+            )}
+
+            {effectiveActive && (
+                <div className="pt-2 border-t border-[#2a2a2a]">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={sendTestPush}
+                        disabled={loading}
+                        className="w-full border-[#99CCCC]/30 text-[#99CCCC] text-[10px] uppercase font-bold tracking-widest hover:bg-[#99CCCC]/10 h-10"
+                    >
+                        {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Отправить тестовый пуш"}
+                    </Button>
+                </div>
             )}
         </div>
     )

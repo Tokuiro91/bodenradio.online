@@ -7,5 +7,14 @@
     "role": "listener",
     "provider": "google",
     "pushEnabled": true
+  },
+  {
+    "id": "chyrukoleksii@gmail.com",
+    "email": "chyrukoleksii@gmail.com",
+    "name": "chyrukoleksii@gmail.com",
+    "favoriteArtists": [],
+    "role": "listener",
+    "provider": "google",
+    "pushEnabled": true
   }
 ]
