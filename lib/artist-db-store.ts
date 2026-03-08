@@ -65,3 +65,27 @@ export function deleteDBArtist(id: string) {
     artists = artists.filter(a => a.id !== id)
     saveArtistDB(artists)
 }
+
+export function syncDBArtists(newArtistsData: Omit<DBArtist, "id">[]) {
+    const artists = getArtistDB()
+    let updated = false
+
+    for (const data of newArtistsData) {
+        const existingIndex = artists.findIndex(a => a.name.toLowerCase().trim() === data.name.toLowerCase().trim())
+        if (existingIndex !== -1) {
+            artists[existingIndex] = { ...artists[existingIndex], ...data }
+            updated = true
+        } else {
+            artists.push({
+                ...data,
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 5)
+            })
+            updated = true
+        }
+    }
+
+    if (updated) {
+        saveArtistDB(artists)
+    }
+    return artists
+}

@@ -159,35 +159,32 @@ export default function AdminPage() {
 
   const syncAllToDatabase = async () => {
     if (!confirm("Add all scheduled artists to Database?")) return
-    for (const a of artists) {
-      if (!a.name) continue
-      const artistData = {
-        name: a.name,
-        location: a.location || "Earth",
-        show: a.show || "Новый сет",
-        image: a.image || "/artists/artist-1.jpg",
-        description: a.description || "...",
-        audioUrl: a.audioUrl || "",
-        instagramUrl: a.instagramUrl || "",
-        soundcloudUrl: a.soundcloudUrl || "",
-        bandcampUrl: a.bandcampUrl || "",
+    const artistsData = artists.filter(a => !!a.name).map(a => ({
+      name: a.name,
+      location: a.location || "Earth",
+      show: a.show || "Новый сет",
+      image: a.image || "/artists/artist-1.jpg",
+      description: a.description || "...",
+      audioUrl: a.audioUrl || "",
+      instagramUrl: a.instagramUrl || "",
+      soundcloudUrl: a.soundcloudUrl || "",
+      bandcampUrl: a.bandcampUrl || "",
+    }))
+
+    try {
+      const res = await fetch("/api/artist-db", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync", artists: artistsData }),
+      })
+      if (res.ok) {
+        const updatedDb = await res.json()
+        setDbArtists(updatedDb)
+        alert(`Successfully synced ${artistsData.length} records!`)
       }
-      const existing = dbArtists.find(db => db.name === a.name)
-      if (existing) {
-        await fetch("/api/artist-db", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: existing.id, ...artistData }),
-        })
-      } else {
-        await fetch("/api/artist-db", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(artistData),
-        })
-      }
+    } catch (e) {
+      alert("Sync failed. See console for details.")
     }
-    fetch("/api/artist-db").then(r => r.json()).then(setDbArtists)
   }
 
   const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {

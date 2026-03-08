@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getArtistDB, createDBArtist, updateDBArtist, deleteDBArtist } from "@/lib/artist-db-store"
+import { getArtistDB, createDBArtist, updateDBArtist, deleteDBArtist, syncDBArtists } from "@/lib/artist-db-store"
 import { auth } from "@/lib/auth"
 
 export async function GET() {
@@ -13,6 +13,13 @@ export async function POST(req: Request) {
     }
     try {
         const body = await req.json()
+
+        // Batch sync support
+        if (body.action === "sync" && Array.isArray(body.artists)) {
+            const synced = syncDBArtists(body.artists)
+            return NextResponse.json(synced)
+        }
+
         const newArtist = createDBArtist(body)
         return NextResponse.json(newArtist)
     } catch (e) {

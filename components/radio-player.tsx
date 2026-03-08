@@ -341,7 +341,7 @@ export function RadioPlayer() {
       {/* Horizontal scroll area */}
       <div
         ref={scrollRef}
-        className="absolute inset-0 pt-16 pb-16 flex items-center overflow-x-auto overflow-y-hidden scrollbar-hide"
+        className="absolute inset-0 pt-24 pb-16 flex items-center overflow-x-auto scrollbar-hide"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         <div className="flex items-center gap-6 px-8" style={{ minWidth: "max-content" }}>
@@ -363,29 +363,37 @@ export function RadioPlayer() {
               <div
                 key={`${artist.id}-${i}`}
                 ref={(el) => { cardRefs.current[i] = el }}
-                className="flex-shrink-0 transition-transform duration-500"
-                style={{ transform: `translateY(${waveOffset}px)` }}
+                className="flex-shrink-0"
               >
-                {isFirstOfDay && (
-                  <div className="flex items-center gap-2 mb-3 pl-1">
-                    <div className="w-1.5 h-1.5 rotate-45 bg-[#99CCCC]" />
-                    <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#99CCCC] font-bold">
-                      {new Date(artist.startTime).toLocaleDateString("en-US", {
-                        day: "numeric",
-                        month: "long",
-                      }).toUpperCase()}
-                    </span>
-                    <div className="flex-1 h-px bg-[#2a2a2a]/50" />
-                  </div>
-                )}
+                {/* Fixed date label at the top */}
+                <div className="h-12 flex flex-col justify-end pb-3">
+                  {isFirstOfDay && (
+                    <div className="flex items-center gap-2 pl-1">
+                      <div className="w-1.5 h-1.5 rotate-45 bg-[#99CCCC]" />
+                      <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#99CCCC] font-bold">
+                        {new Date(artist.startTime).toLocaleDateString("en-US", {
+                          day: "numeric",
+                          month: "long",
+                        }).toUpperCase()}
+                      </span>
+                      <div className="flex-1 h-px bg-[#2a2a2a]/50" />
+                    </div>
+                  )}
+                </div>
 
-                <ArtistCard
-                  artist={artist}
-                  status={getStatus(i)}
-                  progress={realIndex === currentPlayingIndex ? progress : 0}
-                  isFavorite={userFavorites.includes(artist.id)}
-                  onToggleFavorite={toggleFavorite}
-                />
+                {/* Sawtooth card with wave animation */}
+                <div
+                  className="transition-transform duration-500"
+                  style={{ transform: `translateY(${waveOffset}px)` }}
+                >
+                  <ArtistCard
+                    artist={artist}
+                    status={getStatus(i)}
+                    progress={realIndex === currentPlayingIndex ? progress : 0}
+                    isFavorite={userFavorites.includes(artist.id)}
+                    onToggleFavorite={toggleFavorite}
+                  />
+                </div>
               </div>
             )
           })}
@@ -393,15 +401,17 @@ export function RadioPlayer() {
       </div>
 
       {/* Countdown UI */}
-      {countdownStr && (
-        <div className="absolute top-24 left-1/2 -translate-x-1/2 z-40">
-          <div className="backdrop-blur-xl bg-black/60 border border-[#2a2a2a] px-6 py-3 rounded-full flex gap-3 items-center shadow-2xl">
-            <span className="w-2 h-2 rounded-full bg-[#99CCCC] animate-pulse" />
-            <span className="text-xs text-[#a3a3a3] uppercase tracking-widest">BROADCAST STARTS IN</span>
-            <span className="text-sm font-mono text-white tracking-[0.2em]">{countdownStr}</span>
+      {
+        countdownStr && (
+          <div className="absolute top-24 left-1/2 -translate-x-1/2 z-40">
+            <div className="backdrop-blur-xl bg-black/60 border border-[#2a2a2a] px-6 py-3 rounded-full flex gap-3 items-center shadow-2xl">
+              <span className="w-2 h-2 rounded-full bg-[#99CCCC] animate-pulse" />
+              <span className="text-xs text-[#a3a3a3] uppercase tracking-widest">BROADCAST STARTS IN</span>
+              <span className="text-sm font-mono text-white tracking-[0.2em]">{countdownStr}</span>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       <Timeline
         totalArtists={TOTAL_CARDS}
@@ -416,6 +426,6 @@ export function RadioPlayer() {
         <ReactionPicker isFixed={false} />
       </div>
 
-    </div>
+    </div >
   )
 }
