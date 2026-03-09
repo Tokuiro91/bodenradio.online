@@ -107,10 +107,35 @@ app.get('/api/tracks', auth, (req, res) => {
 });
 
 app.post('/api/tracks', auth, upload.array('files'), (req, res) => {
-    const stmt = db.prepare('INSERT INTO tracks (filename, originalname, size) VALUES (?, ?, ?)');
-    req.files.forEach(f => stmt.run(f.filename, f.originalname, f.size));
-    stmt.finalize();
-    res.json({ success: true, files: req.files.map(f => f.filename) });
+    if (!req.files || req.files.length === 0) {
+        console.error('[Upload] No files received by Multer');
+        return res.status(400).json({ error: 'No files uploaded' });
+    }
+
+    console.log(`[Upload] Received ${req.files.length} files. Starting DB insertion...`);
+
+    db.serialize(() => {
+        const stmt = db.prepare('INSERT INTO tracks (filename, originalname, size) VALUES (?, ?, ?)');
+        let hasError = false;
+
+        req.files.forEach(f => {
+            stmt.run(f.filename, f.originalname, f.size, (err) => {
+                if (err) {
+                    console.error(`[Upload Error] DB insert failed for ${f.filename}:`, err.message);
+                    hasError = true;
+                }
+            });
+        });
+
+        stmt.finalize((err) => {
+            if (err || hasError) {
+                console.error('[Upload Error] Finalize failed or insertion error occurred');
+                return res.status(500).json({ error: 'Database update failed' });
+            }
+            console.log(`[Upload] Successfully processed ${req.files.length} tracks.`);
+            res.json({ success: true, files: req.files.map(f => f.filename) });
+        });
+    });
 });
 
 app.get('/api/tracks/:id/stream', auth, (req, res) => {
