@@ -42,6 +42,40 @@ export default function UnifiedDashboardPage() {
         a.show.toLowerCase().includes(dbSearchQuery.toLowerCase())
     ).slice(0, 8)
 
+    const handleAddToSchedule = (a: DBArtist) => {
+        const lastArtist = [...artists].sort((x, y) => new Date(y.endTime).getTime() - new Date(x.endTime).getTime())[0]
+        const startTime = lastArtist ? new Date(lastArtist.endTime) : new Date()
+        const endTime = new Date(startTime.getTime() + 60 * 60 * 1000) // Default 1h
+
+        const newArtist = {
+            id: artists.length ? Math.max(...artists.map((a: any) => a.id)) + 1 : 0,
+            dbId: a.id,
+            name: a.name,
+            location: a.location || "Earth",
+            show: a.show || "DJ Set",
+            image: a.image || "/artists/artist-1.jpg",
+            startTime: startTime.toISOString(),
+            endTime: endTime.toISOString(),
+            duration: "01:00:00",
+            description: a.description || "Added from library",
+            dayIndex: 0,
+            orderInDay: 0,
+            type: "artist" as const
+        }
+
+        const nextArtists = [...artists, newArtist]
+        setArtists(nextArtists)
+
+        // Also sync to radio engine
+        fetch("/api/radio/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ artists: nextArtists }),
+        }).catch(() => { })
+
+        alert(`Artist ${a.name} added to site schedule!`)
+    }
+
     return (
         <div className="min-h-screen bg-[#050505] text-[#e5e5e5] font-sans selection:bg-[#99CCCC]/30">
             {/* Sidebar Navigation */}
@@ -131,36 +165,14 @@ export default function UnifiedDashboardPage() {
                             </section>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                {/* Latest Registrations Preview */}
-                                <section className="bg-[#080808] border border-[#1a1a1a] rounded-sm p-6">
-                                    <h3 className="text-xs font-bold uppercase tracking-widest text-[#737373] mb-6 flex items-center justify-between">
-                                        Recent Activity
-                                        <Users size={14} />
-                                    </h3>
-                                    <div className="space-y-4">
-                                        {[1, 2, 3, 4].map(i => (
-                                            <div key={i} className="flex items-center justify-between border-b border-[#1a1a1a]/50 pb-3 last:border-0 last:pb-0">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-sm bg-[#111] border border-[#1a1a1a]"></div>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-xs font-medium">User #{1000 + i}</span>
-                                                        <span className="text-[9px] text-[#444]">Joined 2h ago</span>
-                                                    </div>
-                                                </div>
-                                                <span className="text-[9px] px-1.5 py-0.5 bg-green-500/10 text-green-500 rounded-sm font-mono">NEW</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </section>
-
                                 {/* Quick System Metrics */}
-                                <section className="bg-[#080808] border border-[#1a1a1a] rounded-sm p-6 overflow-hidden relative">
+                                <section className="bg-[#080808] border border-[#1a1a1a] rounded-sm p-6 overflow-hidden relative col-span-2">
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-[#99CCCC]/5 blur-3xl rounded-full -mr-16 -mt-16"></div>
                                     <h3 className="text-xs font-bold uppercase tracking-widest text-[#737373] mb-6 flex items-center justify-between">
                                         System Health
                                         <BarChart3 size={14} />
                                     </h3>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                                         <MetricCard label="Uptime" value="99.9%" sub="Safe mode active" />
                                         <MetricCard label="Latency" value="24ms" sub="Global node OK" />
                                         <MetricCard label="Storage" value="78%" sub="Unified Music Dir" />
@@ -199,7 +211,10 @@ export default function UnifiedDashboardPage() {
                                                 <p className="text-xs font-bold truncate group-hover:text-[#99CCCC] transition-colors">{a.name}</p>
                                                 <p className="text-[10px] text-[#444] truncate">{a.show}</p>
                                             </div>
-                                            <button className="p-1.5 opacity-0 group-hover:opacity-100 bg-[#1a1a1a] text-[#99CCCC] rounded-sm transition-all hover:bg-[#99CCCC] hover:text-black">
+                                            <button
+                                                onClick={() => handleAddToSchedule(a)}
+                                                className="p-1.5 opacity-0 group-hover:opacity-100 bg-[#1a1a1a] text-[#99CCCC] rounded-sm transition-all hover:bg-[#99CCCC] hover:text-black"
+                                            >
                                                 <Plus size={14} />
                                             </button>
                                         </div>
@@ -297,7 +312,12 @@ export default function UnifiedDashboardPage() {
                                     </div>
                                     <div className="p-4 pt-0 grid grid-cols-2 gap-2">
                                         <button className="py-1.5 bg-[#111] border border-[#1a1a1a] text-[8px] font-black uppercase tracking-widest text-[#737373] hover:text-white hover:border-[#2a2a2a] transition-all">Edit</button>
-                                        <button className="py-1.5 bg-[#99CCCC]/10 border border-[#99CCCC]/20 text-[8px] font-black uppercase tracking-widest text-[#99CCCC] hover:bg-[#99CCCC] hover:text-black transition-all">Schedule</button>
+                                        <button
+                                            onClick={() => handleAddToSchedule(a)}
+                                            className="py-1.5 bg-[#99CCCC]/10 border border-[#99CCCC]/20 text-[8px] font-black uppercase tracking-widest text-[#99CCCC] hover:bg-[#99CCCC] hover:text-black transition-all"
+                                        >
+                                            Schedule
+                                        </button>
                                     </div>
                                 </div>
                             ))}
