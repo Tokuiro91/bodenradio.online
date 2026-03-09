@@ -2,7 +2,7 @@
 
 import { io, Socket } from "socket.io-client"
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_RADIO_BACKEND_URL || "https://backend.agileradio.online"
+const SOCKET_URL = process.env.NEXT_PUBLIC_RADIO_BACKEND_URL || "https://bodenradio.online"
 
 class SocketService {
     public socket: Socket | null = null
