@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
+const { exec } = require('child_process');
 const db = require('./db');
 
 const app = express();
@@ -12,6 +13,34 @@ app.use(cors());
 app.use(express.json());
 
 const JWT_SECRET = 'boden_radio_secret_key_123!';
+
+// System Health Endpoint
+app.get('/api/system/health', (req, res) => {
+    // 1. Storage
+    const storageCmd = "df -h / | tail -1 | awk '{print $5 \" used of \" $2}'";
+    // 2. Memory
+    const memoryCmd = "free -m | grep Mem | awk '{print $3 \"MB / \" $2 \"MB\"}'";
+    // 3. CPU Load (1-min)
+    const cpuCmd = "uptime | awk -F'load average:' '{ print $2 }' | cut -d',' -f1";
+    // 4. Latency (Ping 8.8.8.8)
+    const latencyCmd = "ping -c 1 8.8.8.8 | grep 'time=' | awk -F'time=' '{print $2}' | cut -d' ' -f1";
+
+    const stats = { storage: '---', memory: '---', cpu: '---', latency: '---' };
+
+    exec(storageCmd, (err, out) => {
+        if (!err) stats.storage = out.trim();
+        exec(memoryCmd, (err, out) => {
+            if (!err) stats.memory = out.trim();
+            exec(cpuCmd, (err, out) => {
+                if (!err) stats.cpu = out.trim() + " Load";
+                exec(latencyCmd, (err, out) => {
+                    if (!err) stats.latency = out.trim() + "ms";
+                    res.json(stats);
+                });
+            });
+        });
+    });
+});
 const MUSIC_DIR = '/var/radio/music';
 const UPLOADS_DIR = '/var/radio/uploads';
 const PORT = process.env.PORT || 8080;

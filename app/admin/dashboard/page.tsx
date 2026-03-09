@@ -22,6 +22,23 @@ export default function UnifiedDashboardPage() {
     const [selectedArtistForEdit, setSelectedArtistForEdit] = useState<DBArtist | null>(null)
     const [isArtistEditModalOpen, setIsArtistEditModalOpen] = useState(false)
     const [isArtistCreateModalOpen, setIsArtistCreateModalOpen] = useState(false)
+    const [systemStats, setSystemStats] = useState({ storage: "...", memory: "...", cpu: "...", latency: "..." })
+
+    // Polling System Stats
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await fetch("/api/system/health")
+                const data = await res.json()
+                setSystemStats(data)
+            } catch (err) {
+                console.error("Failed to fetch system stats", err)
+            }
+        }
+        fetchStats()
+        const timer = setInterval(fetchStats, 30000)
+        return () => clearInterval(timer)
+    }, [])
 
     // Protect page
     useEffect(() => {
@@ -243,10 +260,10 @@ export default function UnifiedDashboardPage() {
                                         <BarChart3 size={14} />
                                     </h3>
                                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                        <MetricCard label="Uptime" value="99.9%" sub="Safe mode active" />
-                                        <MetricCard label="Latency" value="24ms" sub="Global node OK" />
-                                        <MetricCard label="Storage" value="78%" sub="Unified Music Dir" />
-                                        <MetricCard label="Memory" value="1.2GB" sub="Node/Liquidsoap" />
+                                        <MetricCard label="CPU Load" value={systemStats.cpu} sub="Avg / 1 min" />
+                                        <MetricCard label="Latency" value={systemStats.latency} sub="To 8.8.8.8" />
+                                        <MetricCard label="Storage" value={systemStats.storage} sub="Root Partition" />
+                                        <MetricCard label="Memory" value={systemStats.memory} sub="Used / Total" />
                                     </div>
                                 </section>
                             </div>
