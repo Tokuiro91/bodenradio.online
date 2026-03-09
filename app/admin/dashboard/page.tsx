@@ -6,7 +6,7 @@ import { useArtists } from "@/lib/use-artists"
 import { signOut, useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { AnalyticsDashboard } from "@/components/analytics-dashboard"
-import { Search, Radio, Users, Database, BarChart3, Bell, LogOut, ChevronRight, Plus, Calendar } from "lucide-react"
+import { Search, Radio, Users, Database, BarChart3, Bell, LogOut, ChevronRight, Plus, Calendar, X, Clock } from "lucide-react"
 import type { DBArtist } from "@/lib/artist-db-store"
 import { RadioScheduleManager } from "@/components/radio-schedule-manager"
 
@@ -17,6 +17,8 @@ export default function UnifiedDashboardPage() {
     const [dbArtists, setDbArtists] = useState<DBArtist[]>([])
     const [dbSearchQuery, setDbSearchQuery] = useState("")
     const [activeView, setActiveView] = useState<"overview" | "schedule" | "database" | "analytics">("overview")
+    const [selectedArtistForSchedule, setSelectedArtistForSchedule] = useState<DBArtist | null>(null)
+    const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false)
 
     // Protect page
     useEffect(() => {
@@ -43,21 +45,30 @@ export default function UnifiedDashboardPage() {
     ).slice(0, 8)
 
     const handleAddToSchedule = (a: DBArtist) => {
-        const lastArtist = [...artists].sort((x, y) => new Date(y.endTime).getTime() - new Date(x.endTime).getTime())[0]
-        const startTime = lastArtist ? new Date(lastArtist.endTime) : new Date()
-        const endTime = new Date(startTime.getTime() + 60 * 60 * 1000) // Default 1h
+        setSelectedArtistForSchedule(a)
+        setIsScheduleModalOpen(true)
+    }
 
+    const confirmAddToSchedule = (details: {
+        name: string;
+        show: string;
+        startTime: string;
+        endTime: string;
+        trackName: string;
+        description: string;
+    }) => {
         const newArtist = {
             id: artists.length ? Math.max(...artists.map((a: any) => a.id)) + 1 : 0,
-            dbId: a.id,
-            name: a.name,
-            location: a.location || "Earth",
-            show: a.show || "DJ Set",
-            image: a.image || "/artists/artist-1.jpg",
-            startTime: startTime.toISOString(),
-            endTime: endTime.toISOString(),
-            duration: "01:00:00",
-            description: a.description || "Added from library",
+            dbId: selectedArtistForSchedule?.id,
+            name: details.name,
+            location: selectedArtistForSchedule?.location || "Earth",
+            show: details.show,
+            image: selectedArtistForSchedule?.image || "/artists/artist-1.jpg",
+            startTime: details.startTime,
+            endTime: details.endTime,
+            duration: ((new Date(details.endTime).getTime() - new Date(details.startTime).getTime()) / 1000 / 60).toFixed(0) + " min",
+            description: details.description,
+            trackName: details.trackName,
             dayIndex: 0,
             orderInDay: 0,
             type: "artist" as const
@@ -73,7 +84,8 @@ export default function UnifiedDashboardPage() {
             body: JSON.stringify({ artists: nextArtists }),
         }).catch(() => { })
 
-        alert(`Artist ${a.name} added to site schedule!`)
+        setIsScheduleModalOpen(false)
+        setSelectedArtistForSchedule(null)
     }
 
     return (
@@ -326,6 +338,18 @@ export default function UnifiedDashboardPage() {
                 )}
             </main>
 
+            {isScheduleModalOpen && selectedArtistForSchedule && (
+                <ScheduleEditModal
+                    artist={selectedArtistForSchedule}
+                    onClose={() => {
+                        setIsScheduleModalOpen(false)
+                        setSelectedArtistForSchedule(null)
+                    }}
+                    onConfirm={confirmAddToSchedule}
+                    lastEndTime={artists.length > 0 ? [...artists].sort((a, b) => new Date(b.endTime).getTime() - new Date(a.endTime).getTime())[0].endTime : new Date().toISOString()}
+                />
+            )}
+
             <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Tektur:wght@400;700;900&display=swap');
         .font-tektur { font-family: 'Tektur', sans-serif; }
@@ -360,6 +384,101 @@ function MetricCard({ label, value, sub }: { label: string, value: string, sub: 
             <p className="text-[9px] uppercase font-bold text-[#444] mb-1 tracking-widest">{label}</p>
             <p className="text-xl font-mono text-white mb-0.5">{value}</p>
             <p className="text-[8px] text-[#737373] uppercase font-medium">{sub}</p>
+        </div>
+    )
+}
+
+function ScheduleEditModal({ artist, onClose, onConfirm, lastEndTime }: {
+    artist: DBArtist,
+    onClose: () => void,
+    onConfirm: (details: any) => void,
+    lastEndTime: string
+}) {
+    const [name, setName] = useState(artist.name)
+    const [show, setShow] = useState(artist.show || "")
+    const [trackName, setTrackName] = useState("")
+    const [startTime, setStartTime] = useState(new Date(lastEndTime).toISOString().slice(0, 19))
+    const [endTime, setEndTime] = useState(new Date(new Date(lastEndTime).getTime() + 60 * 60 * 1000).toISOString().slice(0, 19))
+    const [description, setDescription] = useState(artist.description || "")
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="w-full max-w-xl bg-[#080808] border border-[#1a1a1a] rounded-sm shadow-2xl overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
+                    <div className="flex items-center gap-2">
+                        <Calendar size={14} className="text-[#99CCCC]" />
+                        <h3 className="text-sm font-black uppercase tracking-widest">Schedule Broadcast</h3>
+                    </div>
+                    <button onClick={onClose} className="text-[#444] hover:text-white transition-colors">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <div className="p-6 space-y-6">
+                    <div className="flex items-center gap-4 p-4 bg-black border border-[#1a1a1a] rounded-sm">
+                        <div className="w-12 h-12 relative rounded-sm overflow-hidden bg-[#111]">
+                            {artist.image && <Image src={artist.image} alt={artist.name} fill className="object-cover grayscale" unoptimized />}
+                        </div>
+                        <div>
+                            <p className="text-[10px] text-[#444] uppercase font-black tracking-widest mb-0.5">Base Record</p>
+                            <p className="text-xs font-bold text-white uppercase">{artist.name}</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Name (Display)</label>
+                            <input value={name} onChange={e => setName(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Show Title</label>
+                            <input value={show} onChange={e => setShow(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Track/Set Name</label>
+                        <input value={trackName} onChange={e => setTrackName(e.target.value)} placeholder="e.g., Midnight Melodies Mix" className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444] flex items-center gap-1.5 line-clamp-1">
+                                <Clock size={10} /> Start Time (YY-MM-DD HH:MM:SS)
+                            </label>
+                            <input type="datetime-local" step="1" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444] flex items-center gap-1.5 line-clamp-1">
+                                <Clock size={10} /> End Time (YY-MM-DD HH:MM:SS)
+                            </label>
+                            <input type="datetime-local" step="1" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Custom Description</label>
+                        <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono resize-none" />
+                    </div>
+                </div>
+
+                <div className="px-6 py-4 bg-[#0a0a0a] border-t border-[#1a1a1a] flex gap-3">
+                    <button onClick={onClose} className="flex-1 py-3 text-[10px] uppercase font-black tracking-widest text-[#737373] hover:text-white transition-all">Cancel</button>
+                    <button
+                        onClick={() => onConfirm({
+                            name,
+                            show,
+                            startTime: new Date(startTime).toISOString(),
+                            endTime: new Date(endTime).toISOString(),
+                            trackName,
+                            description
+                        })}
+                        className="flex-1 py-3 bg-[#99CCCC] text-black text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all shadow-[0_0_20px_rgba(153,204,204,0.2)]"
+                    >
+                        Confirm Broadcast
+                    </button>
+                </div>
+            </div>
         </div>
     )
 }
