@@ -660,7 +660,30 @@ function ArtistEditModal({
     const [location, setLocation] = useState(artist.location || "")
     const [instagramUrl, setInstagramUrl] = useState(artist.instagramUrl || "")
     const [soundcloudUrl, setSoundcloudUrl] = useState(artist.soundcloudUrl || "")
+    const [bandcampUrl, setBandcampUrl] = useState(artist.bandcampUrl || "")
+    const [audioUrl, setAudioUrl] = useState(artist.audioUrl || "")
+    const [description, setDescription] = useState(artist.description || "")
     const [isSaving, setIsSaving] = useState(false)
+    const [isUploading, setIsUploading] = useState(false)
+
+    const handleUpload = async (file: File) => {
+        setIsUploading(true)
+        try {
+            const formData = new FormData()
+            formData.append('broadcast_media', file)
+            const res = await fetch('/api/broadcast/upload', {
+                method: 'POST',
+                body: formData
+            })
+            const data = await res.json()
+            if (data.error) throw new Error(data.error)
+            setImage(`/broadcast-media/${data.filename}`)
+        } catch (err) {
+            alert("Upload failed")
+        } finally {
+            setIsUploading(false)
+        }
+    }
 
     const handleSave = async () => {
         setIsSaving(true)
@@ -671,7 +694,10 @@ function ArtistEditModal({
             image,
             location,
             instagramUrl,
-            soundcloudUrl
+            soundcloudUrl,
+            bandcampUrl,
+            audioUrl,
+            description
         }
         await onConfirm(updated)
         setIsSaving(false)
@@ -686,27 +712,75 @@ function ArtistEditModal({
                 </div>
 
                 <div className="p-6 space-y-4">
-                    <div className="space-y-1.5">
-                        <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Artist Name</label>
-                        <input value={name} onChange={e => setName(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Show Title</label>
-                        <input value={show} onChange={e => setShow(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Image URL</label>
-                        <input value={image} onChange={e => setImage(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
-                    </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
+                            <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Artist Name</label>
+                            <input value={name} onChange={e => setName(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Show Title</label>
+                            <input value={show} onChange={e => setShow(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Location</label>
+                            <input value={location} onChange={e => setLocation(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Audio URL</label>
+                            <input value={audioUrl} onChange={e => setAudioUrl(e.target.value)} placeholder="https://..." className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444] flex items-center justify-between">
+                            Visual Resource
+                            <span className="text-[8px] text-[#444]">Image URL or Upload</span>
+                        </label>
+                        <div className="flex gap-2">
+                            <input
+                                value={image}
+                                onChange={e => setImage(e.target.value)}
+                                placeholder="Paste URL manually..."
+                                className="flex-1 bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono"
+                            />
+                            <label className="px-4 flex items-center justify-center bg-[#111] border border-[#1a1a1a] text-[8px] font-black uppercase tracking-widest text-[#737373] hover:text-white cursor-pointer transition-all">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={e => e.target.files?.[0] && handleUpload(e.target.files[0])}
+                                />
+                                {isUploading ? "..." : "Upload File"}
+                            </label>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="space-y-1.5">
                             <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Instagram</label>
-                            <input value={instagramUrl} onChange={e => setInstagramUrl(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-[10px] text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
+                            <input value={instagramUrl} onChange={e => setInstagramUrl(e.target.value)} placeholder="Link" className="w-full bg-black border border-[#1a1a1a] p-2.5 text-[10px] text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">SoundCloud</label>
-                            <input value={soundcloudUrl} onChange={e => setSoundcloudUrl(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-[10px] text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
+                            <input value={soundcloudUrl} onChange={e => setSoundcloudUrl(e.target.value)} placeholder="Link" className="w-full bg-black border border-[#1a1a1a] p-2.5 text-[10px] text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
                         </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Bandcamp</label>
+                            <input value={bandcampUrl} onChange={e => setBandcampUrl(e.target.value)} placeholder="Link" className="w-full bg-black border border-[#1a1a1a] p-2.5 text-[10px] text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Description</label>
+                        <textarea
+                            value={description}
+                            onChange={e => setDescription(e.target.value)}
+                            rows={3}
+                            className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono resize-none"
+                        />
                     </div>
                 </div>
 

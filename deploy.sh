@@ -58,6 +58,10 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   # Re-create and symlink for backward compatibility (web access)
   mkdir -p public/uploads/audio
   ln -sf /var/radio/music/*.mp3 public/uploads/audio/ 2>/dev/null || true
+  
+  # Symlink for broadcast media uploads
+  mkdir -p public/broadcast-media
+  ln -sf /var/radio/uploads/* public/broadcast-media/ 2>/dev/null || true
 
   echo "   → перезапуск PM2..."
   pm2 restart agileradio
