@@ -7,15 +7,15 @@ const db = new sqlite3.Database(dbPath);
 
 // Create tables
 db.serialize(() => {
-    // Authentication user table
-    db.run(`CREATE TABLE IF NOT EXISTS users (
+  // Authentication user table
+  db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE,
     password TEXT
   )`);
 
-    // Tracks table
-    db.run(`CREATE TABLE IF NOT EXISTS tracks (
+  // Tracks table
+  db.run(`CREATE TABLE IF NOT EXISTS tracks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     filename TEXT UNIQUE,
     originalname TEXT,
@@ -24,15 +24,15 @@ db.serialize(() => {
     uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-    // Playlists table
-    db.run(`CREATE TABLE IF NOT EXISTS playlists (
+  // Playlists table
+  db.run(`CREATE TABLE IF NOT EXISTS playlists (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT UNIQUE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-    // Playlist to Track mapping (M:N)
-    db.run(`CREATE TABLE IF NOT EXISTS playlist_tracks (
+  // Playlist to Track mapping (M:N)
+  db.run(`CREATE TABLE IF NOT EXISTS playlist_tracks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     playlist_id INTEGER,
     track_id INTEGER,
@@ -41,16 +41,36 @@ db.serialize(() => {
     FOREIGN KEY(track_id) REFERENCES tracks(id) ON DELETE CASCADE
   )`);
 
-    // Schedule mapping
-    db.run(`CREATE TABLE IF NOT EXISTS schedule (
+  // Schedule mapping
+  db.run(`CREATE TABLE IF NOT EXISTS schedule (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT,
     type TEXT, -- 'track' or 'playlist'
     item_id INTEGER, -- refers to tracks(id) or playlists(id)
     start_time INTEGER, -- Unix timestamp (milliseconds)
     end_time INTEGER, -- Unix timestamp (milliseconds)
+    instagram_url TEXT,
+    soundcloud_url TEXT,
+    mixcloud_url TEXT,
+    broadcast_image TEXT,
+    audio_file TEXT,
+    external_stream_url TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+
+  // Add columns if they don't exist (migrations)
+  const columns = [
+    'instagram_url', 'soundcloud_url', 'mixcloud_url',
+    'broadcast_image', 'audio_file', 'external_stream_url'
+  ];
+  columns.forEach(col => {
+    db.run(`ALTER TABLE schedule ADD COLUMN ${col} TEXT`, (err) => {
+      if (err && !err.message.includes('duplicate column name')) {
+        // Ignore duplicate column errors, but log others
+        // console.error(`Error adding column ${col}:`, err.message);
+      }
+    });
+  });
 });
 
 module.exports = db;

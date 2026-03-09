@@ -56,6 +56,12 @@ export default function UnifiedDashboardPage() {
         endTime: string;
         trackName: string;
         description: string;
+        instagram_url?: string;
+        soundcloud_url?: string;
+        mixcloud_url?: string;
+        audio_file?: string;
+        broadcast_image?: string;
+        external_stream_url?: string;
     }) => {
         const newArtist = {
             id: artists.length ? Math.max(...artists.map((a: any) => a.id)) + 1 : 0,
@@ -63,12 +69,17 @@ export default function UnifiedDashboardPage() {
             name: details.name,
             location: selectedArtistForSchedule?.location || "Earth",
             show: details.show,
-            image: selectedArtistForSchedule?.image || "/artists/artist-1.jpg",
+            image: details.broadcast_image ? `https://tobodenradio.online/broadcast-media/${details.broadcast_image}` : (selectedArtistForSchedule?.image || "/artists/artist-1.jpg"),
             startTime: details.startTime,
             endTime: details.endTime,
             duration: ((new Date(details.endTime).getTime() - new Date(details.startTime).getTime()) / 1000 / 60).toFixed(0) + " min",
             description: details.description,
             trackName: details.trackName,
+            instagram_url: details.instagram_url,
+            soundcloud_url: details.soundcloud_url,
+            mixcloud_url: details.mixcloud_url,
+            audio_file: details.audio_file,
+            external_stream_url: details.external_stream_url,
             dayIndex: 0,
             orderInDay: 0,
             type: "artist" as const
@@ -400,6 +411,56 @@ function ScheduleEditModal({ artist, onClose, onConfirm, lastEndTime }: {
     const [startTime, setStartTime] = useState(new Date(lastEndTime).toISOString().slice(0, 19))
     const [endTime, setEndTime] = useState(new Date(new Date(lastEndTime).getTime() + 60 * 60 * 1000).toISOString().slice(0, 19))
     const [description, setDescription] = useState(artist.description || "")
+    const [instagramUrl, setInstagramUrl] = useState("")
+    const [soundcloudUrl, setSoundcloudUrl] = useState("")
+    const [mixcloudUrl, setMixcloudUrl] = useState("")
+    const [externalStreamUrl, setExternalStreamUrl] = useState("")
+    const [imageFile, setImageFile] = useState<File | null>(null)
+    const [audioFile, setAudioFile] = useState<File | null>(null)
+    const [isUploading, setIsUploading] = useState(false)
+
+    const handleUpload = async (file: File) => {
+        const formData = new FormData()
+        formData.append('broadcast_media', file)
+        const token = localStorage.getItem('radio_admin_token')
+        const res = await fetch('https://tobodenradio.online/api/broadcast/upload', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        })
+        const data = await res.json()
+        return data.filename
+    }
+
+    const handleConfirm = async () => {
+        setIsUploading(true)
+        try {
+            let broadcast_image = null
+            let audio_file = null
+
+            if (imageFile) broadcast_image = await handleUpload(imageFile)
+            if (audioFile) audio_file = await handleUpload(audioFile)
+
+            onConfirm({
+                name,
+                show,
+                startTime: new Date(startTime).toISOString(),
+                endTime: new Date(endTime).toISOString(),
+                trackName,
+                description,
+                instagram_url: instagramUrl,
+                soundcloud_url: soundcloudUrl,
+                mixcloud_url: mixcloudUrl,
+                external_stream_url: externalStreamUrl,
+                broadcast_image,
+                audio_file
+            })
+        } catch (err) {
+            alert("Upload failed. Please check your connection.")
+        } finally {
+            setIsUploading(false)
+        }
+    }
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
@@ -458,24 +519,51 @@ function ScheduleEditModal({ artist, onClose, onConfirm, lastEndTime }: {
 
                     <div className="space-y-1.5">
                         <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Custom Description</label>
-                        <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono resize-none" />
+                        <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono resize-none" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Social Links (IG / SC)</label>
+                            <div className="flex gap-2">
+                                <input value={instagramUrl} onChange={e => setInstagramUrl(e.target.value)} placeholder="Instagram" className="flex-1 bg-black border border-[#1a1a1a] p-2.5 text-[10px] text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
+                                <input value={soundcloudUrl} onChange={e => setSoundcloudUrl(e.target.value)} placeholder="SoundCloud" className="flex-1 bg-black border border-[#1a1a1a] p-2.5 text-[10px] text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
+                            </div>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Media Uploads (IMG / MP3)</label>
+                            <div className="flex gap-2">
+                                <label className="flex-1 flex items-center justify-center py-2 bg-[#111] border border-[#1a1a1a] text-[9px] text-[#737373] uppercase font-black tracking-widest cursor-pointer hover:text-white transition-all">
+                                    <input type="file" accept="image/*" onChange={e => setImageFile(e.target.files?.[0] || null)} className="hidden" />
+                                    {imageFile ? "Image ✓" : "Photo"}
+                                </label>
+                                <label className="flex-1 flex items-center justify-center py-2 bg-[#111] border border-[#1a1a1a] text-[9px] text-[#737373] uppercase font-black tracking-widest cursor-pointer hover:text-white transition-all">
+                                    <input type="file" accept="audio/*" onChange={e => setAudioFile(e.target.files?.[0] || null)} className="hidden" />
+                                    {audioFile ? "Audio ✓" : "Track"}
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">External Stream URL (Optional)</label>
+                        <input value={externalStreamUrl} onChange={e => setExternalStreamUrl(e.target.value)} placeholder="https://stream.example.com/live" className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
                     </div>
                 </div>
 
                 <div className="px-6 py-4 bg-[#0a0a0a] border-t border-[#1a1a1a] flex gap-3">
-                    <button onClick={onClose} className="flex-1 py-3 text-[10px] uppercase font-black tracking-widest text-[#737373] hover:text-white transition-all">Cancel</button>
+                    <button onClick={onClose} disabled={isUploading} className="flex-1 py-3 text-[10px] uppercase font-black tracking-widest text-[#737373] hover:text-white transition-all disabled:opacity-50">Cancel</button>
                     <button
-                        onClick={() => onConfirm({
-                            name,
-                            show,
-                            startTime: new Date(startTime).toISOString(),
-                            endTime: new Date(endTime).toISOString(),
-                            trackName,
-                            description
-                        })}
-                        className="flex-1 py-3 bg-[#99CCCC] text-black text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all shadow-[0_0_20px_rgba(153,204,204,0.2)]"
+                        onClick={handleConfirm}
+                        disabled={isUploading}
+                        className="flex-1 py-3 bg-[#99CCCC] text-black text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all shadow-[0_0_20px_rgba(153,204,204,0.2)] disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                        Confirm Broadcast
+                        {isUploading ? (
+                            <>
+                                <div className="w-3 h-3 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                                Processing...
+                            </>
+                        ) : "Confirm Broadcast"}
                     </button>
                 </div>
             </div>

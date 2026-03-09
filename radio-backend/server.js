@@ -13,15 +13,21 @@ app.use(express.json());
 
 const JWT_SECRET = 'boden_radio_secret_key_123!';
 const MUSIC_DIR = '/var/radio/music';
+const UPLOADS_DIR = '/var/radio/uploads';
 const PORT = process.env.PORT || 8080;
 
 // Setup Multer for track uploads
 if (!fs.existsSync(MUSIC_DIR)) fs.mkdirSync(MUSIC_DIR, { recursive: true });
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, MUSIC_DIR),
+    destination: (req, file, cb) => {
+        if (file.fieldname === 'broadcast_media') return cb(null, UPLOADS_DIR);
+        cb(null, MUSIC_DIR);
+    },
     filename: (req, file, cb) => {
         const cleanName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const fullPath = path.join(MUSIC_DIR, cleanName);
+        const dir = file.fieldname === 'broadcast_media' ? UPLOADS_DIR : MUSIC_DIR;
+        const fullPath = path.join(dir, cleanName);
         if (fs.existsSync(fullPath)) {
             const ext = path.extname(cleanName);
             const base = path.basename(cleanName, ext);
@@ -185,6 +191,11 @@ app.delete('/api/tracks/:id', auth, (req, res) => {
     });
 });
 
+app.post('/api/broadcast/upload', auth, upload.single('broadcast_media'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    res.json({ success: true, filename: req.file.filename });
+});
+
 /* --- PLAYLISTS --- */
 // Create Playlist
 app.post('/api/playlists', auth, (req, res) => {
@@ -252,26 +263,14 @@ app.get('/api/schedule', auth, (req, res) => {
 
 // Bulk sync schedule (used by Next.js admin)
 app.post('/api/schedule/sync', auth, (req, res) => {
-    const { events } = req.body; // array of { title, type, item_id, start_time, end_time }
+    const { events } = req.body; // array of { title, type, item_id, start_time, end_time, ... }
 
     if (!events || !events.length) {
         db.run('DELETE FROM schedule', () => res.json({ success: true, count: 0 }));
         return;
     }
 
-    // Sort by start time to make overlap check easier
     const sorted = [...events].sort((a, b) => a.start_time - b.start_time);
-
-    // Check for internal overlaps in the new list
-    for (let i = 0; i < sorted.length - 1; i++) {
-        const current = sorted[i];
-        const next = sorted[i + 1];
-        if (current.start_time < next.end_time && next.start_time < current.end_time) {
-            return res.status(400).json({
-                error: `Конфликт в списке синхронизации: "${current.title}" пересекается с "${next.title}"`
-            });
-        }
-    }
 
     db.serialize(() => {
         db.run('BEGIN TRANSACTION', (err) => {
@@ -283,13 +282,24 @@ app.post('/api/schedule/sync', auth, (req, res) => {
                     return res.status(500).json({ error: 'Failed to clear schedule' });
                 }
 
-                const stmt = db.prepare('INSERT INTO schedule (title, type, item_id, start_time, end_time) VALUES (?, ?, ?, ?, ?)');
+                const stmt = db.prepare(`
+                    INSERT INTO schedule (
+                        title, type, item_id, start_time, end_time, 
+                        instagram_url, soundcloud_url, mixcloud_url, 
+                        broadcast_image, audio_file, external_stream_url
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `);
                 let insertError = false;
 
                 sorted.forEach(ev => {
-                    stmt.run(ev.title, ev.type, ev.item_id, ev.start_time, ev.end_time, (err) => {
-                        if (err) insertError = true;
-                    });
+                    stmt.run(
+                        ev.title, ev.type, ev.item_id, ev.start_time, ev.end_time,
+                        ev.instagram_url || null, ev.soundcloud_url || null, ev.mixcloud_url || null,
+                        ev.broadcast_image || null, ev.audio_file || null, ev.external_stream_url || null,
+                        (err) => {
+                            if (err) insertError = true;
+                        }
+                    );
                 });
 
                 stmt.finalize((err) => {
@@ -360,7 +370,6 @@ app.delete('/api/schedule/:id', auth, (req, res) => {
 app.get('/internal/next', (req, res) => {
     const now = Date.now();
     // Find active schedule
-    // Order by id (first matched)
     db.get('SELECT * FROM schedule WHERE start_time <= ? AND end_time > ? ORDER BY id ASC', [now, now], (err, schedule) => {
         if (!schedule) return res.status(404).send('NO_SCHEDULE');
 
@@ -368,11 +377,22 @@ app.get('/internal/next', (req, res) => {
         const totalDurationSeconds = Math.max(1, Math.floor((schedule.end_time - schedule.start_time) / 1000));
         const fadeOutDuration = 5.0;
 
+        // Priority 1: External Stream URL
+        if (schedule.external_stream_url) {
+            return res.send(`annotate:liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration}:${schedule.external_stream_url}`);
+        }
+
+        // Priority 2: Custom Audio File
+        if (schedule.audio_file) {
+            const fullPath = path.join(UPLOADS_DIR, schedule.audio_file);
+            return res.send(`annotate:liq_cue_in=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration},liq_start=${offsetSeconds}:${fullPath}`);
+        }
+
+        // Priority 3: Regular track/playlist items
         if (schedule.type === 'track') {
             db.get('SELECT filename FROM tracks WHERE id = ?', [schedule.item_id], (err, track) => {
                 if (track) {
                     const fullPath = path.join(MUSIC_DIR, track.filename);
-                    // Use multi-tag approach for Liquidsoap 2.2.x seeking and duration enforcement
                     return res.send(`annotate:liq_cue_in=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration},liq_start=${offsetSeconds}:${fullPath}`);
                 }
                 res.status(404).send('TRACK_NOT_FOUND');
@@ -386,7 +406,6 @@ app.get('/internal/next', (req, res) => {
             `, [schedule.item_id], (err, track) => {
                 if (track) {
                     const fullPath = path.join(MUSIC_DIR, track.filename);
-                    // Also apply multi-tag seeking for playlists (sets)
                     return res.send(`annotate:liq_cue_in=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration},liq_start=${offsetSeconds}:${fullPath}`);
                 }
                 res.status(404).send('PLAYLIST_EMPTY');
@@ -395,7 +414,8 @@ app.get('/internal/next', (req, res) => {
     });
 });
 
-// Serve frontend build (if any, otherwise just API)
+// Serve frontend build & uploads
+app.use('/broadcast-media', express.static(UPLOADS_DIR));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.listen(PORT, () => console.log(`BØDEN Backend running on port ${PORT}`));
