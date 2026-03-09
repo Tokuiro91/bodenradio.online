@@ -22,10 +22,18 @@ export async function POST(req: Request) {
             }
         }
 
-        const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+        let privateKey = process.env.GOOGLE_PRIVATE_KEY;
         if (!privateKey) {
             console.error('GOOGLE_PRIVATE_KEY is missing from environment');
             return NextResponse.json({ error: 'Server configuration error (key)' }, { status: 500 });
+        }
+
+        // Handle both actual newlines and literal \n sequences
+        privateKey = privateKey.replace(/\\n/g, '\n');
+
+        // Ensure it starts/ends correctly and has actual newlines
+        if (!privateKey.includes('\n')) {
+            console.warn('Private key does not contain newlines, this might cause OSSL errors');
         }
 
         const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
