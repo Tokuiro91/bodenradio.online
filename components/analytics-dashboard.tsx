@@ -89,6 +89,15 @@ export function AnalyticsDashboard({ onlineCount = 0 }: { onlineCount?: number }
 
             {/* ── Key Metrics ── */}
             <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${loading ? "opacity-50 pointer-events-none" : ""}`}>
+                <div className="bg-[#0a0a0a] border border-[#99CCCC]/30 p-4 rounded-sm shadow-[0_0_20px_rgba(153,204,204,0.05)] relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-[#99CCCC]/5 blur-2xl rounded-full -mr-8 -mt-8"></div>
+                    <p className="text-[10px] text-[#99CCCC] uppercase tracking-widest mb-1 flex items-center gap-2">
+                        Слушают сейчас
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#99CCCC] animate-pulse"></span>
+                    </p>
+                    <p className="text-2xl font-mono text-white tracking-tighter">{onlineCount}</p>
+                    <p className="mt-2 text-[9px] text-[#444] uppercase">Live Listeners</p>
+                </div>
                 <div className="bg-[#0a0a0a] border border-[#2a2a2a] p-4 rounded-sm">
                     <p className="text-[10px] text-[#737373] uppercase tracking-widest mb-1">Уникальные</p>
                     <p className="text-2xl font-mono text-white">{data?.totalVisitors || 0}</p>
