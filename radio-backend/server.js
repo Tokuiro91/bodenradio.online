@@ -274,15 +274,38 @@ app.post('/api/schedule/sync', auth, (req, res) => {
     }
 
     db.serialize(() => {
-        db.run('DELETE FROM schedule', (err) => {
-            if (err) return res.status(500).json({ error: 'Failed to clear schedule' });
+        db.run('BEGIN TRANSACTION', (err) => {
+            if (err) return res.status(500).json({ error: 'Failed to start transaction' });
 
-            const stmt = db.prepare('INSERT INTO schedule (title, type, item_id, start_time, end_time) VALUES (?, ?, ?, ?, ?)');
-            sorted.forEach(ev => {
-                stmt.run(ev.title, ev.type, ev.item_id, ev.start_time, ev.end_time);
+            db.run('DELETE FROM schedule', (err) => {
+                if (err) {
+                    db.run('ROLLBACK');
+                    return res.status(500).json({ error: 'Failed to clear schedule' });
+                }
+
+                const stmt = db.prepare('INSERT INTO schedule (title, type, item_id, start_time, end_time) VALUES (?, ?, ?, ?, ?)');
+                let insertError = false;
+
+                sorted.forEach(ev => {
+                    stmt.run(ev.title, ev.type, ev.item_id, ev.start_time, ev.end_time, (err) => {
+                        if (err) insertError = true;
+                    });
+                });
+
+                stmt.finalize((err) => {
+                    if (err || insertError) {
+                        db.run('ROLLBACK');
+                        return res.status(500).json({ error: 'Database update failed' });
+                    }
+                    db.run('COMMIT', (err) => {
+                        if (err) {
+                            db.run('ROLLBACK');
+                            return res.status(500).json({ error: 'Failed to commit transaction' });
+                        }
+                        res.json({ success: true, count: sorted.length });
+                    });
+                });
             });
-            stmt.finalize();
-            res.json({ success: true, count: sorted.length });
         });
     });
 });
@@ -342,13 +365,15 @@ app.get('/internal/next', (req, res) => {
         if (!schedule) return res.status(404).send('NO_SCHEDULE');
 
         const offsetSeconds = Math.max(0, Math.floor((now - schedule.start_time) / 1000));
+        const totalDurationSeconds = Math.max(1, Math.floor((schedule.end_time - schedule.start_time) / 1000));
+        const fadeOutDuration = 5.0;
 
         if (schedule.type === 'track') {
             db.get('SELECT filename FROM tracks WHERE id = ?', [schedule.item_id], (err, track) => {
                 if (track) {
                     const fullPath = path.join(MUSIC_DIR, track.filename);
-                    // Use multi-tag approach for Liquidsoap 2.2.x seeking
-                    return res.send(`annotate:liq_cue_in=${offsetSeconds},liq_start=${offsetSeconds}:${fullPath}`);
+                    // Use multi-tag approach for Liquidsoap 2.2.x seeking and duration enforcement
+                    return res.send(`annotate:liq_cue_in=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration},liq_start=${offsetSeconds}:${fullPath}`);
                 }
                 res.status(404).send('TRACK_NOT_FOUND');
             });
@@ -362,7 +387,7 @@ app.get('/internal/next', (req, res) => {
                 if (track) {
                     const fullPath = path.join(MUSIC_DIR, track.filename);
                     // Also apply multi-tag seeking for playlists (sets)
-                    return res.send(`annotate:liq_cue_in=${offsetSeconds},liq_start=${offsetSeconds}:${fullPath}`);
+                    return res.send(`annotate:liq_cue_in=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration},liq_start=${offsetSeconds}:${fullPath}`);
                 }
                 res.status(404).send('PLAYLIST_EMPTY');
             });

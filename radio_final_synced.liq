@@ -20,14 +20,20 @@ def get_next_track() =
 end
 
 # Primary source: Dashboard schedule
-my_source = request.dynamic(id="boden_dashboard", get_next_track)
+my_source = request.dynamic(id="boden_dashboard", prefetch=1, get_next_track)
+
+# Wrap with cue_cut to respect metadata boundaries (liq_cue_in/out)
+my_source = cue_cut(my_source)
 
 # Fallback: Random music from the directory
 # We use track_sensitive=false for the fallback to interrupt it when a scheduled item is ready
 fallback_music = playlist(music_dir, mode='randomize', reload_mode='watch')
 
-# Final output source
+# Final output source with smooth crossfading
 radio = fallback(track_sensitive=false, [my_source, fallback_music, blank()])
+
+# Apply crossfading for smooth transitions and fade-outs
+radio = crossfade(smart=true, duration=5.0, fade_out=5.0, fade_in=0.0, radio)
 
 # Make sure it never stops
 radio = mksafe(radio)
