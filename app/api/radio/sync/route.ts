@@ -21,22 +21,29 @@ export async function POST(request: Request) {
 
         // 3. Prepare events
         const events = artists
-            .filter((a: any) => a.type === 'artist' && a.audioUrl)
+            .filter((a: any) => a.type === 'artist')
             .map((a: any) => {
-                const filename = a.audioUrl.split('/').pop();
-                const track = tracks.find((t: any) => t.filename === filename);
-
-                if (!track) return null;
+                let trackId = null;
+                if (a.audioUrl) {
+                    const filename = a.audioUrl.split('/').pop();
+                    const track = tracks.find((t: any) => t.filename === filename);
+                    if (track) trackId = track.id;
+                }
 
                 return {
                     title: `[SYNC] ${a.name}`,
                     type: 'track',
-                    item_id: track.id,
+                    item_id: trackId,
                     start_time: new Date(a.startTime).getTime(),
-                    end_time: new Date(a.endTime).getTime()
+                    end_time: new Date(a.endTime).getTime(),
+                    instagram_url: a.instagram_url || null,
+                    soundcloud_url: a.soundcloud_url || null,
+                    mixcloud_url: a.mixcloud_url || null,
+                    broadcast_image: a.broadcast_image || null,
+                    audio_file: a.audio_file || null,
+                    external_stream_url: a.external_stream_url || null
                 };
-            })
-            .filter((e: any) => e !== null);
+            });
 
         // 4. Send to Radio Sync Endpoint
         const syncRes = await fetch(`${process.env.RADIO_BACKEND_URL || 'http://localhost:8080'}/api/schedule/sync`, {

@@ -19,6 +19,8 @@ export default function UnifiedDashboardPage() {
     const [activeView, setActiveView] = useState<"overview" | "schedule" | "database" | "analytics">("overview")
     const [selectedArtistForSchedule, setSelectedArtistForSchedule] = useState<DBArtist | null>(null)
     const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false)
+    const [selectedArtistForEdit, setSelectedArtistForEdit] = useState<DBArtist | null>(null)
+    const [isArtistEditModalOpen, setIsArtistEditModalOpen] = useState(false)
 
     // Protect page
     useEffect(() => {
@@ -49,6 +51,29 @@ export default function UnifiedDashboardPage() {
         setIsScheduleModalOpen(true)
     }
 
+    const handleEditArtist = (a: DBArtist) => {
+        setSelectedArtistForEdit(a)
+        setIsArtistEditModalOpen(true)
+    }
+
+    const handleSaveArtist = async (updated: DBArtist) => {
+        try {
+            const res = await fetch("/api/artist-db", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updated)
+            })
+            if (!res.ok) throw new Error("Save failed")
+
+            // Update local state
+            setDbArtists(prev => prev.map(a => a.id === updated.id ? updated : a))
+            setIsArtistEditModalOpen(false)
+            setSelectedArtistForEdit(null)
+        } catch (err) {
+            alert("Failed to save artist changes")
+        }
+    }
+
     const confirmAddToSchedule = (details: {
         name: string;
         show: string;
@@ -69,7 +94,7 @@ export default function UnifiedDashboardPage() {
             name: details.name,
             location: selectedArtistForSchedule?.location || "Earth",
             show: details.show,
-            image: details.broadcast_image ? `https://tobodenradio.online/broadcast-media/${details.broadcast_image}` : (selectedArtistForSchedule?.image || "/artists/artist-1.jpg"),
+            image: details.broadcast_image ? `/broadcast-media/${details.broadcast_image}` : (selectedArtistForSchedule?.image || "/artists/artist-1.jpg"),
             startTime: details.startTime,
             endTime: details.endTime,
             duration: ((new Date(details.endTime).getTime() - new Date(details.startTime).getTime()) / 1000 / 60).toFixed(0) + " min",
@@ -334,7 +359,12 @@ export default function UnifiedDashboardPage() {
                                         <p className="text-[10px] text-[#737373] line-clamp-1">{a.show}</p>
                                     </div>
                                     <div className="p-4 pt-0 grid grid-cols-2 gap-2">
-                                        <button className="py-1.5 bg-[#111] border border-[#1a1a1a] text-[8px] font-black uppercase tracking-widest text-[#737373] hover:text-white hover:border-[#2a2a2a] transition-all">Edit</button>
+                                        <button
+                                            onClick={() => handleEditArtist(a)}
+                                            className="py-1.5 bg-[#111] border border-[#1a1a1a] text-[8px] font-black uppercase tracking-widest text-[#737373] hover:text-white hover:border-[#2a2a2a] transition-all"
+                                        >
+                                            Edit
+                                        </button>
                                         <button
                                             onClick={() => handleAddToSchedule(a)}
                                             className="py-1.5 bg-[#99CCCC]/10 border border-[#99CCCC]/20 text-[8px] font-black uppercase tracking-widest text-[#99CCCC] hover:bg-[#99CCCC] hover:text-black transition-all"
@@ -358,6 +388,17 @@ export default function UnifiedDashboardPage() {
                     }}
                     onConfirm={confirmAddToSchedule}
                     lastEndTime={artists.length > 0 ? [...artists].sort((a, b) => new Date(b.endTime).getTime() - new Date(a.endTime).getTime())[0].endTime : new Date().toISOString()}
+                />
+            )}
+
+            {isArtistEditModalOpen && selectedArtistForEdit && (
+                <ArtistEditModal
+                    artist={selectedArtistForEdit}
+                    onClose={() => {
+                        setIsArtistEditModalOpen(false)
+                        setSelectedArtistForEdit(null)
+                    }}
+                    onConfirm={handleSaveArtist}
                 />
             )}
 
@@ -422,13 +463,13 @@ function ScheduleEditModal({ artist, onClose, onConfirm, lastEndTime }: {
     const handleUpload = async (file: File) => {
         const formData = new FormData()
         formData.append('broadcast_media', file)
-        const token = localStorage.getItem('radio_admin_token')
-        const res = await fetch('https://tobodenradio.online/api/broadcast/upload', {
+        // Correct proxy endpoint
+        const res = await fetch('/api/broadcast/upload', {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
             body: formData
         })
         const data = await res.json()
+        if (data.error) throw new Error(data.error)
         return data.filename
     }
 
@@ -564,6 +605,86 @@ function ScheduleEditModal({ artist, onClose, onConfirm, lastEndTime }: {
                                 Processing...
                             </>
                         ) : "Confirm Broadcast"}
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function ArtistEditModal({
+    artist,
+    onClose,
+    onConfirm
+}: {
+    artist: DBArtist
+    onClose: () => void
+    onConfirm: (updated: DBArtist) => void
+}) {
+    const [name, setName] = useState(artist.name)
+    const [show, setShow] = useState(artist.show || "")
+    const [image, setImage] = useState(artist.image || "")
+    const [location, setLocation] = useState(artist.location || "")
+    const [instagramUrl, setInstagramUrl] = useState(artist.instagramUrl || "")
+    const [soundcloudUrl, setSoundcloudUrl] = useState(artist.soundcloudUrl || "")
+    const [isSaving, setIsSaving] = useState(false)
+
+    const handleSave = async () => {
+        setIsSaving(true)
+        const updated: DBArtist = {
+            ...artist,
+            name,
+            show,
+            image,
+            location,
+            instagramUrl,
+            soundcloudUrl
+        }
+        await onConfirm(updated)
+        setIsSaving(false)
+    }
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="bg-[#0a0a0a] border border-[#1a1a1a] w-full max-w-lg rounded-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="px-6 py-4 border-b border-[#1a1a1a] flex items-center justify-between bg-[#080808]">
+                    <h3 className="text-[12px] font-black uppercase tracking-[0.25em] text-[#99CCCC]">Edit Master Artist Record</h3>
+                    <button onClick={onClose} className="p-1 text-[#444] hover:text-white transition-colors"><X size={16} /></button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Artist Name</label>
+                        <input value={name} onChange={e => setName(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Show Title</label>
+                        <input value={show} onChange={e => setShow(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Image URL</label>
+                        <input value={image} onChange={e => setImage(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">Instagram</label>
+                            <input value={instagramUrl} onChange={e => setInstagramUrl(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-[10px] text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444]">SoundCloud</label>
+                            <input value={soundcloudUrl} onChange={e => setSoundcloudUrl(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2.5 text-[10px] text-white outline-none focus:border-[#99CCCC] transition-colors font-mono" />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="px-6 py-4 bg-[#0a0a0a] border-t border-[#1a1a1a] flex gap-3">
+                    <button onClick={onClose} disabled={isSaving} className="flex-1 py-3 text-[10px] uppercase font-black tracking-widest text-[#737373] hover:text-white transition-all disabled:opacity-50">Cancel</button>
+                    <button
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="flex-1 py-3 bg-[#99CCCC] text-black text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all shadow-[0_0_20px_rgba(153,204,204,0.2)] disabled:opacity-50"
+                    >
+                        {isSaving ? "Saving..." : "Update Record"}
                     </button>
                 </div>
             </div>
