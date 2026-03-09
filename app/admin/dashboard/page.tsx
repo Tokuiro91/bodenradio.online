@@ -21,6 +21,7 @@ export default function UnifiedDashboardPage() {
     const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false)
     const [selectedArtistForEdit, setSelectedArtistForEdit] = useState<DBArtist | null>(null)
     const [isArtistEditModalOpen, setIsArtistEditModalOpen] = useState(false)
+    const [isArtistCreateModalOpen, setIsArtistCreateModalOpen] = useState(false)
 
     // Protect page
     useEffect(() => {
@@ -54,6 +55,27 @@ export default function UnifiedDashboardPage() {
     const handleEditArtist = (a: DBArtist) => {
         setSelectedArtistForEdit(a)
         setIsArtistEditModalOpen(true)
+    }
+
+    const handleCreateMaster = () => {
+        setIsArtistCreateModalOpen(true)
+    }
+
+    const handleSaveNewArtist = async (newArtist: Omit<DBArtist, "id">) => {
+        try {
+            const res = await fetch("/api/artist-db", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(newArtist)
+            })
+            if (!res.ok) throw new Error("Create failed")
+            const created = await res.json()
+
+            setDbArtists(prev => [...prev, created])
+            setIsArtistCreateModalOpen(false)
+        } catch (err) {
+            alert("Failed to create artist")
+        }
     }
 
     const handleSaveArtist = async (updated: DBArtist) => {
@@ -342,7 +364,10 @@ export default function UnifiedDashboardPage() {
                                 </div>
                                 <span className="text-[10px] font-mono text-[#444] uppercase tracking-widest">{dbArtists.length} Total Artists</span>
                             </div>
-                            <button className="px-4 py-2 bg-[#99CCCC] text-black text-[10px] font-black uppercase tracking-widest rounded-sm hover:bg-white transition-all shadow-lg">
+                            <button
+                                onClick={handleCreateMaster}
+                                className="px-4 py-2 bg-[#99CCCC] text-black text-[10px] font-black uppercase tracking-widest rounded-sm hover:bg-white transition-all shadow-lg"
+                            >
                                 + Create Master Record
                             </button>
                         </div>
@@ -399,6 +424,14 @@ export default function UnifiedDashboardPage() {
                         setSelectedArtistForEdit(null)
                     }}
                     onConfirm={handleSaveArtist}
+                />
+            )}
+
+            {isArtistCreateModalOpen && (
+                <ArtistEditModal
+                    artist={{ id: "", name: "", show: "", image: "", location: "Earth", description: "" }}
+                    onClose={() => setIsArtistCreateModalOpen(false)}
+                    onConfirm={handleSaveNewArtist}
                 />
             )}
 

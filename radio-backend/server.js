@@ -379,13 +379,14 @@ app.get('/internal/next', (req, res) => {
 
         // Priority 1: External Stream URL
         if (schedule.external_stream_url) {
+            // For streams, cue_out tells liquidsoap when to stop the request
             return res.send(`annotate:liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration}:${schedule.external_stream_url}`);
         }
 
         // Priority 2: Custom Audio File
         if (schedule.audio_file) {
             const fullPath = path.join(UPLOADS_DIR, schedule.audio_file);
-            return res.send(`annotate:liq_cue_in=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration},liq_start=${offsetSeconds}:${fullPath}`);
+            return res.send(`annotate:liq_cue_in=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration}:${fullPath}`);
         }
 
         // Priority 3: Regular track/playlist items
@@ -393,11 +394,12 @@ app.get('/internal/next', (req, res) => {
             db.get('SELECT filename FROM tracks WHERE id = ?', [schedule.item_id], (err, track) => {
                 if (track) {
                     const fullPath = path.join(MUSIC_DIR, track.filename);
-                    return res.send(`annotate:liq_cue_in=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration},liq_start=${offsetSeconds}:${fullPath}`);
+                    return res.send(`annotate:liq_cue_in=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration}:${fullPath}`);
                 }
                 res.status(404).send('TRACK_NOT_FOUND');
             });
-        } else if (schedule.type === 'playlist') {
+        }
+        else if (schedule.type === 'playlist') {
             db.get(`
                 SELECT t.filename FROM playlist_tracks pt 
                 JOIN tracks t ON t.id = pt.track_id 

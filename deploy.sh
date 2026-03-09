@@ -48,8 +48,9 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   echo "   → Unifying audio directories (/var/radio/music)..."
   # Unify with liquidsoap if dir exists
   mkdir -p /var/radio/music
-  chown -R liquidsoap:liquidsoap /var/radio/music || true
-  chmod -R 775 /var/radio/music
+  mkdir -p /var/radio/uploads
+  chown -R liquidsoap:liquidsoap /var/radio/music /var/radio/uploads || true
+  chmod -R 775 /var/radio/music /var/radio/uploads
   # Move existing files from old uploads to unified dir
   if [ -d "public/uploads/audio" ]; then
     find public/uploads/audio -name "*.mp3" -exec mv {} /var/radio/music/ \; 2>/dev/null || true
