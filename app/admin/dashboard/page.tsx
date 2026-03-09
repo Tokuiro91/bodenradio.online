@@ -371,9 +371,7 @@ export default function UnifiedDashboardPage() {
                 )}
 
                 {activeView === "analytics" && (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                        <AnalyticsDashboard />
-                    </div>
+                    <AnalyticsDashboard onlineCount={onlineCount} />
                 )}
 
                 {activeView === "schedule" && (

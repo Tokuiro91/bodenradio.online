@@ -25,7 +25,7 @@ interface AnalyticsData {
     rawSessions: any[]
 }
 
-export function AnalyticsDashboard() {
+export function AnalyticsDashboard({ onlineCount = 0 }: { onlineCount?: number }) {
     const [data, setData] = useState<AnalyticsData | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")

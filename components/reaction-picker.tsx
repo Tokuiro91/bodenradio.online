@@ -73,17 +73,19 @@ export function ReactionPicker({ isFixed = true, className = "" }: { isFixed?: b
 
         setSending(true)
         try {
-            const res = await fetch("/api/reactions/send", {
+            await fetch("/api/reactions/send", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ packId: pack.id, stickerId: sticker.id }),
             })
-            if (res.status === 429) {
-                setCooldown(true)
-                setTimeout(() => setCooldown(false), 1000)
-            }
-        } catch { /* ignore network errors */ }
-        finally { setSending(false) }
+        } catch (error) {
+            // Ignore API failures, we use sockets for real-time
+            console.warn("Reaction API failed, fallback to socket only", error)
+        } finally {
+            setSending(false)
+            setCooldown(true)
+            setTimeout(() => setCooldown(false), 2000)
+        }
     }, [sending, cooldown, session])
 
     if (!isLoggedIn) return null
