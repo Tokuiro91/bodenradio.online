@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Loader2, ArrowLeft, Send, CheckCircle2 } from "lucide-react"
@@ -32,6 +32,15 @@ export default function MixSubmissionPage() {
         router.push("/login")
         return null
     }
+
+    useEffect(() => {
+        if (submitted) {
+            const timer = setTimeout(() => {
+                router.push("/")
+            }, 5000)
+            return () => clearTimeout(timer)
+        }
+    }, [submitted, router])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
