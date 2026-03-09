@@ -480,7 +480,31 @@ app.get('/internal/next', (req, res) => {
 app.use('/broadcast-media', express.static(UPLOADS_DIR));
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.listen(PORT, () => console.log(`BØDEN Backend running on port ${PORT}`));
+const server = require('http').createServer(app);
+const io = require('socket.io')(server, {
+    cors: { origin: "*", methods: ["GET", "POST"] }
+});
+
+let onlineCount = 0;
+
+io.on('connection', (socket) => {
+    onlineCount++;
+    console.log(`[Socket] User connected. Online: ${onlineCount}`);
+    io.emit('stats:update', { onlineCount });
+
+    socket.on('reaction', (data) => {
+        // Broadcast reaction to all other clients
+        socket.broadcast.emit('reaction', data);
+    });
+
+    socket.on('disconnect', () => {
+        onlineCount = Math.max(0, onlineCount - 1);
+        console.log(`[Socket] User disconnected. Online: ${onlineCount}`);
+        io.emit('stats:update', { onlineCount });
+    });
+});
+
+server.listen(PORT, () => console.log(`BØDEN Backend (with Sockets) running on port ${PORT}`));
 
 // --- NOTIFICATION WORKER ---
 
@@ -490,15 +514,15 @@ async function checkNotifications() {
     const check10m = now + 10 * 60 * 1000;
 
     // Broad window to catch events (checked every 5 mins)
-    const windowMs = 6 * 60 * 1000; 
+    const windowMs = 6 * 60 * 1000;
 
     db.all(`
         SELECT * FROM schedule 
         WHERE (start_time BETWEEN ? AND ?) 
            OR (start_time BETWEEN ? AND ?)
-    `, [check24h - windowMs, check24h + windowMs, 
-        check10m - windowMs, check10m + windowMs], async (err, rows) => {
-        
+    `, [check24h - windowMs, check24h + windowMs,
+    check10m - windowMs, check10m + windowMs], async (err, rows) => {
+
         if (err || !rows || rows.length === 0) return;
 
         // Load listeners from Next.js data folder
@@ -518,10 +542,10 @@ async function checkNotifications() {
             const timeDiff24h = Math.abs(row.start_time - check24h);
             const timeDiff10m = Math.abs(row.start_time - check10m);
             const type = timeDiff24h < timeDiff10m ? '24h' : '10m';
-            
+
             // Check if already logged
             db.get('SELECT id FROM notification_logs WHERE schedule_id = ? AND type = ?', [row.id, type], async (err, log) => {
-                if (log) return; 
+                if (log) return;
 
                 const artistName = row.title.replace('[SYNC] ', '').replace('[TRACK] ', '');
                 const startTime = new Date(row.start_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -529,16 +553,16 @@ async function checkNotifications() {
 
                 const payload = JSON.stringify({
                     title: type === '24h' ? `Favorite Artist Alert 🌟` : `Starting Soon! 🔥`,
-                    body: type === '24h' 
-                        ? `Your favorite artist ${artistName} will be playing on ${startDate} at ${startTime}.` 
+                    body: type === '24h'
+                        ? `Your favorite artist ${artistName} will be playing on ${startDate} at ${startTime}.`
                         : `Almost there! ${artistName} is about to play. Don't miss it!`,
                     icon: "/icons/icon-192.png",
                     url: "/"
                 });
 
-                const interestedListeners = listeners.filter(l => 
-                    l.pushEnabled && 
-                    l.favoriteArtists?.includes(row.db_id) && 
+                const interestedListeners = listeners.filter(l =>
+                    l.pushEnabled &&
+                    l.favoriteArtists?.includes(row.db_id) &&
                     l.pushSubscriptions?.length > 0
                 );
 

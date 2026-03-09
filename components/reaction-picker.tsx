@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import { Smile, Lock } from "lucide-react"
 import dynamic from "next/dynamic"
+import { socketService } from "@/lib/socket"
 
 interface Sticker {
     id: string
@@ -30,8 +31,10 @@ export function ReactionPicker({ isFixed = true, className = "" }: { isFixed?: b
 
     const isLoggedIn = !!session?.user
 
-    // Load packs
+    // Load packs & Connect to socket
     useEffect(() => {
+        const socket = socketService.connect()
+
         if (!isLoggedIn) return
         fetch("/api/reactions/send")
             .then(r => r.json())
@@ -45,13 +48,12 @@ export function ReactionPicker({ isFixed = true, className = "" }: { isFixed?: b
     const sendReaction = useCallback(async (pack: Pack, sticker: Sticker) => {
         if (pack.locked || sending || cooldown) return
 
-        // --- Local Echo ---
-        // Dispatch a custom event so the UI shows the reaction immediately for the sender
-        const localReaction = {
+        // Build payload
+        const reactionData = {
             type: "reaction",
-            id: `local-${Date.now()}-${Math.random()}`,
-            userId: session?.user?.id || "local",
-            username: session?.user?.name || "You",
+            id: `${session?.user?.id || "anon"}-${Date.now()}`,
+            userId: session?.user?.id || "anon",
+            username: session?.user?.name || "listener",
             packId: pack.id,
             stickerId: sticker.id,
             stickerType: sticker.type,
@@ -59,7 +61,15 @@ export function ReactionPicker({ isFixed = true, className = "" }: { isFixed?: b
             url: sticker.url,
             sentAt: Date.now(),
         }
-        window.dispatchEvent(new CustomEvent("local-reaction", { detail: localReaction }))
+
+        // --- Local Echo ---
+        window.dispatchEvent(new CustomEvent("local-reaction", { detail: reactionData }))
+
+        // --- Socket Broadcast ---
+        const socket = socketService.socket
+        if (socket?.connected) {
+            socket.emit("reaction", reactionData)
+        }
 
         setSending(true)
         try {

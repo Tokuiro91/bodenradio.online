@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { AnalyticsProvider } from "@/components/analytics-provider"
 import { NextAuthProvider } from "@/components/providers/session-provider"
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt"
+import { FloatingReactions } from "@/components/floating-reactions"
 import "./globals.css"
 
 
@@ -76,6 +77,7 @@ export default function RootLayout({
           <PwaInstallPrompt />
           <Analytics />
           <AnalyticsProvider />
+          <FloatingReactions />
         </NextAuthProvider>
 
         {/* Service Worker registration */}

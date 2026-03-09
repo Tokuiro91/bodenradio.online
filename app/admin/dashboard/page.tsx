@@ -7,8 +7,10 @@ import { signOut, useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { AnalyticsDashboard } from "@/components/analytics-dashboard"
 import { Search, Radio, Users, Database, BarChart3, Bell, LogOut, ChevronRight, Plus, Calendar, X, Clock } from "lucide-react"
-import type { DBArtist } from "@/lib/artist-db-store"
+import { DBArtist } from "@/lib/artist-db-store"
 import { RadioScheduleManager } from "@/components/radio-schedule-manager"
+import { socketService } from "@/lib/socket"
+import { Signal } from "lucide-react"
 
 export default function UnifiedDashboardPage() {
     const { data: session, status } = useSession()
@@ -23,8 +25,9 @@ export default function UnifiedDashboardPage() {
     const [isArtistEditModalOpen, setIsArtistEditModalOpen] = useState(false)
     const [isArtistCreateModalOpen, setIsArtistCreateModalOpen] = useState(false)
     const [systemStats, setSystemStats] = useState({ storage: "...", memory: "...", cpu: "...", latency: "..." })
+    const [onlineCount, setOnlineCount] = useState(0)
 
-    // Polling System Stats
+    // Polling System Stats & Socket Online Count
     useEffect(() => {
         const fetchStats = async () => {
             try {
@@ -37,7 +40,17 @@ export default function UnifiedDashboardPage() {
         }
         fetchStats()
         const timer = setInterval(fetchStats, 30000)
-        return () => clearInterval(timer)
+
+        // Socket for live listener count
+        const socket = socketService.connect()
+        socket.on("stats:update", (data: any) => {
+            if (data.onlineCount !== undefined) setOnlineCount(data.onlineCount)
+        })
+
+        return () => {
+            clearInterval(timer)
+            socket.off("stats:update")
+        }
     }, [])
 
     // Protect page
@@ -266,6 +279,25 @@ export default function UnifiedDashboardPage() {
                                         <MetricCard label="Memory" value={systemStats.memory} sub="Used / Total" />
                                     </div>
                                 </section>
+
+                                {/* Impact Metrics */}
+                                <section className="bg-[#080808] border border-[#1a1a1a] rounded-sm p-6 overflow-hidden relative col-span-2">
+                                    <h3 className="text-xs font-bold uppercase tracking-widest text-[#737373] mb-6 flex items-center justify-between">
+                                        Impact Metrics
+                                        <Signal size={14} className={onlineCount > 0 ? "text-green-500 animate-pulse" : ""} />
+                                    </h3>
+                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                        <MetricCard
+                                            label="Online Now"
+                                            value={onlineCount.toString()}
+                                            sub="Live Listeners"
+                                            className={onlineCount > 0 ? "border-[#99CCCC]/30" : ""}
+                                        />
+                                        <MetricCard label="Sessions" value="---" sub="Today (Cumulative)" />
+                                        <MetricCard label="Reactions" value="---" sub="Past 24h" />
+                                        <MetricCard label="Favorites" value="---" sub="All Time" />
+                                    </div>
+                                </section>
                             </div>
                         </div>
 
@@ -480,9 +512,9 @@ function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode, labe
     )
 }
 
-function MetricCard({ label, value, sub }: { label: string, value: string, sub: string }) {
+function MetricCard({ label, value, sub, className = "" }: { label: string, value: string, sub: string, className?: string }) {
     return (
-        <div className="border border-[#1a1a1a] bg-black/40 p-3 rounded-sm">
+        <div className={`p-4 bg-black border border-[#1a1a1a] rounded-sm group hover:border-[#99CCCC]/30 transition-all ${className}`}>
             <p className="text-[9px] uppercase font-bold text-[#444] mb-1 tracking-widest">{label}</p>
             <p className="text-xl font-mono text-white mb-0.5">{value}</p>
             <p className="text-[8px] text-[#737373] uppercase font-medium">{sub}</p>
