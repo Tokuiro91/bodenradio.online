@@ -398,51 +398,70 @@ app.delete('/api/schedule/:id', auth, (req, res) => {
 /* --- LIQUIDSOAP INTEGRATION BRIDGE --- */
 app.get('/internal/next', (req, res) => {
     const now = Date.now();
-    // Find active schedule
-    db.get('SELECT * FROM schedule WHERE start_time <= ? AND end_time > ? ORDER BY id ASC', [now, now], (err, schedule) => {
-        if (!schedule) return res.status(404).send('NO_SCHEDULE');
+    const FETCH_AHEAD_MS = 10000; // Look 10s ahead for prefetching
 
-        const offsetSeconds = Math.max(0, Math.floor((now - schedule.start_time) / 1000));
-        const totalDurationSeconds = Math.max(1, Math.floor((schedule.end_time - schedule.start_time) / 1000));
-        const fadeOutDuration = 5.0;
+    console.log(`[Liquidsoap] Requesting next track at ${new Date(now).toISOString()}`);
 
-        // Priority 1: External Stream URL
-        if (schedule.external_stream_url) {
-            // For streams, cue_out tells liquidsoap when to stop the request
-            return res.send(`annotate:liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration}:${schedule.external_stream_url}`);
-        }
+    // Try to find what SHOULD be playing now or very soon
+    db.get('SELECT * FROM schedule WHERE (start_time <= ? AND end_time > ?) OR (start_time > ? AND start_time <= ?) ORDER BY start_time ASC LIMIT 1',
+        [now, now, now, now + FETCH_AHEAD_MS], (err, schedule) => {
+            if (!schedule) {
+                console.log(`[Liquidsoap] No active schedule found for ${new Date(now).toISOString()}`);
+                // Fallback: If nothing active now or very soon, look for the absolute next one at any distance
+                db.get('SELECT * FROM schedule WHERE start_time > ? ORDER BY start_time ASC LIMIT 1', [now], (err, nextSchedule) => {
+                    if (!nextSchedule) return res.status(404).send('NO_SCHEDULE');
+                    // If it's far away, we return it but Liquidsoap will skip it if it has an early start_time?
+                    // Actually, let's just wait.
+                    return res.status(404).send('NO_SCHEDULE');
+                });
+                return;
+            }
 
-        // Priority 2: Custom Audio File
-        if (schedule.audio_file) {
-            const fullPath = path.join(UPLOADS_DIR, schedule.audio_file);
-            return res.send(`annotate:liq_cue_in=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration}:${fullPath}`);
-        }
+            const offsetSeconds = Math.max(0, Math.floor((now - schedule.start_time) / 1000));
+            const totalDurationSeconds = Math.max(1, Math.floor((schedule.end_time - schedule.start_time) / 1000));
+            const fadeOutDuration = 5.0;
 
-        // Priority 3: Regular track/playlist items
-        if (schedule.type === 'track') {
-            db.get('SELECT filename FROM tracks WHERE id = ?', [schedule.item_id], (err, track) => {
-                if (track) {
-                    const fullPath = path.join(MUSIC_DIR, track.filename);
-                    return res.send(`annotate:liq_cue_in=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration}:${fullPath}`);
-                }
-                res.status(404).send('TRACK_NOT_FOUND');
-            });
-        }
-        else if (schedule.type === 'playlist') {
-            db.get(`
+            // Metadata for site display (optional but good for debugging logs)
+            const metadata = `title="${schedule.title}",artist="BØDEN",schedule_id="${schedule.id}"`;
+
+            console.log(`[Liquidsoap] Returning schedule: ${schedule.title} (ID: ${schedule.id}), audio_file: ${schedule.audio_file}, stream: ${schedule.external_stream_url}`);
+
+            // Priority 1: External Stream URL
+            if (schedule.external_stream_url) {
+                return res.send(`annotate:${metadata},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration}:${schedule.external_stream_url}`);
+            }
+
+            // Priority 2: Custom Audio File
+            if (schedule.audio_file) {
+                const fullPath = path.join(UPLOADS_DIR, schedule.audio_file);
+                return res.send(`annotate:${metadata},liq_cue_in=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration}:${fullPath}`);
+            }
+
+            // Priority 3: Regular track/playlist items
+            if (schedule.type === 'track') {
+                db.get('SELECT filename FROM tracks WHERE id = ?', [schedule.item_id], (err, track) => {
+                    if (track) {
+                        const fullPath = path.join(MUSIC_DIR, track.filename);
+                        return res.send(`annotate:${metadata},liq_cue_in=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration}:${fullPath}`);
+                    }
+                    res.status(404).send('TRACK_NOT_FOUND');
+                });
+            }
+            else if (schedule.type === 'playlist') {
+                db.get(`
                 SELECT t.filename FROM playlist_tracks pt 
                 JOIN tracks t ON t.id = pt.track_id 
                 WHERE pt.playlist_id = ? 
                 ORDER BY pt.position ASC LIMIT 1
             `, [schedule.item_id], (err, track) => {
-                if (track) {
-                    const fullPath = path.join(MUSIC_DIR, track.filename);
-                    return res.send(`annotate:liq_cue_in=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration},liq_start=${offsetSeconds}:${fullPath}`);
-                }
-                res.status(404).send('PLAYLIST_EMPTY');
-            });
-        }
-    });
+                    if (track) {
+                        const fullPath = path.join(MUSIC_DIR, track.filename);
+                        return res.send(`annotate:${metadata},liq_cue_in=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration}:${fullPath}`);
+                    }
+                    res.status(404).send('PLAYLIST_EMPTY');
+                });
+            }
+        });
 });
 
 // Serve frontend build & uploads

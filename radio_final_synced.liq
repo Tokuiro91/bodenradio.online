@@ -20,7 +20,7 @@ def get_next_track() =
 end
 
 # Primary source: Dashboard schedule
-my_source = request.dynamic(id="boden_dashboard", prefetch=1, get_next_track)
+my_source = request.dynamic(id="boden_dashboard", prefetch=0, get_next_track)
 
 # Wrap with cue_cut to respect metadata boundaries (liq_cue_in/out)
 my_source = cue_cut(my_source)
