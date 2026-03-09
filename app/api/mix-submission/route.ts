@@ -15,7 +15,7 @@ export async function POST(req: Request) {
         const data = await req.json();
 
         // Validation (simplified, Zod is recommended for frontend)
-        const requiredFields = ['artistName', 'mixName', 'location', 'artistPhoto', 'audioUrl', 'description'];
+        const requiredFields = ['artistName', 'mixName', 'location', 'artistPhoto', 'audioUrl', 'description', 'contact'];
         for (const field of requiredFields) {
             if (!data[field]) {
                 return NextResponse.json({ error: `Field ${field} is required` }, { status: 400 });
@@ -31,16 +31,18 @@ export async function POST(req: Request) {
             scopes: ['https://www.googleapis.com/auth/spreadsheets'],
         });
 
-        const sheets = google.sheets({ version: 'v4', auth: await authClient.getClient() });
+        const client = await authClient.getClient();
+        const sheets = google.sheets({ version: 'v4', auth: client as any });
 
         // Append to Spreadsheet
-        // Order: Timestamp, Artist Name, Mix Name, Location, Instagram, SoundCloud, Bandcamp, Photo URL, Audio URL, Bio, Genres/BPM
+        // Order: Timestamp, Artist Name, Mix Name, Location, Contact, Instagram, SoundCloud, Bandcamp, Photo URL, Audio URL, Bio, Genres/BPM
         const values = [
             [
                 new Date().toISOString(),
                 data.artistName,
                 data.mixName,
                 data.location,
+                data.contact,
                 data.instagram || '',
                 data.soundcloud || '',
                 data.bandcamp || '',

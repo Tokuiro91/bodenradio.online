@@ -23,7 +23,8 @@ export default function MixSubmissionPage() {
         artistPhoto: "",
         audioUrl: "",
         description: "",
-        genresBpm: ""
+        genresBpm: "",
+        contact: ""
     })
 
     // Protect page
@@ -122,7 +123,6 @@ export default function MixSubmissionPage() {
                                 />
                             </div>
                         </div>
-
                         <div className="space-y-1.5">
                             <label className="text-[10px] uppercase font-mono text-[#737373]">Location *</label>
                             <input
@@ -131,6 +131,17 @@ export default function MixSubmissionPage() {
                                 onChange={e => setForm({ ...form, location: e.target.value })}
                                 className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-sm px-4 py-3 text-sm focus:border-[#99CCCC] outline-none transition-colors"
                                 placeholder="City, Country"
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] uppercase font-mono text-[#737373]">Contact Details * (Telegram / WhatsApp / Email)</label>
+                            <input
+                                required
+                                value={form.contact}
+                                onChange={e => setForm({ ...form, contact: e.target.value })}
+                                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-sm px-4 py-3 text-sm focus:border-[#99CCCC] outline-none transition-colors"
+                                placeholder="How can we reach you?"
                             />
                         </div>
                     </section>
@@ -239,6 +250,6 @@ export default function MixSubmissionPage() {
                     </button>
                 </form>
             </main>
-        </div>
+        </div >
     )
 }
