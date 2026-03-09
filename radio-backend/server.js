@@ -7,6 +7,18 @@ const path = require('path');
 const fs = require('fs');
 const { exec } = require('child_process');
 const db = require('./db');
+const webpush = require('web-push');
+
+// VAPID config for push notifications
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BFzIsn11g6bxeVr68zjLthY-ABWUKbwlXk_hkmpiE2MNdV3douQrLv6NwapDEMzhE8EQkOcGxVGUUqJO4UAc8WU';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'pZguMDyNbv5viMuIK_PoXEhg04QolVsmCSID2plOYLs';
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:chyrukoleksii@gmail.com';
+
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+}
+
+const LISTENERS_FILE = path.join(__dirname, '..', 'data', 'listeners.json');
 
 const app = express();
 app.use(cors());
@@ -313,16 +325,16 @@ app.post('/api/schedule/sync', auth, (req, res) => {
 
                 const stmt = db.prepare(`
                     INSERT INTO schedule (
-                        title, type, item_id, start_time, end_time, 
+                        title, type, item_id, db_id, start_time, end_time, 
                         instagram_url, soundcloud_url, mixcloud_url, 
                         broadcast_image, audio_file, external_stream_url
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `);
                 let insertError = false;
 
                 sorted.forEach(ev => {
                     stmt.run(
-                        ev.title, ev.type, ev.item_id, ev.start_time, ev.end_time,
+                        ev.title, ev.type, ev.item_id, ev.db_id || null, ev.start_time, ev.end_time,
                         ev.instagram_url || null, ev.soundcloud_url || null, ev.mixcloud_url || null,
                         ev.broadcast_image || null, ev.audio_file || null, ev.external_stream_url || null,
                         (err) => {
@@ -469,3 +481,96 @@ app.use('/broadcast-media', express.static(UPLOADS_DIR));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.listen(PORT, () => console.log(`BØDEN Backend running on port ${PORT}`));
+
+// --- NOTIFICATION WORKER ---
+
+async function checkNotifications() {
+    const now = Date.now();
+    const check24h = now + 24 * 60 * 60 * 1000;
+    const check10m = now + 10 * 60 * 1000;
+
+    // Broad window to catch events (checked every 5 mins)
+    const windowMs = 6 * 60 * 1000; 
+
+    db.all(`
+        SELECT * FROM schedule 
+        WHERE (start_time BETWEEN ? AND ?) 
+           OR (start_time BETWEEN ? AND ?)
+    `, [check24h - windowMs, check24h + windowMs, 
+        check10m - windowMs, check10m + windowMs], async (err, rows) => {
+        
+        if (err || !rows || rows.length === 0) return;
+
+        // Load listeners from Next.js data folder
+        let listeners = [];
+        try {
+            if (fs.existsSync(LISTENERS_FILE)) {
+                listeners = JSON.parse(fs.readFileSync(LISTENERS_FILE, 'utf8'));
+            }
+        } catch (e) {
+            console.error("[Notifications] Failed to load listeners:", e.message);
+            return;
+        }
+
+        for (const row of rows) {
+            if (!row.db_id) continue;
+
+            const timeDiff24h = Math.abs(row.start_time - check24h);
+            const timeDiff10m = Math.abs(row.start_time - check10m);
+            const type = timeDiff24h < timeDiff10m ? '24h' : '10m';
+            
+            // Check if already logged
+            db.get('SELECT id FROM notification_logs WHERE schedule_id = ? AND type = ?', [row.id, type], async (err, log) => {
+                if (log) return; 
+
+                const artistName = row.title.replace('[SYNC] ', '').replace('[TRACK] ', '');
+                const startTime = new Date(row.start_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                const startDate = new Date(row.start_time).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+
+                const payload = JSON.stringify({
+                    title: type === '24h' ? `Favorite Artist Alert 🌟` : `Starting Soon! 🔥`,
+                    body: type === '24h' 
+                        ? `Your favorite artist ${artistName} will be playing on ${startDate} at ${startTime}.` 
+                        : `Almost there! ${artistName} is about to play. Don't miss it!`,
+                    icon: "/icons/icon-192.png",
+                    url: "/"
+                });
+
+                const interestedListeners = listeners.filter(l => 
+                    l.pushEnabled && 
+                    l.favoriteArtists?.includes(row.db_id) && 
+                    l.pushSubscriptions?.length > 0
+                );
+
+                if (interestedListeners.length === 0) {
+                    // Log even if no one is listening to skip this check next time
+                    db.run('INSERT INTO notification_logs (schedule_id, type) VALUES (?, ?)', [row.id, type]);
+                    return;
+                }
+
+                console.log(`[Notifications] Sending ${type} alert for ${artistName} to ${interestedListeners.length} fans`);
+
+                let sentAny = false;
+                for (const listener of interestedListeners) {
+                    for (const sub of listener.pushSubscriptions) {
+                        try {
+                            await webpush.sendNotification(sub, payload);
+                            sentAny = true;
+                        } catch (e) {
+                            if (e.statusCode === 410) {
+                                // Subscription expired/gone
+                            }
+                        }
+                    }
+                }
+
+                db.run('INSERT INTO notification_logs (schedule_id, type) VALUES (?, ?)', [row.id, type]);
+            });
+        }
+    });
+}
+
+// Every 5 minutes
+setInterval(checkNotifications, 5 * 60 * 1000);
+// Initial delay to let DB initialize
+setTimeout(checkNotifications, 10000);

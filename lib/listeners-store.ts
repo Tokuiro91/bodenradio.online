@@ -10,7 +10,7 @@ export interface Listener {
     password?: string
     name?: string
     avatar?: string
-    favoriteArtists: number[] // IDs
+    favoriteArtists: string[] // IDs (dbId)
     role: "listener"
     provider: "credentials" | "google" | "apple"
     isPremium?: boolean
@@ -45,7 +45,7 @@ export async function createListener(data: {
     password?: string
     name?: string
     provider: "credentials" | "google" | "apple"
-    favoriteArtists?: number[]
+    favoriteArtists?: string[]
 }): Promise<Listener> {
     const listeners = getListeners()
     const exists = listeners.find((l) => l.email === data.email.toLowerCase())
@@ -87,7 +87,7 @@ export function updateListener(email: string, data: Partial<Listener>) {
     saveListeners(listeners)
 }
 
-export function toggleFavoriteArtist(email: string, artistId: number): number[] {
+export function toggleFavoriteArtist(email: string, artistId: string): string[] {
     const listeners = getListeners()
     const index = listeners.findIndex(l => l.email === email.toLowerCase())
     if (index === -1) throw new Error("User not found")
@@ -95,7 +95,7 @@ export function toggleFavoriteArtist(email: string, artistId: number): number[] 
     const listener = listeners[index]
     const currentFavorites = listener.favoriteArtists || []
 
-    let newFavorites: number[]
+    let newFavorites: string[]
     if (currentFavorites.includes(artistId)) {
         newFavorites = currentFavorites.filter(id => id !== artistId)
     } else {

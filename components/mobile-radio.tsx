@@ -92,7 +92,7 @@ export function MobileRadio() {
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchDelta, setTouchDelta] = useState(0)
   const [isSwiping, setIsSwiping] = useState(false)
-  const [userFavorites, setUserFavorites] = useState<number[]>([])
+  const [userFavorites, setUserFavorites] = useState<string[]>([])
   const miniTimelineRef = useRef<HTMLDivElement>(null)
 
   // Load user favorites
@@ -107,7 +107,7 @@ export function MobileRadio() {
       .catch() // Ignore if not logged in
   }, [])
 
-  const toggleFavorite = async (artistId: number) => {
+  const toggleFavorite = async (artistId: string) => {
     // Optimistic UI update
     const isFav = userFavorites.includes(artistId)
     setUserFavorites(prev =>
@@ -540,15 +540,15 @@ export function MobileRadio() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        toggleFavorite(artist.id)
+                        toggleFavorite(artist.dbId || String(artist.id))
                       }}
-                      className={`transition-colors ${userFavorites.includes(artist.id)
+                      className={`transition-colors ${userFavorites.includes(artist.dbId || String(artist.id))
                         ? "text-[#99CCCC]"
                         : "text-[#737373] hover:text-[#99CCCC]"
                         }`}
-                      aria-label={userFavorites.includes(artist.id) ? "Remove from favorites" : "Add to favorites"}
+                      aria-label={userFavorites.includes(artist.dbId || String(artist.id)) ? "Remove from favorites" : "Add to favorites"}
                     >
-                      <Star className={`w-5 h-5 ${userFavorites.includes(artist.id) ? "fill-current" : ""}`} />
+                      <Star className={`w-5 h-5 ${userFavorites.includes(artist.dbId || String(artist.id)) ? "fill-current" : ""}`} />
                     </button>
 
                     {artist.instagramUrl && (

@@ -47,6 +47,7 @@ db.serialize(() => {
     title TEXT,
     type TEXT, -- 'track' or 'playlist'
     item_id INTEGER, -- refers to tracks(id) or playlists(id)
+    db_id TEXT, -- refers to master artist ID
     start_time INTEGER, -- Unix timestamp (milliseconds)
     end_time INTEGER, -- Unix timestamp (milliseconds)
     instagram_url TEXT,
@@ -58,16 +59,24 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
+  // Notification logs table
+  db.run(`CREATE TABLE IF NOT EXISTS notification_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    schedule_id INTEGER,
+    type TEXT, -- '24h' or '10m'
+    sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(schedule_id) REFERENCES schedule(id) ON DELETE CASCADE
+  )`);
+
   // Add columns if they don't exist (migrations)
   const columns = [
     'instagram_url', 'soundcloud_url', 'mixcloud_url',
-    'broadcast_image', 'audio_file', 'external_stream_url'
+    'broadcast_image', 'audio_file', 'external_stream_url', 'db_id'
   ];
   columns.forEach(col => {
     db.run(`ALTER TABLE schedule ADD COLUMN ${col} TEXT`, (err) => {
       if (err && !err.message.includes('duplicate column name')) {
         // Ignore duplicate column errors, but log others
-        // console.error(`Error adding column ${col}:`, err.message);
       }
     });
   });

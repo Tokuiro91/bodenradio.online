@@ -34,6 +34,7 @@ export async function POST(request: Request) {
                     title: `[SYNC] ${a.name}`,
                     type: 'track',
                     item_id: trackId,
+                    db_id: a.dbId || null,
                     start_time: new Date(a.startTime).getTime(),
                     end_time: new Date(a.endTime).getTime(),
                     instagram_url: a.instagram_url || null,
