@@ -7,7 +7,7 @@ import { useArtists } from "@/lib/use-artists"
 import { signOut, useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { AnalyticsDashboard } from "@/components/analytics-dashboard"
-import { Search } from "lucide-react"
+import { Search, Radio, Users, Database, BarChart3, Bell } from "lucide-react"
 import { StickerPackManager } from "@/components/sticker-pack-manager"
 import type { DBArtist } from "@/lib/artist-db-store"
 import type { Listener } from "@/lib/listeners-store"
@@ -539,6 +539,10 @@ export default function AdminPage() {
             <span className="font-tektur">BØDEN</span> <span className="text-[#737373]">/ ADMIN</span>
           </h1>
           <div className="flex gap-1">
+            <button onClick={() => router.push("/admin/dashboard")} className="px-3 py-1 text-xs rounded-sm bg-[#99CCCC] text-black font-black hover:bg-white transition flex items-center gap-1.5 mr-2 shadow-[0_0_10px_rgba(153,204,204,0.3)]">
+              <Radio size={12} />
+              COMMAND CENTER
+            </button>
             <button onClick={() => setActiveTab("radio-schedule")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "radio-schedule" ? "bg-white text-black font-bold" : "text-[#737373] hover:text-white"}`}>Эфир Радио</button>
             <button onClick={() => setActiveTab("artists")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "artists" ? "bg-[#99CCCC] text-black font-bold" : "text-[#737373] hover:text-white"}`}>Расписание</button>
             <button onClick={() => setActiveTab("artist-db")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "artist-db" ? "bg-[#99CCCC] text-black font-bold" : "text-[#737373] hover:text-white"}`}>База Артистов</button>
