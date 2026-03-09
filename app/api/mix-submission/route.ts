@@ -23,18 +23,25 @@ export async function POST(req: Request) {
         }
 
         const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+        if (!privateKey) {
+            console.error('GOOGLE_PRIVATE_KEY is missing from environment');
+            return NextResponse.json({ error: 'Server configuration error (key)' }, { status: 500 });
+        }
 
-        // Google Auth
-        const authClient = new google.auth.GoogleAuth({
-            credentials: {
-                client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-                private_key: privateKey,
-            },
+        const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+        if (!clientEmail) {
+            console.error('GOOGLE_SERVICE_ACCOUNT_EMAIL is missing from environment');
+            return NextResponse.json({ error: 'Server configuration error (email)' }, { status: 500 });
+        }
+
+        // Use JWT for better control and debugging
+        const jwtClient = new google.auth.JWT({
+            email: clientEmail,
+            key: privateKey,
             scopes: ['https://www.googleapis.com/auth/spreadsheets'],
         });
 
-        const client = await authClient.getClient();
-        const sheets = google.sheets({ version: 'v4', auth: client as any });
+        const sheets = google.sheets({ version: 'v4', auth: jwtClient });
 
         // Append to Spreadsheet
         // Order: Timestamp, Artist Name, Mix Name, Location, Contact, Instagram, SoundCloud, Bandcamp, Photo URL, Audio URL, Bio, Genres/BPM
