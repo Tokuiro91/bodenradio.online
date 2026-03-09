@@ -58,7 +58,9 @@ export default function MixSubmissionPage() {
                 setSubmitted(true)
                 toast.success("Mix submitted successfully!")
             } else {
-                toast.error(data.error || "Submission failed")
+                const errorMsg = data.error || `Error ${res.status}: Submission failed`
+                toast.error(errorMsg)
+                console.error("Submission error:", data)
             }
         } catch (err) {
             toast.error("Network error")

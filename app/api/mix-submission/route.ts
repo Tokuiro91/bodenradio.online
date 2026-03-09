@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 
 const SPREADSHEET_ID = '1gH2majqCcRkQGUPvWE8bqpo6MhdZf8z31Q6mf2t0pBM';
-const RANGE = 'A:J'; // Adjusted to match the number of questions
+const RANGE = 'A:L'; // Expanded to cover all columns
 
 export async function POST(req: Request) {
     try {
@@ -22,11 +22,13 @@ export async function POST(req: Request) {
             }
         }
 
+        const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
         // Google Auth
         const authClient = new google.auth.GoogleAuth({
             credentials: {
                 client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-                private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+                private_key: privateKey,
             },
             scopes: ['https://www.googleapis.com/auth/spreadsheets'],
         });
