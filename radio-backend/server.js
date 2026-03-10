@@ -632,6 +632,110 @@ setInterval(checkNotifications, 5 * 60 * 1000);
 // Initial delay to let DB initialize
 setTimeout(checkNotifications, 10000);
 
+// --- CUSTOM AUDIO ENGINE (FFMPEG MIXER) ---
+const { PassThrough } = require('stream');
+const { spawn } = require('child_process');
+
+const radioStream = new PassThrough();
+let engineFFmpeg = null;
+let listeners = new Set();
+let engineCurrentTrack = null;
+
+// Periodically check if we need to switch track in the engine
+function syncEngineWithSchedule() {
+    const now = Date.now();
+    db.get('SELECT * FROM schedule WHERE start_time <= ? AND end_time > ? ORDER BY start_time DESC LIMIT 1', [now, now], (err, row) => {
+        if (err) return;
+
+        let targetFile = null;
+        let isExternal = false;
+        let startTimeOffset = 0;
+
+        if (row) {
+            if (row.external_stream_url) {
+                targetFile = row.external_stream_url;
+                isExternal = true;
+            } else if (row.audio_file) {
+                targetFile = path.join(UPLOADS_DIR, row.audio_file);
+                startTimeOffset = (now - row.start_time) / 1000;
+            }
+        }
+
+        // If something is playing but it's different from what engine is doing
+        const engineId = row ? (row.external_stream_url || row.audio_file) : 'silence';
+        if (engineCurrentTrack !== engineId) {
+            console.log(`[Engine] Switching to: ${engineId}`);
+            engineCurrentTrack = engineId;
+            startEngineProcess(targetFile, isExternal, startTimeOffset);
+        }
+    });
+}
+
+function startEngineProcess(targetFile, isExternal, offset = 0) {
+    if (engineFFmpeg) {
+        engineFFmpeg.kill('SIGKILL');
+    }
+
+    let args = [];
+    if (!targetFile || !fs.existsSync(targetFile)) {
+        // Play silence if no file
+        args = ['-re', '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-t', '5', '-f', 'mp3', '-acodec', 'libmp3lame', '-ab', '128k', '-'];
+    } else {
+        if (isExternal) {
+            args = ['-i', targetFile, '-f', 'mp3', '-acodec', 'libmp3lame', '-ab', '128k', '-'];
+        } else {
+            // Seek to current offset for precise timing
+            args = ['-re', '-ss', offset.toString(), '-i', targetFile, '-f', 'mp3', '-acodec', 'libmp3lame', '-ab', '128k', '-'];
+        }
+    }
+
+    engineFFmpeg = spawn('ffmpeg', args);
+
+    engineFFmpeg.stdout.on('data', (chunk) => {
+        radioStream.write(chunk);
+    });
+
+    engineFFmpeg.on('exit', () => {
+        // If it exited naturally, sync again
+        setTimeout(syncEngineWithSchedule, 100);
+    });
+
+    engineFFmpeg.stderr.on('data', (data) => {
+        // Debug engine if needed: console.log(`ffmpeg: ${data}`);
+    });
+}
+
+// Broadcast to all connected listeners
+radioStream.on('data', (chunk) => {
+    listeners.forEach(res => {
+        try {
+            res.write(chunk);
+        } catch (e) {
+            listeners.delete(res);
+        }
+    });
+});
+
+// Unified Stream Endpoint
+app.get('/api/stream.mp3', (req, res) => {
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+    listeners.add(res);
+
+    req.on('close', () => {
+        listeners.delete(res);
+    });
+});
+
+// Start engine sync
+setInterval(syncEngineWithSchedule, 5000);
+syncEngineWithSchedule();
+
 // --- NOW PLAYING MONITOR ---
 function updateNowPlaying() {
     const now = Date.now();
