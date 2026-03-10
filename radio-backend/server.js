@@ -471,7 +471,7 @@ app.get('/internal/next', (req, res) => {
         // Update Now Playing Status
         currentTrack = {
             title: schedule.title,
-            trackName: schedule.trackName || "Unknown Track",
+            trackName: schedule.track_name || "Unknown Track",
             startTime: schedule.start_time,
             endTime: schedule.end_time,
             type: schedule.type,
@@ -664,11 +664,18 @@ function updateNowPlaying() {
             io.emit('now-playing:update', currentTrack);
 
             // FORCE SKIP LOGIC:
-            if (lastServedScheduleId && lastServedScheduleId !== row.id) {
-                console.log(`[Monitor] Detected overlap/newer track (${row.title}). Signaling Liquidsoap SKIP...`);
+            // Trigger skip if:
+            // 1. We have an active row in DB
+            // 2. AND (we haven't served anything yet OR the row ID is different from what we last served)
+            if (row && (!lastServedScheduleId || lastServedScheduleId !== row.id)) {
+                console.log(`[Monitor] Force-Sync: Detected active track (${row.title}) that differs from last served (ID: ${lastServedScheduleId}). Signaling Liquidsoap...`);
                 sendTelnetCommand('boden_dashboard.flush_and_skip');
-                // Secondary skip to ensure it breaks out of any other fallback
                 sendTelnetCommand('BØDEN_RADIO.skip');
+
+                // If it was null, we set it here to prevent infinite loop of skips if Liquidsoap fails to request
+                // But wait, if we set it here, then when Liquidsoap DOES request, it will be the same ID anyway.
+                // However, we only trigger this IF it's different.
+                if (!lastServedScheduleId) lastServedScheduleId = row.id;
             }
         }
     });
