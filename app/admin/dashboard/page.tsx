@@ -6,7 +6,7 @@ import { useArtists } from "@/lib/use-artists"
 import { signOut, useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { AnalyticsDashboard } from "@/components/analytics-dashboard"
-import { Search, Radio, Users, Database, BarChart3, Bell, LogOut, ChevronRight, Plus, Calendar, X, Clock } from "lucide-react"
+import { Search, Radio, Users, Database, BarChart3, Bell, LogOut, ChevronRight, Plus, Calendar, X, Clock, Music, Edit2, Upload, Trash2, Link as LinkIcon } from "lucide-react"
 import { DBArtist } from "@/lib/artist-db-store"
 import { RadioScheduleManager } from "@/components/radio-schedule-manager"
 import { socketService } from "@/lib/socket"
@@ -18,7 +18,7 @@ export default function UnifiedDashboardPage() {
     const { artists, setArtists, ready } = useArtists()
     const [dbArtists, setDbArtists] = useState<DBArtist[]>([])
     const [dbSearchQuery, setDbSearchQuery] = useState("")
-    const [activeView, setActiveView] = useState<"overview" | "schedule" | "database" | "analytics">("overview")
+    const [activeView, setActiveView] = useState<"overview" | "schedule" | "database" | "analytics" | "broadcast-list">("overview")
     const [selectedArtistForSchedule, setSelectedArtistForSchedule] = useState<DBArtist | null>(null)
     const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false)
     const [selectedArtistForEdit, setSelectedArtistForEdit] = useState<DBArtist | null>(null)
@@ -190,6 +190,7 @@ export default function UnifiedDashboardPage() {
                 <nav className="flex-1 p-4 space-y-1">
                     <NavItem active={activeView === "overview"} onClick={() => setActiveView("overview")} icon={<Radio size={18} />} label="Overview" />
                     <NavItem active={activeView === "schedule"} onClick={() => setActiveView("schedule")} icon={<Calendar size={18} />} label="Broadcast Grid" />
+                    <NavItem active={activeView === "broadcast-list"} onClick={() => setActiveView("broadcast-list")} icon={<Plus size={18} />} label="Broadcast List" />
                     <NavItem active={activeView === "database"} onClick={() => setActiveView("database")} icon={<Database size={18} />} label="Artist Library" />
                     <NavItem active={activeView === "analytics"} onClick={() => setActiveView("analytics")} icon={<BarChart3 size={18} />} label="Analytics" />
                     <div className="pt-4 mt-4 border-t border-[#1a1a1a]">
@@ -229,7 +230,8 @@ export default function UnifiedDashboardPage() {
                         </div>
                         <h2 className="text-3xl font-bold text-white tracking-tight">
                             {activeView === "overview" && "Command Center"}
-                            {activeView === "schedule" && "Broadcast Scheduler"}
+                            {activeView === "schedule" && "Broadcast Grid"}
+                            {activeView === "broadcast-list" && "Broadcast List"}
                             {activeView === "database" && "Artist Repository"}
                             {activeView === "analytics" && "Impact Metrics"}
                         </h2>
@@ -377,7 +379,7 @@ export default function UnifiedDashboardPage() {
                 {activeView === "schedule" && (
                     <div className="p-6 bg-[#080808] border border-[#1a1a1a] rounded-sm animate-in fade-in duration-500">
                         <div className="mb-6 flex items-center justify-between">
-                            <h3 className="text-sm font-bold uppercase tracking-widest">Broadcast Timeline</h3>
+                            <h3 className="text-sm font-bold uppercase tracking-widest text-[#99CCCC]">Broadcast Grid</h3>
                             <div className="flex items-center gap-3">
                                 <button onClick={() => setActiveView("overview")} className="text-[10px] text-[#737373] hover:text-white uppercase font-bold tracking-widest transition-colors flex items-center gap-1">
                                     <ChevronRight size={12} className="rotate-180" /> Back to Dashboard
@@ -385,7 +387,7 @@ export default function UnifiedDashboardPage() {
                             </div>
                         </div>
                         <div className="grid grid-cols-1 gap-6">
-                            <div className="bg-black border border-[#1a1a1a] p-4 rounded-sm">
+                            <div className="bg-black border border-[#1a1a1a] p-4 rounded-sm shadow-2xl">
                                 <RadioScheduleManager
                                     artists={artists}
                                     setArtists={setArtists}
@@ -394,6 +396,13 @@ export default function UnifiedDashboardPage() {
                             </div>
                         </div>
                     </div>
+                )}
+
+                {activeView === "broadcast-list" && (
+                    <BroadcastListView
+                        artists={artists}
+                        setArtists={setArtists}
+                    />
                 )}
 
                 {activeView === "database" && (
@@ -490,6 +499,271 @@ export default function UnifiedDashboardPage() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #2a2a2a; }
       `}</style>
+        </div>
+    )
+}
+
+function BroadcastListView({ artists, setArtists }: { artists: any[], setArtists: (a: any) => void }) {
+    const [searchQuery, setSearchQuery] = useState("")
+    const [selectedForAudio, setSelectedForAudio] = useState<any | null>(null)
+
+    const filteredArtists = [...artists]
+        .filter(a =>
+            a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            a.show.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+
+    const handleUpdateAudio = (id: number, audioData: { audio_file?: string, audioUrl?: string }) => {
+        const next = artists.map(a => a.id === id ? { ...a, ...audioData } : a)
+        setArtists(next)
+
+        // Sync to radio engine
+        fetch("/api/radio/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ artists: next }),
+        }).catch(() => { })
+
+        setSelectedForAudio(null)
+    }
+
+    return (
+        <div className="space-y-6 animate-in fade-in duration-500">
+            <div className="flex items-center justify-between bg-[#080808] border border-[#1a1a1a] p-4 rounded-sm">
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#444]" size={14} />
+                    <input
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search broadcasts..."
+                        className="bg-black border border-[#1a1a1a] rounded-sm py-2 pl-9 pr-4 text-xs outline-none focus:border-[#99CCCC] w-64 font-mono transition-all"
+                    />
+                </div>
+                <div className="text-[10px] font-mono text-[#444] uppercase tracking-widest">{filteredArtists.length} Scheduled Broadcasts</div>
+            </div>
+
+            <div className="bg-[#080808] border border-[#1a1a1a] rounded-sm overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="bg-[#0a0a0a] border-b border-[#1a1a1a]">
+                            <th className="p-4 text-[10px] uppercase font-black text-[#444] tracking-[0.2em]">Time</th>
+                            <th className="p-4 text-[10px] uppercase font-black text-[#444] tracking-[0.2em]">Artist / Show</th>
+                            <th className="p-4 text-[10px] uppercase font-black text-[#444] tracking-[0.2em]">Audio Attachment</th>
+                            <th className="p-4 text-[10px] uppercase font-black text-[#444] tracking-[0.2em] text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filteredArtists.map(a => {
+                            const hasAudio = a.audio_file || a.audioUrl
+                            const audioSource = a.audio_file ? "Uploaded File" : (a.audioUrl ? "External URL" : "None")
+
+                            return (
+                                <tr key={a.id} className="border-b border-[#1a1a1a] hover:bg-white/[0.02] transition-colors group">
+                                    <td className="p-4">
+                                        <div className="flex flex-col">
+                                            <span className="text-[11px] font-mono text-white">
+                                                {new Date(a.startTime).toLocaleDateString()}
+                                            </span>
+                                            <span className="text-[10px] font-mono text-[#737373]">
+                                                {new Date(a.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(a.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 relative rounded-sm overflow-hidden bg-[#111] border border-[#1a1a1a]">
+                                                {a.image && <Image src={a.image} alt={a.name} fill className="object-cover grayscale group-hover:grayscale-0 transition-all" unoptimized />}
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-bold text-white uppercase">{a.name}</span>
+                                                <span className="text-[10px] text-[#737373] line-clamp-1">{a.show}</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-2 h-2 rounded-full ${hasAudio ? "bg-green-500" : "bg-red-500"}`}></div>
+                                            <span className={`text-[10px] font-mono uppercase ${hasAudio ? "text-white" : "text-red-500/50"}`}>
+                                                {audioSource}
+                                            </span>
+                                            {(a.audio_file || a.audioUrl) && (
+                                                <span className="text-[9px] text-[#444] truncate max-w-[150px] font-mono">
+                                                    {a.audio_file || a.audioUrl}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-right">
+                                        <button
+                                            onClick={() => setSelectedForAudio(a)}
+                                            className="px-3 py-1.5 bg-[#111] border border-[#1a1a1a] text-[9px] font-black uppercase tracking-widest text-[#99CCCC] hover:bg-[#99CCCC] hover:text-black transition-all flex items-center gap-1.5 ml-auto"
+                                        >
+                                            <Music size={12} />
+                                            Set Audio
+                                        </button>
+                                    </td>
+                                </tr>
+                            )
+                        })}
+                    </tbody>
+                </table>
+                {filteredArtists.length === 0 && (
+                    <div className="p-20 text-center text-[#444] text-[10px] uppercase font-bold tracking-[0.3em] italic">
+                        No scheduled broadcasts found
+                    </div>
+                )}
+            </div>
+
+            {selectedForAudio && (
+                <AudioReplacementModal
+                    artist={selectedForAudio}
+                    onClose={() => setSelectedForAudio(null)}
+                    onConfirm={(data) => handleUpdateAudio(selectedForAudio.id, data)}
+                />
+            )}
+        </div>
+    )
+}
+
+function AudioReplacementModal({ artist, onClose, onConfirm }: { artist: any, onClose: () => void, onConfirm: (data: any) => void }) {
+    const [audioUrl, setAudioUrl] = useState(artist.audioUrl || "")
+    const [audioFile, setAudioFile] = useState(artist.audio_file || "")
+    const [isUploading, setIsUploading] = useState(false)
+    const [activeTab, setActiveTab] = useState<"upload" | "url">(artist.audioUrl && !artist.audio_file ? "url" : "upload")
+
+    const handleUpload = async (file: File) => {
+        setIsUploading(true)
+        try {
+            const formData = new FormData()
+            formData.append('broadcast_media', file)
+            const res = await fetch('/api/broadcast/upload', {
+                method: 'POST',
+                body: formData
+            })
+            const data = await res.json()
+            if (data.error) throw new Error(data.error)
+            setAudioFile(data.filename)
+            setAudioUrl("") // Clear URL if we upload a file
+            setActiveTab("upload")
+        } catch (err) {
+            alert("Upload failed")
+        } finally {
+            setIsUploading(false)
+        }
+    }
+
+    const handleConfirm = () => {
+        if (activeTab === "upload") {
+            onConfirm({ audio_file: audioFile, audioUrl: undefined })
+        } else {
+            onConfirm({ audioUrl: audioUrl, audio_file: undefined })
+        }
+    }
+
+    return (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="bg-[#0a0a0a] border border-[#1a1a1a] w-full max-w-lg rounded-sm shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#1a1a1a] flex items-center justify-between bg-[#080808]">
+                    <div className="flex items-center gap-2">
+                        <Music size={14} className="text-[#99CCCC]" />
+                        <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-white">Manage Broadcast Audio</h3>
+                    </div>
+                    <button onClick={onClose} className="p-1 text-[#444] hover:text-white transition-colors"><X size={16} /></button>
+                </div>
+
+                <div className="p-6 space-y-6">
+                    <div className="flex items-center gap-4 p-4 bg-black border border-[#1a1a1a] rounded-sm">
+                        <div className="w-10 h-10 relative rounded-sm overflow-hidden bg-[#111]">
+                            {artist.image && <Image src={artist.image} alt={artist.name} fill className="object-cover grayscale" unoptimized />}
+                        </div>
+                        <div>
+                            <p className="text-[10px] text-[#444] uppercase font-black tracking-widest mb-0.5">Broadcast Set</p>
+                            <p className="text-xs font-bold text-white uppercase">{artist.name} — {artist.show}</p>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-1 p-1 bg-black border border-[#1a1a1a] rounded-sm">
+                        <button
+                            onClick={() => setActiveTab("upload")}
+                            className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest transition-all rounded-[1px] ${activeTab === 'upload' ? 'bg-[#1a1a1a] text-[#99CCCC]' : 'text-[#444] hover:text-[#737373]'}`}
+                        >
+                            File Upload
+                        </button>
+                        <button
+                            onClick={() => setActiveTab("url")}
+                            className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest transition-all rounded-[1px] ${activeTab === 'url' ? 'bg-[#1a1a1a] text-[#99CCCC]' : 'text-[#444] hover:text-[#737373]'}`}
+                        >
+                            External URL
+                        </button>
+                    </div>
+
+                    {activeTab === "upload" && (
+                        <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-300">
+                            <div className="p-8 border border-dashed border-[#1a1a1a] rounded-sm bg-black flex flex-col items-center justify-center gap-4 group hover:border-[#99CCCC]/30 transition-all">
+                                <div className="w-12 h-12 rounded-full bg-[#111] flex items-center justify-center text-[#444] group-hover:text-[#99CCCC] transition-all">
+                                    <Upload size={20} />
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-xs font-bold text-[#737373] uppercase mb-1">Drag and drop audio file</p>
+                                    <p className="text-[9px] text-[#444] uppercase font-mono tracking-tighter">MP3, WAV, FLAC (Max 200MB)</p>
+                                </div>
+                                <label className="px-6 py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-[10px] font-black uppercase tracking-widest text-[#99CCCC] hover:bg-white hover:text-black cursor-pointer transition-all">
+                                    <input
+                                        type="file"
+                                        accept="audio/*"
+                                        className="hidden"
+                                        onChange={e => e.target.files?.[0] && handleUpload(e.target.files[0])}
+                                    />
+                                    {isUploading ? "Uploading..." : "Select File"}
+                                </label>
+                            </div>
+                            {audioFile && (
+                                <div className="flex items-center gap-3 p-3 bg-[#111] border border-[#1a1a1a] rounded-sm">
+                                    <Music size={14} className="text-[#99CCCC]" />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[10px] text-[#737373] uppercase font-black mb-0.5">Current File</p>
+                                        <p className="text-[11px] text-white font-mono truncate">{audioFile}</p>
+                                    </div>
+                                    <button onClick={() => setAudioFile("")} className="p-1 text-[#444] hover:text-red-500 transition-colors">
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === "url" && (
+                        <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-300">
+                            <div className="space-y-2">
+                                <label className="text-[9px] uppercase font-black tracking-[0.2em] text-[#444] flex items-center gap-2">
+                                    <LinkIcon size={10} /> Stream / URL Source
+                                </label>
+                                <input
+                                    value={audioUrl}
+                                    onChange={e => setAudioUrl(e.target.value)}
+                                    placeholder="https://example.com/stream.mp3"
+                                    className="w-full bg-black border border-[#1a1a1a] p-3 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors font-mono"
+                                />
+                                <p className="text-[8px] text-[#444] uppercase leading-relaxed">
+                                    Supports direct MP3/AAC streams, SoundCloud links, or any publicly accessible audio URL.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="px-6 py-4 bg-[#0a0a0a] border-t border-[#1a1a1a] flex gap-3">
+                    <button onClick={onClose} className="flex-1 py-4 text-[10px] uppercase font-black tracking-widest text-[#737373] hover:text-white transition-all">Cancel</button>
+                    <button
+                        onClick={handleConfirm}
+                        disabled={isUploading || (!audioFile && !audioUrl)}
+                        className="flex-1 py-4 bg-[#99CCCC] text-black text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all shadow-[0_0_20px_rgba(153,204,204,0.2)] disabled:opacity-30 disabled:grayscale"
+                    >
+                        Confirm & Save
+                    </button>
+                </div>
+            </div>
         </div>
     )
 }
