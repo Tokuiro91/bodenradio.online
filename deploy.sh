@@ -64,8 +64,7 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
     rm -rf data/radio/uploads && ln -s /var/radio/uploads data/radio/uploads
   fi
 
-  # Permissions for liquidsoap and backend
-  chown -R liquidsoap:liquidsoap /var/radio/music /var/radio/uploads || true
+  # Permissions for backend
   chmod -R 775 /var/radio/music /var/radio/uploads
   
   # Move existing files from old uploads to unified dir if any (backward compatibility)

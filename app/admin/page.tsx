@@ -11,7 +11,6 @@ import { Search, Radio, Users, Database, BarChart3, Bell } from "lucide-react"
 import { StickerPackManager } from "@/components/sticker-pack-manager"
 import type { DBArtist } from "@/lib/artist-db-store"
 import type { Listener } from "@/lib/listeners-store"
-import { RadioScheduleManager } from "@/components/radio-schedule-manager"
 
 function formatDuration(ms: number) {
   const totalSec = Math.max(0, Math.floor(ms / 1000))
@@ -59,7 +58,7 @@ export default function AdminPage() {
 
   const [editingId, setEditingId] = useState<number | null>(null)
   const [dbEditingId, setDbEditingId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<"artists" | "admins" | "analytics" | "stickers" | "artist-db" | "listeners" | "radio-schedule">("analytics")
+  const [activeTab, setActiveTab] = useState<"artists" | "admins" | "analytics" | "stickers" | "artist-db" | "listeners">("analytics")
   const [dbSearchQuery, setDbSearchQuery] = useState("")
   const [artistsSearchQuery, setArtistsSearchQuery] = useState("")
 
@@ -541,9 +540,8 @@ export default function AdminPage() {
           <div className="flex gap-1">
             <button onClick={() => router.push("/admin/dashboard")} className="px-3 py-1 text-xs rounded-sm bg-[#99CCCC] text-black font-black hover:bg-white transition flex items-center gap-1.5 mr-2 shadow-[0_0_10px_rgba(153,204,204,0.3)]">
               <Radio size={12} />
-              COMMAND CENTER
+              PLAYER
             </button>
-            <button onClick={() => setActiveTab("radio-schedule")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "radio-schedule" ? "bg-white text-black font-bold" : "text-[#737373] hover:text-white"}`}>Эфир Радио</button>
             <button onClick={() => setActiveTab("artists")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "artists" ? "bg-[#99CCCC] text-black font-bold" : "text-[#737373] hover:text-white"}`}>Расписание</button>
             <button onClick={() => setActiveTab("artist-db")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "artist-db" ? "bg-[#99CCCC] text-black font-bold" : "text-[#737373] hover:text-white"}`}>База Артистов</button>
             <button onClick={() => setActiveTab("admins")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "admins" ? "bg-[#99CCCC] text-black font-bold" : "text-[#737373] hover:text-white"}`}>Администраторы</button>
@@ -574,23 +572,6 @@ export default function AdminPage() {
         </div>
       )}
 
-      {activeTab === "radio-schedule" && (
-        <div className="p-6">
-          <RadioScheduleManager
-            artists={artists}
-            setArtists={setArtists}
-            dbArtists={[
-              ...dbArtists,
-              ...artists.map(a => ({
-                id: `timeline-${a.id}`,
-                name: a.name,
-                show: a.show,
-                image: a.image
-              })).filter(ta => !dbArtists.some(da => da.name === ta.name && da.show === ta.show))
-            ]}
-          />
-        </div>
-      )}
 
       {activeTab === "analytics" && (
         <div className="p-6">

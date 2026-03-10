@@ -475,102 +475,6 @@ app.delete('/api/schedule/:id', auth, (req, res) => {
     db.run('DELETE FROM schedule WHERE id = ?', [req.params.id], () => res.json({ success: true }));
 });
 
-/* --- LIQUIDSOAP INTEGRATION BRIDGE --- */
-app.get('/internal/next', (req, res) => {
-    const now = Date.now();
-    const FETCH_AHEAD_MS = 10000; // Look 10s ahead for prefetching
-
-    console.log(`[Liquidsoap] Requesting next track at ${new Date(now).toISOString()}`);
-
-    // Priority selection:
-    // 1. Find the current track that started LATEST (handles overlaps)
-    // 2. If none, find the track starting within the next FETCH_AHEAD_MS window
-    const query = `
-        SELECT * FROM schedule 
-        WHERE (start_time <= ? AND end_time > ?)
-        ORDER BY start_time DESC 
-        LIMIT 1
-    `;
-
-    db.get(query, [now, now], (err, currentTrack) => {
-        if (err) return res.status(500).send('DB_ERROR');
-
-        if (currentTrack) {
-            return serveSchedule(currentTrack);
-        }
-
-        // No current track, look ahead
-        db.get('SELECT * FROM schedule WHERE start_time > ? AND start_time <= ? ORDER BY start_time ASC LIMIT 1',
-            [now, now + FETCH_AHEAD_MS], (err, soonTrack) => {
-                if (err) return res.status(500).send('DB_ERROR');
-                if (soonTrack) return serveSchedule(soonTrack);
-
-                console.log(`[Liquidsoap] No active schedule found for ${new Date(now).toISOString()}`);
-                return res.status(404).send('NO_SCHEDULE');
-            });
-    });
-
-    function serveSchedule(schedule) {
-
-        const offsetSeconds = Math.max(0, Math.floor((now - schedule.start_time) / 1000));
-        const totalDurationSeconds = Math.max(1, Math.floor((schedule.end_time - schedule.start_time) / 1000));
-        const fadeOutDuration = 5.0;
-
-        // Metadata for site display (optional but good for debugging logs)
-        const metadata = `title="${schedule.title}",artist="BØDEN",schedule_id="${schedule.id}"`;
-
-        console.log(`[Liquidsoap] Returning schedule: ${schedule.title} (ID: ${schedule.id}), audio_file: ${schedule.audio_file}, stream: ${schedule.external_stream_url}`);
-
-        lastServedScheduleId = schedule.id;
-
-        // Priority 1: External Stream URL
-        if (schedule.external_stream_url) {
-            return res.send(`annotate:${metadata},liq_start=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration}:${schedule.external_stream_url}`);
-        }
-
-        // Priority 2: Custom Audio File
-        if (schedule.audio_file) {
-            const fullPath = path.join(UPLOADS_DIR, schedule.audio_file);
-            return res.send(`annotate:${metadata},liq_start=${offsetSeconds},liq_cue_in=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration}:${fullPath}`);
-        }
-
-        // Update Now Playing Status
-        currentTrack = {
-            title: schedule.title,
-            trackName: schedule.track_name || "Unknown Track",
-            startTime: schedule.start_time,
-            endTime: schedule.end_time,
-            type: schedule.type,
-            audio_file: schedule.audio_file,
-            external_stream_url: schedule.external_stream_url
-        };
-        io.emit('now-playing:update', currentTrack);
-
-        // Priority 3: Regular track/playlist items
-        if (schedule.type === 'track') {
-            db.get('SELECT filename FROM tracks WHERE id = ?', [schedule.item_id], (err, track) => {
-                if (track) {
-                    const fullPath = path.join(MUSIC_DIR, track.filename);
-                    return res.send(`annotate:${metadata},liq_start=${offsetSeconds},liq_cue_in=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration}:${fullPath}`);
-                }
-                res.status(404).send('TRACK_NOT_FOUND');
-            });
-        }
-        else if (schedule.type === 'playlist') {
-            db.get(`
-                SELECT t.filename FROM playlist_tracks pt 
-                JOIN tracks t ON t.id = pt.track_id 
-                WHERE pt.playlist_id = ? 
-                ORDER BY pt.position ASC LIMIT 1
-            `, [schedule.item_id], (err, track) => {
-                if (track) {
-                    const fullPath = path.join(MUSIC_DIR, track.filename);
-                    return res.send(`annotate:${metadata},liq_start=${offsetSeconds},liq_cue_in=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration}:${fullPath}`);
-                }
-            });
-        }
-    }
-});
 
 // Serve frontend build & uploads
 app.use('/broadcast-media', express.static(UPLOADS_DIR));
@@ -583,7 +487,6 @@ const io = require('socket.io')(server, {
 
 let onlineCount = 0;
 let currentTrack = null;
-let lastServedScheduleId = null;
 
 io.on('connection', (socket) => {
     onlineCount++;
@@ -729,30 +632,9 @@ function updateNowPlaying() {
             console.log(`[Monitor] Updating now-playing: ${currentTrack.title}`);
             io.emit('now-playing:update', currentTrack);
         }
-
-        // 2. FORCE SKIP LOGIC (Independent of UI updates)
-        // Check if the current active track in DB matches what we last served to Liquidsoap.
-        if (row && (!lastServedScheduleId || lastServedScheduleId !== row.id)) {
-            console.log(`[Monitor] Force-Sync: Detected active track (${row.title}, ID: ${row.id}) that differs from last served (ID: ${lastServedScheduleId}). Signaling Liquidsoap...`);
-            sendTelnetCommand('boden_dashboard.flush_and_skip');
-            sendTelnetCommand('BØDEN_RADIO.skip');
-
-            // Track the served ID locally to prevent re-skipping every 10 seconds
-            lastServedScheduleId = row.id;
-        }
     });
 }
 
-function sendTelnetCommand(command) {
-    const net = require('net');
-    const client = net.createConnection({ port: 1234, host: '127.0.0.1' }, () => {
-        client.write(command + '\n');
-        client.end();
-    });
-    client.on('error', (err) => {
-        console.error('[Telnet] Command failed:', err.message);
-    });
-}
 
 // Every 10 seconds check the DB to keep the banner fresh
 setInterval(updateNowPlaying, 10000);

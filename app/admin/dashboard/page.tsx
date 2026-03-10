@@ -8,10 +8,10 @@ import { useRouter } from "next/navigation"
 import { AnalyticsDashboard } from "@/components/analytics-dashboard"
 import { Search, Radio, Users, Database, BarChart3, Bell, LogOut, ChevronRight, Plus, Calendar, X, Clock, Music, Edit2, Upload, Trash2, Link as LinkIcon } from "lucide-react"
 import { DBArtist } from "@/lib/artist-db-store"
-import { RadioScheduleManager } from "@/components/radio-schedule-manager"
-import { socketService } from "@/lib/socket"
 import { Signal } from "lucide-react"
 import { BroadcastManager } from "@/components/broadcast-manager"
+import { socketService } from "@/lib/socket"
+import { List } from "lucide-react"
 
 export default function UnifiedDashboardPage() {
     const { data: session, status } = useSession()
@@ -19,7 +19,7 @@ export default function UnifiedDashboardPage() {
     const { artists, setArtists, ready } = useArtists()
     const [dbArtists, setDbArtists] = useState<DBArtist[]>([])
     const [dbSearchQuery, setDbSearchQuery] = useState("")
-    const [activeView, setActiveView] = useState<"overview" | "schedule" | "database" | "analytics" | "broadcast-list">("overview")
+    const [activeView, setActiveView] = useState<"player" | "database" | "analytics" | "broadcast-list">("player")
     const [selectedArtistForSchedule, setSelectedArtistForSchedule] = useState<DBArtist | null>(null)
     const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false)
     const [selectedArtistForEdit, setSelectedArtistForEdit] = useState<DBArtist | null>(null)
@@ -70,7 +70,7 @@ export default function UnifiedDashboardPage() {
     if (status === "loading" || !ready) {
         return (
             <div className="min-h-screen bg-black flex items-center justify-center text-[#9ca3af] font-mono text-[10px] uppercase tracking-widest">
-                Initializing Command Center...
+                Initializing HQ...
             </div>
         )
     }
@@ -205,8 +205,7 @@ export default function UnifiedDashboardPage() {
                 </div>
 
                 <nav className="flex-1 p-4 space-y-1">
-                    <NavItem active={activeView === "overview"} onClick={() => setActiveView("overview")} icon={<Radio size={18} />} label="Управление Эфиром" />
-                    <NavItem active={activeView === "broadcast-list"} onClick={() => setActiveView("broadcast-list")} icon={<List size={18} />} label="История Эфира" />
+                    <NavItem active={activeView === "player"} onClick={() => setActiveView("player")} icon={<Radio size={18} />} label="Player" />
                     <NavItem active={activeView === "database"} onClick={() => setActiveView("database")} icon={<Database size={18} />} label="База Артистов" />
                     <NavItem active={activeView === "analytics"} onClick={() => setActiveView("analytics")} icon={<BarChart3 size={18} />} label="Аналитика" />
                 </nav>
@@ -239,8 +238,7 @@ export default function UnifiedDashboardPage() {
                             <span>Live System Dashboard</span>
                         </div>
                         <h2 className="text-3xl font-bold text-white tracking-tight">
-                            {activeView === "overview" && "Управление Эфиром"}
-                            {activeView === "broadcast-list" && "История Эфира"}
+                            {activeView === "player" && "Player"}
                             {activeView === "database" && "База Артистов"}
                             {activeView === "analytics" && "Аналитика"}
                         </h2>
@@ -257,58 +255,12 @@ export default function UnifiedDashboardPage() {
                     </div>
                 </div>
 
-                {activeView === "overview" && (
+                {activeView === "player" && (
                     <BroadcastManager />
-                )}
-                {(activeView === "schedule" || activeView === "broadcast-list") && nowPlaying && (
-                    <section className="mb-8 bg-[#99CCCC]/5 border border-[#99CCCC]/20 rounded-sm p-6 animate-in slide-in-from-bottom-2 duration-500 max-w-4xl">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xs font-bold uppercase tracking-widest text-[#99CCCC] flex items-center gap-2">
-                                <Radio size={14} className="animate-pulse" />
-                                NOW PLAYING (ADMIN ONLY)
-                            </h3>
-                            <span className="text-[10px] font-mono text-[#99CCCC]/50 uppercase tracking-tighter">Live from Server</span>
-                        </div>
-                        <div className="flex items-center gap-6">
-                            <div className="w-16 h-16 bg-black border border-[#99CCCC]/20 rounded-sm flex items-center justify-center relative overflow-hidden group">
-                                <Music size={24} className="text-[#99CCCC]/20 group-hover:scale-110 transition-transform" />
-                                <div className="absolute inset-0 bg-gradient-to-t from-[#99CCCC]/10 to-transparent"></div>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h4 className="text-lg font-black uppercase text-white tracking-tight truncate leading-tight mb-1">
-                                    {nowPlaying.trackName || "Unknown Track"}
-                                </h4>
-                                <div className="flex items-center gap-3">
-                                    <p className="text-xs font-bold text-[#99CCCC] uppercase tracking-widest truncate">
-                                        {nowPlaying.title || "Unknown Artist"}
-                                    </p>
-                                    <span className="w-1 h-1 rounded-full bg-[#1a1a1a]"></span>
-                                    <p className="text-[10px] font-mono text-[#444] uppercase">
-                                        {nowPlaying.external_stream_url ? "External Stream" : (nowPlaying.audio_file ? "Uploaded File" : "Library Track")}
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="text-right flex flex-col items-end gap-1">
-                                <div className="px-2 py-0.5 bg-[#99CCCC] text-black text-[9px] font-black uppercase rounded-sm tracking-tighter shadow-[0_0_10px_rgba(153,204,204,0.3)]">
-                                    ON AIR
-                                </div>
-                                <p className="text-[9px] font-mono text-[#444] uppercase tracking-tighter">
-                                    {new Date(nowPlaying.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    {" — "}
-                                    {new Date(nowPlaying.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </p>
-                            </div>
-                        </div>
-                    </section>
                 )}
 
                 {activeView === "analytics" && (
                     <AnalyticsDashboard onlineCount={onlineCount} />
-                )}
-
-
-                {activeView === "broadcast-list" && (
-                    <BroadcastListView artists={artists} setArtists={setArtists} />
                 )}
 
                 {activeView === "database" && (
@@ -341,31 +293,6 @@ export default function UnifiedDashboardPage() {
                 )}
             </main>
 
-            {isScheduleModalOpen && selectedArtistForSchedule && (
-                <ScheduleEditModal
-                    artist={selectedArtistForSchedule}
-                    onClose={() => { setIsScheduleModalOpen(false); setSelectedArtistForSchedule(null); }}
-                    onConfirm={confirmAddToSchedule}
-                    lastEndTime={artists.length > 0 ? [...artists].sort((a, b) => new Date(b.endTime).getTime() - new Date(a.endTime).getTime())[0].endTime : new Date().toISOString()}
-                />
-            )}
-
-            {isArtistEditModalOpen && selectedArtistForEdit && (
-                <ArtistEditModal
-                    artist={selectedArtistForEdit}
-                    onClose={() => { setIsArtistEditModalOpen(false); setSelectedArtistForEdit(null); }}
-                    onConfirm={handleSaveArtist}
-                />
-            )}
-
-            {isArtistCreateModalOpen && (
-                <ArtistEditModal
-                    artist={{ id: "", name: "", show: "", image: "", location: "Earth", description: "" } as DBArtist}
-                    onClose={() => setIsArtistCreateModalOpen(false)}
-                    onConfirm={handleSaveNewArtist}
-                />
-            )}
-
             <style jsx global>{`
                 @import url('https://fonts.googleapis.com/css2?family=Tektur:wght@400;700;900&display=swap');
                 .font-tektur { font-family: 'Tektur', sans-serif; }
@@ -376,292 +303,12 @@ export default function UnifiedDashboardPage() {
     )
 }
 
-function BroadcastListView({ artists, setArtists }: { artists: any[], setArtists: (a: any) => void }) {
-    const [searchQuery, setSearchQuery] = useState("")
-    const [selectedForEdit, setSelectedForEdit] = useState<any | null>(null)
-    const now = Date.now()
-
-    const filteredArtists = [...artists]
-        .filter(a => a.name.toLowerCase().includes(searchQuery.toLowerCase()) || a.show.toLowerCase().includes(searchQuery.toLowerCase()))
-        .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
-
-    const handleUpdateBroadcast = (updated: any) => {
-        const next = artists.map(a => a.id === updated.id ? updated : a)
-        setArtists(next)
-        fetch("/api/radio/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ artists: next }) }).catch(() => { })
-        setSelectedForEdit(null)
-    }
-
-    return (
-        <div className="space-y-6">
-            <div className="flex bg-[#080808] border border-[#1a1a1a] p-4 rounded-sm justify-between items-center">
-                <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Поиск..." className="bg-black border border-[#1a1a1a] rounded-sm py-2 px-4 text-xs outline-none focus:border-[#99CCCC] w-64" />
-                <div className="text-[10px] text-[#444] uppercase">{filteredArtists.length} Записей</div>
-            </div>
-            <div className="bg-[#080808] border border-[#1a1a1a] rounded-sm overflow-hidden">
-                <table className="w-full text-left">
-                    <thead>
-                        <tr className="bg-[#0a0a0a] border-b border-[#1a1a1a] text-[9px] uppercase text-[#444] font-black tracking-widest">
-                            <th className="p-4">Время</th>
-                            <th className="p-4">Артист</th>
-                            <th className="p-4">Аудио</th>
-                            <th className="p-4 text-right">Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredArtists.map(a => {
-                            const isPast = new Date(a.endTime).getTime() < now
-                            const isLive = new Date(a.startTime).getTime() <= now && new Date(a.endTime).getTime() >= now
-                            return (
-                                <tr key={a.id} className={`border-b border-[#1a1a1a] transition-colors ${isPast ? 'opacity-50 grayscale' : ''}`}>
-                                    <td className="p-4">
-                                        <p className="text-[11px] text-white font-mono">{new Date(a.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                                        {isLive && <span className="text-[8px] text-[#99CCCC] animate-pulse">LIVE</span>}
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 relative bg-[#111] border border-[#1a1a1a]">
-                                                {(a.broadcast_image || a.image) && <Image src={a.broadcast_image || a.image} alt={a.name} fill className="object-cover" unoptimized />}
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-bold text-white uppercase">{a.name}</p>
-                                                <p className="text-[10px] text-[#737373]">{a.show}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] text-white font-mono">{a.trackName || a.audio_file || "Нет"}</span>
-                                            {(a.audio_file || a.audioUrl) && (
-                                                <button onClick={() => new Audio(a.audioUrl || `/broadcast-media/${a.audio_file}`).play()} className="text-[8px] text-[#99CCCC] mt-1 hover:text-white uppercase transition-all flex items-center gap-1">
-                                                    <Music size={8} /> Прослушать
-                                                </button>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="p-4 text-right space-y-1">
-                                        <button onClick={() => setSelectedForEdit(a)} className="text-[9px] text-[#99CCCC] font-black uppercase tracking-widest hover:text-white px-3 py-1 bg-[#111] border border-[#1a1a1a] w-full block">Редактировать</button>
-                                        <button onClick={() => setSelectedForEdit({ ...a, _tab: 'media' })} className="text-[8px] text-[#737373] uppercase hover:text-white w-full block">New Audio</button>
-                                    </td>
-                                </tr>
-                            )
-                        })}
-                    </tbody>
-                </table>
-            </div>
-            {selectedForEdit && <ScheduleEditModal artist={selectedForEdit} editItem={selectedForEdit} onClose={() => setSelectedForEdit(null)} onConfirm={handleUpdateBroadcast} lastEndTime={selectedForEdit.startTime} />}
-        </div>
-    )
-}
-
 function NavItem({ icon, label, active, onClick }: { icon: any, label: string, active?: boolean, onClick?: () => void }) {
     return (
         <button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-sm transition-all ${active ? "bg-[#99CCCC] text-black shadow-lg" : "text-[#737373] hover:text-white hover:bg-[#111]"}`}>
             {icon}
             <span className="text-[11px] font-bold uppercase tracking-tight">{label}</span>
         </button>
-    )
-}
-
-function MetricCard({ label, value, sub, className = "" }: { label: string, value: string, sub: string, className?: string }) {
-    return (
-        <div className={`p-4 bg-black border border-[#1a1a1a] rounded-sm group hover:border-[#99CCCC]/30 transition-all ${className}`}>
-            <p className="text-[9px] uppercase font-bold text-[#444] mb-1 tracking-widest">{label}</p>
-            <p className="text-xl font-mono text-white mb-0.5">{value}</p>
-            <p className="text-[8px] text-[#737373] uppercase font-medium">{sub}</p>
-        </div>
-    )
-}
-
-function ScheduleEditModal({ artist, onClose, onConfirm, lastEndTime, editItem }: { artist: any, onClose: () => void, onConfirm: (details: any) => void, lastEndTime: string, editItem?: any }) {
-    const [name, setName] = useState(editItem?.name || artist.name)
-    const [show, setShow] = useState(editItem?.show || artist.show || "")
-    const [location, setLocation] = useState(editItem?.location || artist.location || "Earth")
-    const [trackName, setTrackName] = useState(editItem?.trackName || "")
-    const [startTime, setStartTime] = useState(editItem ? new Date(editItem.startTime).toISOString().slice(0, 19) : new Date(lastEndTime).toISOString().slice(0, 19))
-    const [endTime, setEndTime] = useState(editItem ? new Date(editItem.endTime).toISOString().slice(0, 19) : new Date(new Date(lastEndTime).getTime() + 3600000).toISOString().slice(0, 19))
-    const [description, setDescription] = useState(editItem?.description || artist.description || "")
-    const [externalStreamUrl, setExternalStreamUrl] = useState(editItem?.external_stream_url || editItem?.audioUrl || artist?.audioUrl || "")
-    const [instagramUrl, setInstagramUrl] = useState(editItem?.instagram_url || artist.instagramUrl || "")
-    const [soundcloudUrl, setSoundcloudUrl] = useState(editItem?.soundcloud_url || artist.soundcloudUrl || "")
-    const [bandcampUrl, setBandcampUrl] = useState(editItem?.bandcamp_url || artist.bandcampUrl || "")
-    const [existingImage, setExistingImage] = useState(editItem?.broadcast_image || editItem?.image || artist.image || null)
-    const [existingAudio, setExistingAudio] = useState(editItem?.audio_file || null)
-    const [imageFile, setImageFile] = useState<File | null>(null)
-    const [audioFile, setAudioFile] = useState<File | null>(null)
-    const [isUploading, setIsUploading] = useState(false)
-    const [activeTab, setActiveTab] = useState<"details" | "media">(editItem?._tab === 'media' ? "media" : "details")
-
-    const handleUpload = async (file: File) => {
-        const formData = new FormData(); formData.append('broadcast_media', file)
-        const res = await fetch('/api/broadcast/upload', { method: 'POST', body: formData })
-        const data = await res.json()
-        if (data.error) throw new Error(data.error)
-        return data.filename
-    }
-
-    const handleConfirm = async () => {
-        setIsUploading(true)
-        try {
-            let broadcast_image = existingImage
-            let audio_file = existingAudio
-            if (imageFile) broadcast_image = await handleUpload(imageFile)
-            if (audioFile) audio_file = await handleUpload(audioFile)
-
-            onConfirm({
-                ...(editItem || {}),
-                name,
-                show,
-                location,
-                startTime: new Date(startTime).toISOString(),
-                endTime: new Date(endTime).toISOString(),
-                trackName,
-                description,
-                instagram_url: instagramUrl,
-                soundcloud_url: soundcloudUrl,
-                bandcamp_url: bandcampUrl,
-                external_stream_url: externalStreamUrl,
-                broadcast_image,
-                audio_file
-            })
-        } catch (err) { alert("Upload failed") } finally { setIsUploading(false) }
-    }
-
-    const activeAudio = audioFile ? `Загружается: ${audioFile.name}` : (externalStreamUrl || existingAudio || "Не назначен")
-
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div className="w-full max-w-xl bg-[#080808] border border-[#1a1a1a] rounded-sm overflow-hidden animate-in zoom-in-95 duration-200">
-                <div className="flex px-6 py-4 border-b border-[#1a1a1a] justify-between items-center">
-                    <div className="flex gap-4">
-                        <button onClick={() => setActiveTab("details")} className={`text-[10px] font-black uppercase tracking-widest ${activeTab === 'details' ? 'text-[#99CCCC]' : 'text-[#444]'}`}>Детали</button>
-                        <button onClick={() => setActiveTab("media")} className={`text-[10px] font-black uppercase tracking-widest ${activeTab === 'media' ? 'text-[#99CCCC]' : 'text-[#444]'}`}>Медиа</button>
-                    </div>
-                    <button onClick={onClose} className="text-[#444] hover:text-white transition-colors"><X size={18} /></button>
-                </div>
-                <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                    {activeTab === "details" ? (
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Имя</label>
-                                    <input value={name} onChange={e => setName(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2 text-xs text-white outline-none focus:border-[#99CCCC]" />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Шоу</label>
-                                    <input value={show} onChange={e => setShow(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2 text-xs text-white outline-none focus:border-[#99CCCC]" />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Локация</label>
-                                    <input value={location} onChange={e => setLocation(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2 text-xs text-white outline-none focus:border-[#99CCCC]" />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Композиция (Название трека)</label>
-                                    <input value={trackName} onChange={e => setTrackName(e.target.value)} placeholder="Введите название..." className="w-full bg-black border border-[#1a1a1a] p-2 text-xs text-white outline-none focus:border-[#99CCCC]" />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="space-y-1">
-                                    <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Instagram</label>
-                                    <input value={instagramUrl} onChange={e => setInstagramUrl(e.target.value)} placeholder="URL" className="w-full bg-black border border-[#1a1a1a] p-2 text-[10px] text-white outline-none focus:border-[#99CCCC]" />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Soundcloud</label>
-                                    <input value={soundcloudUrl} onChange={e => setSoundcloudUrl(e.target.value)} placeholder="URL" className="w-full bg-black border border-[#1a1a1a] p-2 text-[10px] text-white outline-none focus:border-[#99CCCC]" />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Bandcamp</label>
-                                    <input value={bandcampUrl} onChange={e => setBandcampUrl(e.target.value)} placeholder="URL" className="w-full bg-black border border-[#1a1a1a] p-2 text-[10px] text-white outline-none focus:border-[#99CCCC]" />
-                                </div>
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Описание</label>
-                                <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Описание..." className="w-full h-20 bg-black border border-[#1a1a1a] p-2 text-xs text-white outline-none focus:border-[#99CCCC] resize-none" />
-                            </div>
-                            <div className="p-3 bg-black/40 border border-[#1a1a1a] rounded-sm space-y-2">
-                                <div className="flex justify-between items-center">
-                                    <label className="text-[8px] uppercase font-black tracking-widest text-[#555] block">Текущий аудио-источник</label>
-                                    {(externalStreamUrl || existingAudio || audioFile) && (
-                                        <button
-                                            onClick={() => { setExternalStreamUrl(""); setExistingAudio(null); setAudioFile(null); }}
-                                            className="text-[8px] text-red-500/50 hover:text-red-500 uppercase tracking-tighter"
-                                        >
-                                            [Сбросить]
-                                        </button>
-                                    )}
-                                </div>
-                                <div className="flex items-center justify-between gap-3">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[10px] font-mono text-[#99CCCC] truncate">
-                                            {activeAudio}
-                                        </p>
-                                    </div>
-                                    {(externalStreamUrl || existingAudio) && (
-                                        <button
-                                            onClick={() => new Audio(externalStreamUrl || `/broadcast-media/${existingAudio}`).play()}
-                                            className="px-2 py-1 bg-[#1a1a1a] text-[#99CCCC] text-[8px] font-bold uppercase rounded-sm hover:bg-[#99CCCC] hover:text-black transition-all"
-                                        >
-                                            Preview
-                                        </button>
-                                    )}
-                                </div>
-                                <button
-                                    onClick={() => setActiveTab("media")}
-                                    className="w-full py-1.5 mt-2 bg-white/5 hover:bg-white/10 text-[9px] uppercase font-black text-[#737373] hover:text-white transition-all border border-dashed border-[#222]"
-                                >
-                                    Заменить или загрузить файл
-                                </button>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Начало</label>
-                                    <input type="datetime-local" step="1" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2 text-xs text-white outline-none focus:border-[#99CCCC]" />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Конец</label>
-                                    <input type="datetime-local" step="1" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2 text-xs text-white outline-none focus:border-[#99CCCC]" />
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            <div className="p-4 bg-black border border-[#1a1a1a] space-y-2">
-                                <label className="text-[9px] uppercase font-black text-[#444] tracking-widest block">Изображение</label>
-                                <div className="flex gap-2">
-                                    <input value={existingImage || ""} onChange={e => setExistingImage(e.target.value)} placeholder="URL..." className="flex-1 bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC]" />
-                                    <label className="px-4 flex items-center bg-[#111] border border-[#1a1a1a] text-[9px] text-[#737373] hover:text-white cursor-pointer transition-all">
-                                        <input type="file" accept="image/*" className="hidden" onChange={e => setImageFile(e.target.files?.[0] || null)} />
-                                        {imageFile ? "✓" : "Load"}
-                                    </label>
-                                </div>
-                            </div>
-                            <div className="p-4 bg-black border border-[#1a1a1a] space-y-2">
-                                <label className="text-[9px] uppercase font-black text-[#444] tracking-widest block">Аудио</label>
-                                <div className="flex gap-2">
-                                    <input value={externalStreamUrl || ""} onChange={e => setExternalStreamUrl(e.target.value)} placeholder="URL..." className="flex-1 bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC]" />
-                                    <label className="px-4 flex items-center bg-[#111] border border-[#1a1a1a] text-[9px] text-[#737373] hover:text-white cursor-pointer transition-all">
-                                        <input type="file" accept="audio/*" className="hidden" onChange={e => setAudioFile(e.target.files?.[0] || null)} />
-                                        {audioFile ? "✓" : "Load"}
-                                    </label>
-                                </div>
-                                <p className="text-[8px] text-[#444] uppercase font-medium">Если загружен файл, он будет иметь приоритет над URL-ссылкой.</p>
-                            </div>
-                        </div>
-                    )}
-                </div>
-                <div className="p-6 border-t border-[#1a1a1a] flex gap-3">
-                    <button onClick={onClose} className="flex-1 py-3 text-[10px] uppercase font-black text-[#444] hover:text-white transition-all">Cancel</button>
-                    <button onClick={handleConfirm} disabled={isUploading} className="flex-1 py-3 bg-[#99CCCC] text-black text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all shadow-lg disabled:opacity-50">
-                        {isUploading ? "..." : "Confirm"}
-                    </button>
-                </div>
-            </div>
-        </div>
     )
 }
 
