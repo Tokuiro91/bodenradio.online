@@ -666,7 +666,9 @@ function updateNowPlaying() {
             // FORCE SKIP LOGIC:
             if (lastServedScheduleId && lastServedScheduleId !== row.id) {
                 console.log(`[Monitor] Detected overlap/newer track (${row.title}). Signaling Liquidsoap SKIP...`);
-                sendTelnetCommand('boden_dashboard.skip');
+                sendTelnetCommand('boden_dashboard.flush_and_skip');
+                // Secondary skip to ensure it breaks out of any other fallback
+                sendTelnetCommand('BØDEN_RADIO.skip');
             }
         }
     });
