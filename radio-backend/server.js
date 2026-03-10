@@ -657,15 +657,23 @@ function updateNowPlaying() {
             external_stream_url: row.external_stream_url
         };
 
-        // Only emit if changed (Banner update)
+        // 1. Update Socket UI (Banner) if changed
         if (!currentTrack || currentTrack.startTime !== newTrack.startTime || currentTrack.title !== newTrack.title) {
             currentTrack = newTrack;
             console.log(`[Monitor] Updating now-playing: ${currentTrack.title}`);
             io.emit('now-playing:update', currentTrack);
-            // However, we only trigger this IF it's different.
-            if (!lastServedScheduleId) lastServedScheduleId = row.id;
         }
-    }
+
+        // 2. FORCE SKIP LOGIC (Independent of UI updates)
+        // Check if the current active track in DB matches what we last served to Liquidsoap.
+        if (row && (!lastServedScheduleId || lastServedScheduleId !== row.id)) {
+            console.log(`[Monitor] Force-Sync: Detected active track (${row.title}, ID: ${row.id}) that differs from last served (ID: ${lastServedScheduleId}). Signaling Liquidsoap...`);
+            sendTelnetCommand('boden_dashboard.flush_and_skip');
+            sendTelnetCommand('BØDEN_RADIO.skip');
+
+            // Track the served ID locally to prevent re-skipping every 10 seconds
+            lastServedScheduleId = row.id;
+        }
     });
 }
 
