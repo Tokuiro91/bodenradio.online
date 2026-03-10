@@ -430,44 +430,73 @@ app.post('/api/schedule/sync', auth, (req, res) => {
 });
 
 app.post('/api/schedule', auth, (req, res) => {
-    const { title, type, item_id, start_time, end_time } = req.body;
+    const {
+        title, type, item_id, start_time, end_time,
+        db_id, instagram_url, soundcloud_url, mixcloud_url,
+        broadcast_image, audio_file, external_stream_url, track_name
+    } = req.body;
 
     // Validation: no overlap with existing database events
     db.get('SELECT title FROM schedule WHERE (? < end_time AND ? > start_time)', [start_time, end_time], (err, row) => {
         if (row) return res.status(400).json({ error: `Это время уже занято событием: "${row.title}"` });
 
-        db.run('INSERT INTO schedule (title, type, item_id, start_time, end_time) VALUES (?, ?, ?, ?, ?)',
-            [title, type, item_id, start_time, end_time],
-            function (err) {
-                if (err) return res.status(500).json({ error: err.message });
-                res.json({
-                    id: this.lastID,
-                    title,
-                    type,
-                    item_id,
-                    start_time,
-                    end_time
-                });
-            }
-        );
+        const sql = `
+            INSERT INTO schedule (
+                title, type, item_id, start_time, end_time,
+                db_id, instagram_url, soundcloud_url, mixcloud_url,
+                broadcast_image, audio_file, external_stream_url, track_name
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        db.run(sql, [
+            title, type, item_id, start_time, end_time,
+            db_id || null, instagram_url || null, soundcloud_url || null, mixcloud_url || null,
+            broadcast_image || null, audio_file || null, external_stream_url || null, track_name || null
+        ], function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({
+                id: this.lastID,
+                title, type, item_id, start_time, end_time,
+                db_id, instagram_url, soundcloud_url, mixcloud_url,
+                broadcast_image, audio_file, external_stream_url, track_name
+            });
+        });
     });
 });
-
 app.put('/api/schedule/:id', auth, (req, res) => {
-    const { title, type, item_id, start_time, end_time } = req.body;
+    const {
+        title, type, item_id, start_time, end_time,
+        db_id, instagram_url, soundcloud_url, mixcloud_url,
+        broadcast_image, audio_file, external_stream_url, track_name
+    } = req.body;
     const { id } = req.params;
 
     // Validation: no overlap (excluding self)
     db.get('SELECT title FROM schedule WHERE id != ? AND (? < end_time AND ? > start_time)', [id, start_time, end_time], (err, row) => {
         if (row) return res.status(400).json({ error: `Новое время пересекается с событием: "${row.title}"` });
 
-        db.run('UPDATE schedule SET title = ?, type = ?, item_id = ?, start_time = ?, end_time = ? WHERE id = ?',
-            [title, type, item_id, start_time, end_time, id],
-            function (err) {
-                if (err) return res.status(500).json({ error: err.message });
-                res.json({ success: true, id, title, type, item_id, start_time, end_time });
-            }
-        );
+        const sql = `
+            UPDATE schedule SET 
+                title = ?, type = ?, item_id = ?, start_time = ?, end_time = ?,
+                db_id = ?, instagram_url = ?, soundcloud_url = ?, mixcloud_url = ?,
+                broadcast_image = ?, audio_file = ?, external_stream_url = ?, track_name = ?
+            WHERE id = ?
+        `;
+
+        db.run(sql, [
+            title, type, item_id, start_time, end_time,
+            db_id || null, instagram_url || null, soundcloud_url || null, mixcloud_url || null,
+            broadcast_image || null, audio_file || null, external_stream_url || null, track_name || null,
+            id
+        ], function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({
+                id,
+                title, type, item_id, start_time, end_time,
+                db_id, instagram_url, soundcloud_url, mixcloud_url,
+                broadcast_image, audio_file, external_stream_url, track_name
+            });
+        });
     });
 });
 

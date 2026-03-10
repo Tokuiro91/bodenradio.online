@@ -47,38 +47,38 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   echo "   → next build..."
   npm run build
   
-  echo "   → Unifying audio directories (/var/radio/music)..."
-  # Support both old and new data structures
+  # Ensure persistent directories exist and have correct permissions
   mkdir -p /var/radio/music
   mkdir -p /var/radio/uploads
+  chmod -R 777 /var/radio
   
-  # Ensure target directories exist in app data
-  mkdir -p data/radio/music
-  mkdir -p data/radio/uploads
-
+  # Ensure target directory structure exists in app data
+  mkdir -p data/radio
+  
   # Symlink app data to persistent /var/radio storage if not already symlinked
   if [ ! -L "data/radio/music" ]; then
-    rm -rf data/radio/music && ln -s /var/radio/music data/radio/music
+    rm -rf data/radio/music
+    ln -s /var/radio/music data/radio/music
   fi
   if [ ! -L "data/radio/uploads" ]; then
-    rm -rf data/radio/uploads && ln -s /var/radio/uploads data/radio/uploads
+    rm -rf data/radio/uploads
+    ln -s /var/radio/uploads data/radio/uploads
   fi
-
-  # Permissions for backend
-  chmod -R 775 /var/radio/music /var/radio/uploads
   
   # Move existing files from old uploads to unified dir if any (backward compatibility)
   if [ -d "public/uploads/audio" ]; then
     find public/uploads/audio -name "*.mp3" -exec mv {} /var/radio/music/ \; 2>/dev/null || true
   fi
   
-  # Re-create and symlink for backward compatibility (web access)
+  # Clean and re-create symlinks for backward compatibility (web access)
   mkdir -p public/uploads/audio
-  ln -sf /var/radio/music/*.mp3 public/uploads/audio/ 2>/dev/null || true
+  rm -f public/uploads/audio/*.mp3
+  find /var/radio/music -maxdepth 1 -name "*.mp3" -exec ln -sf {} public/uploads/audio/ \; 2>/dev/null || true
   
   # Symlink for broadcast media uploads
   mkdir -p public/broadcast-media
-  ln -sf /var/radio/uploads/* public/broadcast-media/ 2>/dev/null || true
+  rm -f public/broadcast-media/*
+  find /var/radio/uploads -maxdepth 1 -not -path '*/.*' -exec ln -sf {} public/broadcast-media/ \; 2>/dev/null || true
 
   echo "   → перезапуск PM2..."
 
