@@ -39,6 +39,7 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   git checkout BODEN-STADT
   # Force checkout or ignore specific local changes that block pull
   git checkout radio-backend/database.sqlite || true
+  git checkout radio-backend/server.js || true
   git pull origin BODEN-STADT
   echo "   → npm install for root..."
   npm ci --legacy-peer-deps --silent
