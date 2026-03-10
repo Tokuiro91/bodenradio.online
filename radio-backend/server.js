@@ -53,8 +53,8 @@ app.get('/api/system/health', (req, res) => {
         });
     });
 });
-const MUSIC_DIR = '/var/radio/music';
-const UPLOADS_DIR = '/var/radio/uploads';
+const MUSIC_DIR = path.join(__dirname, '..', 'data', 'radio', 'music');
+const UPLOADS_DIR = path.join(__dirname, '..', 'data', 'radio', 'uploads');
 const PORT = process.env.PORT || 8080;
 
 // Setup Multer for track uploads
@@ -449,6 +449,18 @@ app.get('/internal/next', (req, res) => {
                 return res.send(`annotate:${metadata},liq_start=${offsetSeconds},liq_cue_in=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration}:${fullPath}`);
             }
 
+            // Update Now Playing Status
+            currentTrack = {
+                title: schedule.title,
+                trackName: schedule.trackName || "Unknown Track",
+                startTime: schedule.start_time,
+                endTime: schedule.end_time,
+                type: schedule.type,
+                audio_file: schedule.audio_file,
+                external_stream_url: schedule.external_stream_url
+            };
+            io.emit('now-playing:update', currentTrack);
+
             // Priority 3: Regular track/playlist items
             if (schedule.type === 'track') {
                 db.get('SELECT filename FROM tracks WHERE id = ?', [schedule.item_id], (err, track) => {
@@ -486,11 +498,15 @@ const io = require('socket.io')(server, {
 });
 
 let onlineCount = 0;
+let currentTrack = null;
 
 io.on('connection', (socket) => {
     onlineCount++;
     console.log(`[Socket] User connected. Online: ${onlineCount}`);
     io.emit('stats:update', { onlineCount });
+    if (currentTrack) {
+        socket.emit('now-playing:update', currentTrack);
+    }
 
     socket.on('reaction', (data) => {
         // Broadcast reaction to all other clients

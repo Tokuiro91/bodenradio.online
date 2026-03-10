@@ -24,8 +24,8 @@ export async function POST(request: Request) {
             .filter((a: any) => a.type === 'artist')
             .map((a: any) => {
                 let trackId = null;
-                if (a.audioUrl) {
-                    const filename = a.audioUrl.split('/').pop();
+                if (a.audioUrl || a.audio_file) {
+                    const filename = (a.audio_file || a.audioUrl).split('/').pop();
                     const track = tracks.find((t: any) => t.filename === filename);
                     if (track) trackId = track.id;
                 }
@@ -40,9 +40,10 @@ export async function POST(request: Request) {
                     instagram_url: a.instagram_url || null,
                     soundcloud_url: a.soundcloud_url || null,
                     mixcloud_url: a.mixcloud_url || null,
-                    broadcast_image: a.broadcast_image || null,
+                    broadcast_image: a.broadcast_image || a.image || null,
                     audio_file: a.audio_file || null,
-                    external_stream_url: a.external_stream_url || null
+                    external_stream_url: a.external_stream_url || a.audioUrl || null,
+                    track_name: a.trackName || null
                 };
             });
 

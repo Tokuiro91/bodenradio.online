@@ -1,7 +1,7 @@
 settings.init.allow_root.set(true)
 settings.log.level.set(3)
 
-music_dir = '/var/radio/music'
+music_dir = '/Users/ioioioi/Desktop/Code/Agileradio.online/b_0kaQq2GoFgB-1771946982612/data/radio/music'
 
 def get_next_track() =
   # Fetch from Node.js bridge

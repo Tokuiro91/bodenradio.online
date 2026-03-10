@@ -85,7 +85,7 @@ export function RadioScheduleManager({ dbArtists, artists, setArtists }: {
         : ""
 
     return (
-        <div className="w-full h-[80vh] bg-[#000] rounded-sm overflow-hidden border border-[#1a1a1a]">
+        <div className="w-full min-h-[600px] h-[75vh] bg-[#000] rounded-sm overflow-hidden border border-[#1a1a1a]">
             {backendUrl && (
                 <iframe
                     ref={iframeRef}
