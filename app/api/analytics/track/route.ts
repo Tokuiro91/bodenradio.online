@@ -15,7 +15,17 @@ export async function POST(req: Request) {
         const isRegistered = !!serverSession?.user && serverSession.user.role === "listener"
 
         const now = Date.now()
-        const ip = req.headers.get("x-forwarded-for") || "unknown"
+
+        // Refined IP extraction
+        const forwarded = req.headers.get("x-forwarded-for")
+        const realIp = req.headers.get("x-real-ip")
+        let ip = forwarded ? forwarded.split(",")[0].trim() : (realIp || "unknown")
+
+        // Clean IPv6-to-IPv4 prefix
+        if (ip.startsWith("::ffff:")) {
+            ip = ip.substring(7)
+        }
+
         let country = req.headers.get("x-vercel-ip-country") || undefined
         let city = req.headers.get("x-vercel-ip-city") ? decodeURIComponent(req.headers.get("x-vercel-ip-city")!) : undefined
 
