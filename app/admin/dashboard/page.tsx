@@ -293,6 +293,35 @@ export default function UnifiedDashboardPage() {
                 )}
             </main>
 
+            {isArtistEditModalOpen && selectedArtistForEdit && (
+                <ArtistEditModal
+                    artist={selectedArtistForEdit}
+                    onClose={() => {
+                        setIsArtistEditModalOpen(false)
+                        setSelectedArtistForEdit(null)
+                    }}
+                    onConfirm={handleSaveArtist}
+                />
+            )}
+
+            {isArtistCreateModalOpen && (
+                <ArtistCreateModal
+                    onClose={() => setIsArtistCreateModalOpen(false)}
+                    onConfirm={handleSaveNewArtist}
+                />
+            )}
+
+            {isScheduleModalOpen && selectedArtistForSchedule && (
+                <ScheduleEditModal
+                    artist={selectedArtistForSchedule}
+                    onClose={() => {
+                        setIsScheduleModalOpen(false)
+                        setSelectedArtistForSchedule(null)
+                    }}
+                    onConfirm={confirmAddToSchedule}
+                />
+            )}
+
             <style jsx global>{`
                 @import url('https://fonts.googleapis.com/css2?family=Tektur:wght@400;700;900&display=swap');
                 .font-tektur { font-family: 'Tektur', sans-serif; }
@@ -399,6 +428,149 @@ function ArtistEditModal({ artist, onClose, onConfirm }: { artist: DBArtist, onC
                 <div className="p-6 border-t border-[#1a1a1a] flex gap-3">
                     <button onClick={onClose} className="flex-1 py-3 text-[10px] uppercase font-black text-[#444] hover:text-white transition-all">Cancel</button>
                     <button onClick={handleSave} disabled={isSaving} className="flex-1 py-3 bg-[#99CCCC] text-black text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all shadow-lg">{isSaving ? "..." : "Save"}</button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function ArtistCreateModal({ onClose, onConfirm }: { onClose: () => void, onConfirm: (newArtist: any) => void }) {
+    const [name, setName] = useState("")
+    const [show, setShow] = useState("")
+    const [image, setImage] = useState("")
+    const [location, setLocation] = useState("Earth")
+    const [description, setDescription] = useState("")
+    const [instagramUrl, setInstagramUrl] = useState("")
+    const [soundcloudUrl, setSoundcloudUrl] = useState("")
+    const [bandcampUrl, setBandcampUrl] = useState("")
+    const [audioUrl, setAudioUrl] = useState("")
+    const [isSaving, setIsSaving] = useState(false)
+
+    const handleSave = async () => {
+        if (!name) return alert("Имя обязательно")
+        setIsSaving(true)
+        await onConfirm({
+            name, show, image, location, description,
+            instagramUrl, soundcloudUrl, bandcampUrl, audioUrl
+        })
+        setIsSaving(false)
+    }
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div className="w-full max-w-lg bg-[#0a0a0a] border border-[#1a1a1a] rounded-sm overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="px-6 py-4 border-b border-[#1a1a1a] flex justify-between items-center bg-[#080808]">
+                    <h3 className="text-[12px] font-black uppercase tracking-widest text-[#99CCCC]">Новый Артист</h3>
+                    <button onClick={onClose} className="text-[#444] hover:text-white transition-colors"><X size={18} /></button>
+                </div>
+                <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar text-white">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Имя *</label>
+                            <input value={name} onChange={e => setName(e.target.value)} placeholder="Имя..." className="w-full bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC]" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Шоу</label>
+                            <input value={show} onChange={e => setShow(e.target.value)} placeholder="Шоу..." className="w-full bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC]" />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Локация</label>
+                            <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Локация..." className="w-full bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC]" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Изображение (URL)</label>
+                            <input value={image} onChange={e => setImage(e.target.value)} placeholder="URL..." className="w-full bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC]" />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Instagram</label>
+                            <input value={instagramUrl} onChange={e => setInstagramUrl(e.target.value)} placeholder="URL" className="w-full bg-black border border-[#1a1a1a] p-2 text-[10px] outline-none focus:border-[#99CCCC]" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Soundcloud</label>
+                            <input value={soundcloudUrl} onChange={e => setSoundcloudUrl(e.target.value)} placeholder="URL" className="w-full bg-black border border-[#1a1a1a] p-2 text-[10px] outline-none focus:border-[#99CCCC]" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Bandcamp</label>
+                            <input value={bandcampUrl} onChange={e => setBandcampUrl(e.target.value)} placeholder="URL" className="w-full bg-black border border-[#1a1a1a] p-2 text-[10px] outline-none focus:border-[#99CCCC]" />
+                        </div>
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Audio (URL)</label>
+                        <input value={audioUrl} onChange={e => setAudioUrl(e.target.value)} placeholder="URL..." className="w-full bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC]" />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Описание</label>
+                        <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Описание..." className="w-full h-32 bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC] resize-none" />
+                    </div>
+                </div>
+                <div className="p-6 border-t border-[#1a1a1a] flex gap-3">
+                    <button onClick={onClose} className="flex-1 py-3 text-[10px] uppercase font-black text-[#444] hover:text-white transition-all">Cancel</button>
+                    <button onClick={handleSave} disabled={isSaving} className="flex-1 py-3 bg-[#99CCCC] text-black text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all shadow-lg">{isSaving ? "..." : "Create"}</button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function ScheduleEditModal({ artist, onClose, onConfirm }: { artist: DBArtist, onClose: () => void, onConfirm: (details: any) => void }) {
+    const [title, setTitle] = useState(artist.name)
+    const [show, setShow] = useState(artist.show || "")
+    const [startTime, setStartTime] = useState("")
+    const [endTime, setEndTime] = useState("")
+    const [trackName, setTrackName] = useState(artist.show || "")
+    const [description, setDescription] = useState(artist.description || "")
+    const [externalStreamUrl, setExternalStreamUrl] = useState(artist.audioUrl || "")
+    const [audioFile, setAudioFile] = useState<string>("")
+    const [broadcastImage, setBroadcastImage] = useState<string>("")
+
+    const handleConfirm = () => {
+        if (!startTime || !endTime) return alert("Выберите время")
+        onConfirm({
+            name: title,
+            show,
+            startTime: new Date(startTime).toISOString(),
+            endTime: new Date(endTime).toISOString(),
+            trackName,
+            description,
+            instagram_url: artist.instagramUrl,
+            soundcloud_url: artist.soundcloudUrl,
+            mixcloud_url: artist.bandcampUrl,
+            audio_file: audioFile,
+            broadcast_image: broadcastImage,
+            external_stream_url: externalStreamUrl
+        })
+    }
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div className="w-full max-w-lg bg-[#0a0a0a] border border-[#1a1a1a] rounded-sm overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="px-6 py-4 border-b border-[#1a1a1a] flex justify-between items-center bg-[#080808]">
+                    <h3 className="text-[12px] font-black uppercase tracking-widest text-[#99CCCC]">Отправить в Эфир: {artist.name}</h3>
+                    <button onClick={onClose} className="text-[#444] hover:text-white transition-colors"><X size={18} /></button>
+                </div>
+                <div className="p-6 space-y-4 text-white">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Начало</label>
+                            <input type="datetime-local" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC] font-mono" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Конец</label>
+                            <input type="datetime-local" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC] font-mono" />
+                        </div>
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Track Name (Metadata)</label>
+                        <input value={trackName} onChange={e => setTrackName(e.target.value)} placeholder="Artist - Track..." className="w-full bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC]" />
+                    </div>
+                </div>
+                <div className="p-6 border-t border-[#1a1a1a] flex gap-3">
+                    <button onClick={onClose} className="flex-1 py-3 text-[10px] uppercase font-black text-[#444] hover:text-white transition-all">Cancel</button>
+                    <button onClick={handleConfirm} className="flex-1 py-3 bg-[#99CCCC] text-black text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all shadow-lg">Confirm</button>
                 </div>
             </div>
         </div>
