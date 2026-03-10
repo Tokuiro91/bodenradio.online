@@ -132,14 +132,12 @@ export function Header({
               <Link href={status === "authenticated" ? "/profile" : "/login"} className="text-xl font-mono hover:text-[#99CCCC] transition-colors border-b border-[#2a2a2a] pb-2">
                 {status === "authenticated" ? "PROFILE" : "LOGIN / JOIN"}
               </Link>
-              {status === "authenticated" && (
-                <Link
-                  href="/mix-submission"
-                  className="text-xl font-mono hover:text-[#99CCCC] transition-colors border-b border-[#2a2a2a] pb-2 text-orange-500/80"
-                >
-                  MIX SUBMISSION
-                </Link>
-              )}
+              <Link
+                href="/mix-submission"
+                className="text-xl font-mono hover:text-[#99CCCC] transition-colors border-b border-[#2a2a2a] pb-2"
+              >
+                MIX SUBMISSION
+              </Link>
               <Link href="/about" className="text-xl font-mono hover:text-[#99CCCC] transition-colors border-b border-[#2a2a2a] pb-2">
                 ABOUT US
               </Link>

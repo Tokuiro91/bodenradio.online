@@ -2,7 +2,7 @@ import { google } from 'googleapis';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 
-const SPREADSHEET_ID = '1gH2majqCcRkQGUPvWE8bqpo6MhdZf8z31Q6mf2t0pBM';
+const SPREADSHEET_ID = process.env.GOOGLE_MIX_SUBMISSION_SPREADSHEET_ID || '1gH2majqCcRkQGUPvWE8bqpo6MhdZf8z31Q6mf2t0pBM';
 const RANGE = 'A:L'; // Expanded to cover all columns
 
 export async function POST(req: Request) {
