@@ -4,7 +4,7 @@ settings.server.telnet.set(true)
 settings.server.telnet.port.set(1234)
 settings.server.telnet.bind_addr.set("127.0.0.1")
 
-music_dir = 'data/radio/music'
+music_dir = '/var/radio/music'
 
 def get_next_track() =
   # Fetch from Node.js bridge
