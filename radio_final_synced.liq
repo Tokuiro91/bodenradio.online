@@ -1,7 +1,10 @@
 settings.init.allow_root.set(true)
 settings.log.level.set(3)
+settings.server.telnet.set(true)
+settings.server.telnet.port.set(1234)
+settings.server.telnet.bind_addr.set("127.0.0.1")
 
-music_dir = '/Users/ioioioi/Desktop/Code/Agileradio.online/b_0kaQq2GoFgB-1771946982612/data/radio/music'
+music_dir = 'data/radio/music'
 
 def get_next_track() =
   # Fetch from Node.js bridge

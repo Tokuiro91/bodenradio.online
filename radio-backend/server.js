@@ -455,6 +455,8 @@ app.get('/internal/next', (req, res) => {
 
         console.log(`[Liquidsoap] Returning schedule: ${schedule.title} (ID: ${schedule.id}), audio_file: ${schedule.audio_file}, stream: ${schedule.external_stream_url}`);
 
+        lastServedScheduleId = schedule.id;
+
         // Priority 1: External Stream URL
         if (schedule.external_stream_url) {
             return res.send(`annotate:${metadata},liq_start=${offsetSeconds},liq_cue_out=${totalDurationSeconds},liq_fade_out=${fadeOutDuration}:${schedule.external_stream_url}`);
@@ -515,6 +517,7 @@ const io = require('socket.io')(server, {
 
 let onlineCount = 0;
 let currentTrack = null;
+let lastServedScheduleId = null;
 
 io.on('connection', (socket) => {
     onlineCount++;
@@ -659,6 +662,17 @@ function updateNowPlaying() {
             currentTrack = newTrack;
             console.log(`[Monitor] Updating now-playing: ${currentTrack.title}`);
             io.emit('now-playing:update', currentTrack);
+
+            // FORCE SKIP LOGIC:
+            // If the track currently ACTIVE in DB is NOT the one we last served to Liquidsoap,
+            // it means a newer track (overlap) has started. We must tell Liquidsoap to skip.
+            if (lastServedScheduleId && lastServedScheduleId !== row.id) {
+                console.log(`[Monitor] Detected overlap/newer track (${row.title}). Signaling Liquidsoap SKIP...`);
+                // We use telnet command to skip the dynamic source
+                exec('echo "boden_dashboard.skip" | nc -w 1 localhost 1234', (err) => {
+                    if (err) console.error('[Monitor] Skip command failed:', err.message);
+                });
+            }
         }
     });
 }
