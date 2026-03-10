@@ -242,9 +242,16 @@ app.post('/api/broadcast/upload', auth, upload.single('broadcast_media'), (req, 
 
 /* --- MEDIA MANAGEMENT --- */
 app.get('/api/media', auth, (req, res) => {
+    console.log(`[Media] Fetching media from: ${UPLOADS_DIR}`);
     try {
-        if (!fs.existsSync(UPLOADS_DIR)) return res.json([]);
-        const files = fs.readdirSync(UPLOADS_DIR)
+        if (!fs.existsSync(UPLOADS_DIR)) {
+            console.log(`[Media] UPLOADS_DIR does not exist at: ${UPLOADS_DIR}`);
+            return res.json([]);
+        }
+        const filenames = fs.readdirSync(UPLOADS_DIR);
+        console.log(`[Media] Found ${filenames.length} files in directory.`);
+
+        const files = filenames
             .filter(f => !f.startsWith('.'))
             .map(f => {
                 const stat = fs.statSync(path.join(UPLOADS_DIR, f));
@@ -257,6 +264,7 @@ app.get('/api/media', auth, (req, res) => {
             .sort((a, b) => b.mtime - a.mtime);
         res.json(files);
     } catch (err) {
+        console.error('[Media] Error listing media:', err);
         res.status(500).json({ error: 'Failed to list media' });
     }
 });

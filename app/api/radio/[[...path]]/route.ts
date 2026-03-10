@@ -21,6 +21,7 @@ async function proxyRequest(req: Request, context: any) {
     });
 
     try {
+        console.log(`[Proxy] ${req.method} ${targetUrl}`);
         let body: any = undefined;
         if (req.method !== 'GET' && req.method !== 'HEAD') {
             body = await req.arrayBuffer();
@@ -33,7 +34,9 @@ async function proxyRequest(req: Request, context: any) {
             cache: 'no-store'
         });
 
+        console.log(`[Proxy] Response status: ${response.status}`);
         const data = await response.arrayBuffer();
+        console.log(`[Proxy] Data size: ${data.byteLength}`);
 
         const responseHeaders = new Headers();
         response.headers.forEach((value, key) => {
