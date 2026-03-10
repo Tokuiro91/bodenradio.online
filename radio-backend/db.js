@@ -56,6 +56,7 @@ db.serialize(() => {
     broadcast_image TEXT,
     audio_file TEXT,
     external_stream_url TEXT,
+    track_name TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
@@ -71,7 +72,7 @@ db.serialize(() => {
   // Add columns if they don't exist (migrations)
   const columns = [
     'instagram_url', 'soundcloud_url', 'mixcloud_url',
-    'broadcast_image', 'audio_file', 'external_stream_url', 'db_id'
+    'broadcast_image', 'audio_file', 'external_stream_url', 'db_id', 'track_name'
   ];
   columns.forEach(col => {
     db.run(`ALTER TABLE schedule ADD COLUMN ${col} TEXT`, (err) => {

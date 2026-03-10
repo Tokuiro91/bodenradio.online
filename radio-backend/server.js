@@ -327,8 +327,9 @@ app.post('/api/schedule/sync', auth, (req, res) => {
                     INSERT INTO schedule (
                         title, type, item_id, db_id, start_time, end_time, 
                         instagram_url, soundcloud_url, mixcloud_url, 
-                        broadcast_image, audio_file, external_stream_url
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        broadcast_image, audio_file, external_stream_url,
+                        track_name
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `);
                 let insertError = false;
 
@@ -337,6 +338,7 @@ app.post('/api/schedule/sync', auth, (req, res) => {
                         ev.title, ev.type, ev.item_id, ev.db_id || null, ev.start_time, ev.end_time,
                         ev.instagram_url || null, ev.soundcloud_url || null, ev.mixcloud_url || null,
                         ev.broadcast_image || null, ev.audio_file || null, ev.external_stream_url || null,
+                        ev.track_name || null,
                         (err) => {
                             if (err) insertError = true;
                         }
@@ -630,7 +632,7 @@ function updateNowPlaying() {
 
         const newTrack = {
             title: row.title,
-            trackName: row.trackName || row.title.replace(/\[SYNC\] |\[TRACK\] /g, ''),
+            trackName: row.track_name || row.title.replace(/\[SYNC\] |\[TRACK\] |\[PLAYLIST\] /g, ''),
             startTime: row.start_time,
             endTime: row.end_time,
             type: row.type,

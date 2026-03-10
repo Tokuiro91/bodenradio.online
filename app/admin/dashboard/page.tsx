@@ -602,9 +602,23 @@ function ScheduleEditModal({ artist, onClose, onConfirm, lastEndTime, editItem }
             let audio_file = existingAudio
             if (imageFile) broadcast_image = await handleUpload(imageFile)
             if (audioFile) audio_file = await handleUpload(audioFile)
-            onConfirm({ ...(editItem || {}), name, show, startTime: new Date(startTime).toISOString(), endTime: new Date(endTime).toISOString(), trackName, description, external_stream_url: externalStreamUrl, broadcast_image, audio_file })
+
+            onConfirm({
+                ...(editItem || {}),
+                name,
+                show,
+                startTime: new Date(startTime).toISOString(),
+                endTime: new Date(endTime).toISOString(),
+                trackName,
+                description,
+                external_stream_url: externalStreamUrl,
+                broadcast_image,
+                audio_file
+            })
         } catch (err) { alert("Upload failed") } finally { setIsUploading(false) }
     }
+
+    const activeAudio = audioFile ? `Загружается: ${audioFile.name}` : (externalStreamUrl || existingAudio || "Не назначен")
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
@@ -634,11 +648,21 @@ function ScheduleEditModal({ artist, onClose, onConfirm, lastEndTime, editItem }
                                 <input value={trackName} onChange={e => setTrackName(e.target.value)} placeholder="Введите название..." className="w-full bg-black border border-[#1a1a1a] p-2 text-xs text-white outline-none focus:border-[#99CCCC]" />
                             </div>
                             <div className="p-3 bg-black/40 border border-[#1a1a1a] rounded-sm space-y-2">
-                                <label className="text-[8px] uppercase font-black tracking-widest text-[#555] block">Текущий аудио-источник</label>
+                                <div className="flex justify-between items-center">
+                                    <label className="text-[8px] uppercase font-black tracking-widest text-[#555] block">Текущий аудио-источник</label>
+                                    {(externalStreamUrl || existingAudio || audioFile) && (
+                                        <button
+                                            onClick={() => { setExternalStreamUrl(""); setExistingAudio(null); setAudioFile(null); }}
+                                            className="text-[8px] text-red-500/50 hover:text-red-500 uppercase tracking-tighter"
+                                        >
+                                            [Сбросить]
+                                        </button>
+                                    )}
+                                </div>
                                 <div className="flex items-center justify-between gap-3">
                                     <div className="flex-1 min-w-0">
                                         <p className="text-[10px] font-mono text-[#99CCCC] truncate">
-                                            {audioFile ? `Загружается: ${audioFile.name}` : (externalStreamUrl || existingAudio || "Не назначен")}
+                                            {activeAudio}
                                         </p>
                                     </div>
                                     {(externalStreamUrl || existingAudio) && (
@@ -690,6 +714,7 @@ function ScheduleEditModal({ artist, onClose, onConfirm, lastEndTime, editItem }
                                         {audioFile ? "✓" : "Load"}
                                     </label>
                                 </div>
+                                <p className="text-[8px] text-[#444] uppercase font-medium">Если загружен файл, он будет иметь приоритет над URL-ссылкой.</p>
                             </div>
                         </div>
                     )}
@@ -739,3 +764,4 @@ function ArtistEditModal({ artist, onClose, onConfirm }: { artist: DBArtist, onC
         </div>
     )
 }
+
