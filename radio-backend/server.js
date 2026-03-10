@@ -78,7 +78,10 @@ const storage = multer.diskStorage({
         }
     }
 });
-const upload = multer({ storage });
+const upload = multer({
+    storage,
+    limits: { fileSize: 500 * 1024 * 1024 } // 500MB limit
+});
 
 // Initialize Default Admin (admin/admin)
 bcrypt.hash('admin', 10, (err, hash) => {
@@ -235,6 +238,69 @@ app.delete('/api/tracks/:id', auth, (req, res) => {
 app.post('/api/broadcast/upload', auth, upload.single('broadcast_media'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     res.json({ success: true, filename: req.file.filename });
+});
+
+/* --- MEDIA MANAGEMENT --- */
+app.get('/api/media', auth, (req, res) => {
+    try {
+        if (!fs.existsSync(UPLOADS_DIR)) return res.json([]);
+        const files = fs.readdirSync(UPLOADS_DIR)
+            .filter(f => !f.startsWith('.'))
+            .map(f => {
+                const stat = fs.statSync(path.join(UPLOADS_DIR, f));
+                return {
+                    name: f,
+                    size: stat.size,
+                    mtime: stat.mtime
+                };
+            })
+            .sort((a, b) => b.mtime - a.mtime);
+        res.json(files);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to list media' });
+    }
+});
+
+app.post('/api/media/rename', auth, (req, res) => {
+    const { oldName, newName } = req.body;
+    if (!oldName || !newName) return res.status(400).json({ error: 'Names required' });
+
+    const oldPath = path.join(UPLOADS_DIR, oldName);
+    let cleanNewName = newName.replace(/[^a-zA-Z0-9.-]/g, '_');
+    if (!cleanNewName.toLowerCase().endsWith('.mp3')) cleanNewName += '.mp3';
+    const newPath = path.join(UPLOADS_DIR, cleanNewName);
+
+    if (!fs.existsSync(oldPath)) return res.status(404).json({ error: 'File not found' });
+    if (fs.existsSync(newPath)) return res.status(400).json({ error: 'Target name already exists' });
+
+    try {
+        fs.renameSync(oldPath, newPath);
+        // Also update any schedules pointing to this file
+        db.run('UPDATE schedule SET audio_file = ? WHERE audio_file = ?', [cleanNewName, oldName], (err) => {
+            if (err) console.error('Failed to update schedule for renamed file:', err);
+            res.json({ success: true, newName: cleanNewName });
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'Rename failed' });
+    }
+});
+
+app.delete('/api/media/:filename', auth, (req, res) => {
+    const { filename } = req.params;
+    const filePath = path.join(UPLOADS_DIR, filename);
+
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
+
+    try {
+        fs.unlinkSync(filePath);
+        // Also nullify any schedules pointing to this file
+        db.run('UPDATE schedule SET audio_file = NULL WHERE audio_file = ?', [filename], (err) => {
+            if (err) console.error('Failed to update schedule for deleted file:', err);
+            res.json({ success: true });
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'Delete failed' });
+    }
 });
 
 /* --- PLAYLISTS --- */

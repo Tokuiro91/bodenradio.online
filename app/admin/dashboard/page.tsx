@@ -11,6 +11,7 @@ import { DBArtist } from "@/lib/artist-db-store"
 import { RadioScheduleManager } from "@/components/radio-schedule-manager"
 import { socketService } from "@/lib/socket"
 import { Signal } from "lucide-react"
+import { BroadcastManager } from "@/components/broadcast-manager"
 
 export default function UnifiedDashboardPage() {
     const { data: session, status } = useSession()
@@ -204,9 +205,8 @@ export default function UnifiedDashboardPage() {
                 </div>
 
                 <nav className="flex-1 p-4 space-y-1">
-                    <NavItem active={activeView === "overview"} onClick={() => setActiveView("overview")} icon={<Radio size={18} />} label="Панель Управления" />
-                    <NavItem active={activeView === "schedule"} onClick={() => setActiveView("schedule")} icon={<Calendar size={18} />} label="Сетка Эфира" />
-                    <NavItem active={activeView === "broadcast-list"} onClick={() => setActiveView("broadcast-list")} icon={<Plus size={18} />} label="Список Эфира" />
+                    <NavItem active={activeView === "overview"} onClick={() => setActiveView("overview")} icon={<Radio size={18} />} label="Управление Эфиром" />
+                    <NavItem active={activeView === "broadcast-list"} onClick={() => setActiveView("broadcast-list")} icon={<List size={18} />} label="История Эфира" />
                     <NavItem active={activeView === "database"} onClick={() => setActiveView("database")} icon={<Database size={18} />} label="База Артистов" />
                     <NavItem active={activeView === "analytics"} onClick={() => setActiveView("analytics")} icon={<BarChart3 size={18} />} label="Аналитика" />
                 </nav>
@@ -239,9 +239,8 @@ export default function UnifiedDashboardPage() {
                             <span>Live System Dashboard</span>
                         </div>
                         <h2 className="text-3xl font-bold text-white tracking-tight">
-                            {activeView === "overview" && "Панель Управления"}
-                            {activeView === "schedule" && "Сетка Эфира"}
-                            {activeView === "broadcast-list" && "Список Эфира"}
+                            {activeView === "overview" && "Управление Эфиром"}
+                            {activeView === "broadcast-list" && "История Эфира"}
                             {activeView === "database" && "База Артистов"}
                             {activeView === "analytics" && "Аналитика"}
                         </h2>
@@ -259,105 +258,9 @@ export default function UnifiedDashboardPage() {
                 </div>
 
                 {activeView === "overview" && (
-                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-                        <div className="xl:col-span-8 space-y-8">
-                            <section className="bg-[#080808] border border-[#1a1a1a] rounded-sm overflow-hidden shadow-2xl">
-                                <div className="px-6 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
-                                    <h3 className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
-                                        <Radio size={14} className="text-[#99CCCC]" />
-                                        Управление Эфиром
-                                    </h3>
-                                    <button
-                                        onClick={handleManualSync}
-                                        disabled={isSyncing}
-                                        className={`text-[10px] font-mono px-2 py-1 rounded-sm border transition-all ${isSyncing ? "animate-pulse border-[#444] text-[#444]" : "border-[#99CCCC]/30 text-[#99CCCC] hover:bg-[#99CCCC] hover:text-black"}`}
-                                    >
-                                        {isSyncing ? "PUSHING..." : "PUSH TO RADIO"}
-                                    </button>
-                                </div>
-
-                                <div className="p-4 bg-black">
-                                    <RadioScheduleManager
-                                        artists={artists}
-                                        setArtists={setArtists}
-                                        dbArtists={dbArtists}
-                                    />
-                                </div>
-                            </section>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <section className="bg-[#080808] border border-[#1a1a1a] rounded-sm p-6 overflow-hidden relative col-span-2">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-[#99CCCC]/5 blur-3xl rounded-full -mr-16 -mt-16"></div>
-                                    <h3 className="text-xs font-bold uppercase tracking-widest text-[#737373] mb-6 flex items-center justify-between">
-                                        Система
-                                        <BarChart3 size={14} />
-                                    </h3>
-                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                        <MetricCard label="CPU Load" value={systemStats.cpu} sub="Средняя" />
-                                        <MetricCard label="Latency" value={systemStats.latency} sub="Задержка" />
-                                        <MetricCard label="Storage" value={systemStats.storage} sub="Диск" />
-                                        <MetricCard label="Memory" value={systemStats.memory} sub="Память" />
-                                    </div>
-                                </section>
-
-                                <section className="bg-[#080808] border border-[#1a1a1a] rounded-sm p-6 overflow-hidden relative col-span-2">
-                                    <h3 className="text-xs font-bold uppercase tracking-widest text-[#737373] mb-6 flex items-center justify-between">
-                                        Аналитика
-                                        <Signal size={14} className={onlineCount > 0 ? "text-green-500 animate-pulse" : ""} />
-                                    </h3>
-                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                        <MetricCard label="Онлайн" value={onlineCount.toString()} sub="Слушателей" />
-                                        <MetricCard label="Сессии" value="---" sub="Сегодня" />
-                                        <MetricCard label="Реакции" value="---" sub="24ч" />
-                                        <MetricCard label="Избранное" value="---" sub="Всего" />
-                                    </div>
-                                </section>
-
-
-                            </div>
-                        </div>
-
-                        <div className="xl:col-span-4 space-y-8">
-                            <section className="bg-[#080808] border border-[#1a1a1a] rounded-sm p-6 shadow-xl flex flex-col h-full max-h-[600px]">
-                                <h3 className="text-sm font-bold uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <Database size={14} className="text-[#99CCCC]" />
-                                    База Артистов
-                                </h3>
-
-                                <div className="relative mb-6">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#444]" size={14} />
-                                    <input
-                                        value={dbSearchQuery}
-                                        onChange={(e) => setDbSearchQuery(e.target.value)}
-                                        placeholder="Поиск артистов..."
-                                        className="w-full bg-black border border-[#1a1a1a] rounded-sm py-2.5 pl-9 pr-4 text-xs outline-none focus:border-[#99CCCC] transition-colors font-mono"
-                                    />
-                                </div>
-
-                                <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                                    {filteredDbArtists.map(a => (
-                                        <div key={a.id} className="p-3 bg-black border border-[#1a1a1a] rounded-sm hover:border-[#99CCCC]/50 transition-all group flex items-center gap-3">
-                                            <div className="w-10 h-10 aspect-square relative rounded-sm overflow-hidden bg-[#111] border border-[#1a1a1a]">
-                                                {a.image && <Image src={a.image} alt={a.name} fill className="object-cover grayscale group-hover:grayscale-0 transition-all" unoptimized />}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-bold truncate group-hover:text-[#99CCCC] transition-colors">{a.name}</p>
-                                                <p className="text-[10px] text-[#444] truncate">{a.show}</p>
-                                            </div>
-                                            <button
-                                                onClick={() => handleAddToSchedule(a)}
-                                                className="p-1.5 opacity-0 group-hover:opacity-100 bg-[#1a1a1a] text-[#99CCCC] rounded-sm transition-all hover:bg-[#99CCCC] hover:text-black"
-                                            >
-                                                <Plus size={14} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </section>
-                        </div>
-                    </div>
+                    <BroadcastManager />
                 )}
-                {(activeView === "overview" || activeView === "schedule" || activeView === "broadcast-list") && nowPlaying && (
+                {(activeView === "schedule" || activeView === "broadcast-list") && nowPlaying && (
                     <section className="mb-8 bg-[#99CCCC]/5 border border-[#99CCCC]/20 rounded-sm p-6 animate-in slide-in-from-bottom-2 duration-500 max-w-4xl">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-xs font-bold uppercase tracking-widest text-[#99CCCC] flex items-center gap-2">
@@ -403,11 +306,6 @@ export default function UnifiedDashboardPage() {
                     <AnalyticsDashboard onlineCount={onlineCount} />
                 )}
 
-                {activeView === "schedule" && (
-                    <div className="p-6 bg-[#080808] border border-[#1a1a1a] rounded-sm animate-in fade-in duration-500">
-                        <RadioScheduleManager artists={artists} setArtists={setArtists} dbArtists={dbArtists} />
-                    </div>
-                )}
 
                 {activeView === "broadcast-list" && (
                     <BroadcastListView artists={artists} setArtists={setArtists} />
