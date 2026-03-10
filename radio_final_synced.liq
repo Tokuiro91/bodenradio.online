@@ -26,7 +26,7 @@ end
 my_source = request.dynamic(id="boden_dashboard", prefetch=0, get_next_track)
 
 # Wrap with cue_cut to respect metadata boundaries (liq_cue_in/out)
-my_source = cue_cut(my_source)
+# my_source = cue_cut(my_source)
 
 # Fallback: Random music from the directory
 # We use track_sensitive=false for the fallback to interrupt it when a scheduled item is ready
