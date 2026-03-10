@@ -664,16 +664,22 @@ function updateNowPlaying() {
             io.emit('now-playing:update', currentTrack);
 
             // FORCE SKIP LOGIC:
-            // If the track currently ACTIVE in DB is NOT the one we last served to Liquidsoap,
-            // it means a newer track (overlap) has started. We must tell Liquidsoap to skip.
             if (lastServedScheduleId && lastServedScheduleId !== row.id) {
                 console.log(`[Monitor] Detected overlap/newer track (${row.title}). Signaling Liquidsoap SKIP...`);
-                // We use telnet command to skip the dynamic source
-                exec('echo "boden_dashboard.skip" | nc -w 1 localhost 1234', (err) => {
-                    if (err) console.error('[Monitor] Skip command failed:', err.message);
-                });
+                sendTelnetCommand('boden_dashboard.skip');
             }
         }
+    });
+}
+
+function sendTelnetCommand(command) {
+    const net = require('net');
+    const client = net.createConnection({ port: 1234, host: '127.0.0.1' }, () => {
+        client.write(command + '\n');
+        client.end();
+    });
+    client.on('error', (err) => {
+        console.error('[Telnet] Command failed:', err.message);
     });
 }
 
