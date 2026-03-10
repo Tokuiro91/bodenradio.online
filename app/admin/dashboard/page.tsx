@@ -575,12 +575,16 @@ function MetricCard({ label, value, sub, className = "" }: { label: string, valu
 function ScheduleEditModal({ artist, onClose, onConfirm, lastEndTime, editItem }: { artist: any, onClose: () => void, onConfirm: (details: any) => void, lastEndTime: string, editItem?: any }) {
     const [name, setName] = useState(editItem?.name || artist.name)
     const [show, setShow] = useState(editItem?.show || artist.show || "")
+    const [location, setLocation] = useState(editItem?.location || artist.location || "Earth")
     const [trackName, setTrackName] = useState(editItem?.trackName || "")
     const [startTime, setStartTime] = useState(editItem ? new Date(editItem.startTime).toISOString().slice(0, 19) : new Date(lastEndTime).toISOString().slice(0, 19))
     const [endTime, setEndTime] = useState(editItem ? new Date(editItem.endTime).toISOString().slice(0, 19) : new Date(new Date(lastEndTime).getTime() + 3600000).toISOString().slice(0, 19))
-    const [description, setDescription] = useState(editItem?.description || "")
+    const [description, setDescription] = useState(editItem?.description || artist.description || "")
     const [externalStreamUrl, setExternalStreamUrl] = useState(editItem?.external_stream_url || editItem?.audioUrl || artist?.audioUrl || "")
-    const [existingImage, setExistingImage] = useState(editItem?.broadcast_image || editItem?.image || null)
+    const [instagramUrl, setInstagramUrl] = useState(editItem?.instagram_url || artist.instagramUrl || "")
+    const [soundcloudUrl, setSoundcloudUrl] = useState(editItem?.soundcloud_url || artist.soundcloudUrl || "")
+    const [bandcampUrl, setBandcampUrl] = useState(editItem?.bandcamp_url || artist.bandcampUrl || "")
+    const [existingImage, setExistingImage] = useState(editItem?.broadcast_image || editItem?.image || artist.image || null)
     const [existingAudio, setExistingAudio] = useState(editItem?.audio_file || null)
     const [imageFile, setImageFile] = useState<File | null>(null)
     const [audioFile, setAudioFile] = useState<File | null>(null)
@@ -607,10 +611,14 @@ function ScheduleEditModal({ artist, onClose, onConfirm, lastEndTime, editItem }
                 ...(editItem || {}),
                 name,
                 show,
+                location,
                 startTime: new Date(startTime).toISOString(),
                 endTime: new Date(endTime).toISOString(),
                 trackName,
                 description,
+                instagram_url: instagramUrl,
+                soundcloud_url: soundcloudUrl,
+                bandcamp_url: bandcampUrl,
                 external_stream_url: externalStreamUrl,
                 broadcast_image,
                 audio_file
@@ -630,7 +638,7 @@ function ScheduleEditModal({ artist, onClose, onConfirm, lastEndTime, editItem }
                     </div>
                     <button onClick={onClose} className="text-[#444] hover:text-white transition-colors"><X size={18} /></button>
                 </div>
-                <div className="p-6 space-y-4">
+                <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
                     {activeTab === "details" ? (
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
@@ -643,9 +651,35 @@ function ScheduleEditModal({ artist, onClose, onConfirm, lastEndTime, editItem }
                                     <input value={show} onChange={e => setShow(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2 text-xs text-white outline-none focus:border-[#99CCCC]" />
                                 </div>
                             </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Локация</label>
+                                    <input value={location} onChange={e => setLocation(e.target.value)} className="w-full bg-black border border-[#1a1a1a] p-2 text-xs text-white outline-none focus:border-[#99CCCC]" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Композиция (Название трека)</label>
+                                    <input value={trackName} onChange={e => setTrackName(e.target.value)} placeholder="Введите название..." className="w-full bg-black border border-[#1a1a1a] p-2 text-xs text-white outline-none focus:border-[#99CCCC]" />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="space-y-1">
+                                    <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Instagram</label>
+                                    <input value={instagramUrl} onChange={e => setInstagramUrl(e.target.value)} placeholder="URL" className="w-full bg-black border border-[#1a1a1a] p-2 text-[10px] text-white outline-none focus:border-[#99CCCC]" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Soundcloud</label>
+                                    <input value={soundcloudUrl} onChange={e => setSoundcloudUrl(e.target.value)} placeholder="URL" className="w-full bg-black border border-[#1a1a1a] p-2 text-[10px] text-white outline-none focus:border-[#99CCCC]" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Bandcamp</label>
+                                    <input value={bandcampUrl} onChange={e => setBandcampUrl(e.target.value)} placeholder="URL" className="w-full bg-black border border-[#1a1a1a] p-2 text-[10px] text-white outline-none focus:border-[#99CCCC]" />
+                                </div>
+                            </div>
                             <div className="space-y-1">
-                                <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Композиция (Название трека)</label>
-                                <input value={trackName} onChange={e => setTrackName(e.target.value)} placeholder="Введите название..." className="w-full bg-black border border-[#1a1a1a] p-2 text-xs text-white outline-none focus:border-[#99CCCC]" />
+                                <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Описание</label>
+                                <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Описание..." className="w-full h-20 bg-black border border-[#1a1a1a] p-2 text-xs text-white outline-none focus:border-[#99CCCC] resize-none" />
                             </div>
                             <div className="p-3 bg-black/40 border border-[#1a1a1a] rounded-sm space-y-2">
                                 <div className="flex justify-between items-center">
@@ -736,11 +770,26 @@ function ArtistEditModal({ artist, onClose, onConfirm }: { artist: DBArtist, onC
     const [image, setImage] = useState(artist.image || "")
     const [location, setLocation] = useState(artist.location || "")
     const [description, setDescription] = useState(artist.description || "")
+    const [instagramUrl, setInstagramUrl] = useState(artist.instagramUrl || "")
+    const [soundcloudUrl, setSoundcloudUrl] = useState(artist.soundcloudUrl || "")
+    const [bandcampUrl, setBandcampUrl] = useState(artist.bandcampUrl || "")
+    const [audioUrl, setAudioUrl] = useState(artist.audioUrl || "")
     const [isSaving, setIsSaving] = useState(false)
 
     const handleSave = async () => {
         setIsSaving(true)
-        await onConfirm({ ...artist, name, show, image, location, description })
+        await onConfirm({
+            ...artist,
+            name,
+            show,
+            image,
+            location,
+            description,
+            instagramUrl,
+            soundcloudUrl,
+            bandcampUrl,
+            audioUrl
+        })
         setIsSaving(false)
     }
 
@@ -751,10 +800,53 @@ function ArtistEditModal({ artist, onClose, onConfirm }: { artist: DBArtist, onC
                     <h3 className="text-[12px] font-black uppercase tracking-widest text-[#99CCCC]">Редактировать Артиста</h3>
                     <button onClick={onClose} className="text-[#444] hover:text-white transition-colors"><X size={18} /></button>
                 </div>
-                <div className="p-6 space-y-4">
-                    <input value={name} onChange={e => setName(e.target.value)} placeholder="Имя..." className="w-full bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC]" />
-                    <input value={show} onChange={e => setShow(e.target.value)} placeholder="Шоу..." className="w-full bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC]" />
-                    <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Описание..." className="w-full h-32 bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC] resize-none" />
+                <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar text-white">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Имя</label>
+                            <input value={name} onChange={e => setName(e.target.value)} placeholder="Имя..." className="w-full bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC]" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Шоу</label>
+                            <input value={show} onChange={e => setShow(e.target.value)} placeholder="Шоу..." className="w-full bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC]" />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Локация</label>
+                            <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Локация..." className="w-full bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC]" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Изображение (URL)</label>
+                            <input value={image} onChange={e => setImage(e.target.value)} placeholder="URL..." className="w-full bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC]" />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Instagram</label>
+                            <input value={instagramUrl} onChange={e => setInstagramUrl(e.target.value)} placeholder="URL" className="w-full bg-black border border-[#1a1a1a] p-2 text-[10px] outline-none focus:border-[#99CCCC]" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Soundcloud</label>
+                            <input value={soundcloudUrl} onChange={e => setSoundcloudUrl(e.target.value)} placeholder="URL" className="w-full bg-black border border-[#1a1a1a] p-2 text-[10px] outline-none focus:border-[#99CCCC]" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Bandcamp</label>
+                            <input value={bandcampUrl} onChange={e => setBandcampUrl(e.target.value)} placeholder="URL" className="w-full bg-black border border-[#1a1a1a] p-2 text-[10px] outline-none focus:border-[#99CCCC]" />
+                        </div>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Audio (URL)</label>
+                        <input value={audioUrl} onChange={e => setAudioUrl(e.target.value)} placeholder="URL..." className="w-full bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC]" />
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Описание</label>
+                        <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Описание..." className="w-full h-32 bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC] resize-none" />
+                    </div>
                 </div>
                 <div className="p-6 border-t border-[#1a1a1a] flex gap-3">
                     <button onClick={onClose} className="flex-1 py-3 text-[10px] uppercase font-black text-[#444] hover:text-white transition-all">Cancel</button>
@@ -764,4 +856,5 @@ function ArtistEditModal({ artist, onClose, onConfirm }: { artist: DBArtist, onC
         </div>
     )
 }
+
 
