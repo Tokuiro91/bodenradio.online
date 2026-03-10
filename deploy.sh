@@ -34,9 +34,11 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   set -e
   cd /var/www/agileradio
   echo "   → git checkout BODEN-STADT && pull..."
-  # Preserve untracked files (like database.sqlite) during pull
+  # Preserve untracked or modified files (like database.sqlite) during pull
   git fetch origin
   git checkout BODEN-STADT
+  # Force checkout or ignore specific local changes that block pull
+  git checkout radio-backend/database.sqlite || true
   git pull origin BODEN-STADT
   echo "   → npm install for root..."
   npm ci --legacy-peer-deps --silent
