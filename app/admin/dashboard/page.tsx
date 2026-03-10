@@ -248,7 +248,10 @@ export default function UnifiedDashboardPage() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <button className="flex items-center gap-2 px-4 py-2 bg-white text-black text-xs font-bold rounded-sm hover:bg-[#99CCCC] transition-colors shadow-lg">
+                        <button
+                            onClick={() => setActiveView("database")}
+                            className="flex items-center gap-2 px-4 py-2 bg-white text-black text-xs font-bold rounded-sm hover:bg-[#99CCCC] transition-colors shadow-lg"
+                        >
                             <Plus size={16} />
                             <span>Новый Эфир</span>
                         </button>

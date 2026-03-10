@@ -20,8 +20,13 @@ export async function POST(request: Request) {
         const tracks = await tracksRes.json();
 
         // 3. Prepare events
+        console.log(`[Sync] Processing ${artists.length} artists items`);
         const events = artists
-            .filter((a: any) => a.type === 'artist')
+            .filter((a: any) => {
+                const isMatch = a.type === 'artist' || !a.type; // Fallback to artist if no type
+                if (!isMatch) console.log(`[Sync] Filtering out item: ${a.name} (type: ${a.type})`);
+                return isMatch;
+            })
             .map((a: any) => {
                 let trackId = null;
                 if (a.audioUrl || a.audio_file) {
@@ -30,7 +35,7 @@ export async function POST(request: Request) {
                     if (track) trackId = track.id;
                 }
 
-                return {
+                const ev = {
                     title: `[SYNC] ${a.name}`,
                     type: 'track',
                     item_id: trackId,
@@ -45,7 +50,11 @@ export async function POST(request: Request) {
                     external_stream_url: a.external_stream_url || a.audioUrl || null,
                     track_name: a.trackName || null
                 };
+                console.log(`[Sync] Event: ${ev.title}, trackId: ${trackId}, start: ${ev.start_time}`);
+                return ev;
             });
+
+        console.log(`[Sync] Sending ${events.length} events to backend`);
 
         // 4. Send to Radio Sync Endpoint
         const syncRes = await fetch(`${process.env.RADIO_BACKEND_URL || 'http://localhost:8080'}/api/schedule/sync`, {
