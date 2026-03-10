@@ -136,9 +136,9 @@ export default function UnifiedDashboardPage() {
                 body: JSON.stringify({ artists }),
             })
             if (!res.ok) throw new Error("Sync failed")
-            alert("Сетка успешно синхронизирована с вещателем!")
+            alert("Все изменения в Сетке Эфира успешно отправлены на вещатель!")
         } catch (err) {
-            alert("Ошибка синхронизации")
+            alert("Ошибка при отправке данных")
         } finally {
             setIsSyncing(false)
         }
@@ -269,7 +269,7 @@ export default function UnifiedDashboardPage() {
                                         disabled={isSyncing}
                                         className={`text-[10px] font-mono px-2 py-1 rounded-sm border transition-all ${isSyncing ? "animate-pulse border-[#444] text-[#444]" : "border-[#99CCCC]/30 text-[#99CCCC] hover:bg-[#99CCCC] hover:text-black"}`}
                                     >
-                                        {isSyncing ? "SYNCING..." : "SYNC NOW"}
+                                        {isSyncing ? "PUSHING..." : "PUSH TO RADIO"}
                                     </button>
                                 </div>
 

@@ -614,3 +614,39 @@ async function checkNotifications() {
 setInterval(checkNotifications, 5 * 60 * 1000);
 // Initial delay to let DB initialize
 setTimeout(checkNotifications, 10000);
+
+// --- NOW PLAYING MONITOR ---
+function updateNowPlaying() {
+    const now = Date.now();
+    db.get('SELECT * FROM schedule WHERE start_time <= ? AND end_time > ? ORDER BY start_time DESC LIMIT 1', [now, now], (err, row) => {
+        if (err) return;
+        if (!row) {
+            if (currentTrack !== null) {
+                currentTrack = null;
+                io.emit('now-playing:update', null);
+            }
+            return;
+        }
+
+        const newTrack = {
+            title: row.title,
+            trackName: row.trackName || row.title.replace(/\[SYNC\] |\[TRACK\] /g, ''),
+            startTime: row.start_time,
+            endTime: row.end_time,
+            type: row.type,
+            audio_file: row.audio_file,
+            external_stream_url: row.external_stream_url
+        };
+
+        // Only emit if changed
+        if (!currentTrack || currentTrack.startTime !== newTrack.startTime || currentTrack.title !== newTrack.title) {
+            currentTrack = newTrack;
+            console.log(`[Monitor] Updating now-playing: ${currentTrack.title}`);
+            io.emit('now-playing:update', currentTrack);
+        }
+    });
+}
+
+// Every 10 seconds check the DB to keep the banner fresh
+setInterval(updateNowPlaying, 10000);
+updateNowPlaying();

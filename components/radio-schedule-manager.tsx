@@ -36,35 +36,48 @@ export function RadioScheduleManager({ dbArtists, artists, setArtists }: {
         const handleMessage = (event: MessageEvent) => {
             if (event.data.type === 'SYNC_SCHEDULE') {
                 const { event: schEvent } = event.data;
-                const dbArtist = dbArtists.find(a => String(a.id) === String(schEvent.artist_id));
 
-                if (dbArtist) {
-                    const startTimeISO = new Date(schEvent.start_time).toISOString();
-                    const endTimeISO = new Date(schEvent.end_time).toISOString();
+                setArtists((prev: any[]) => {
+                    // 1. If it was already in our list (by ID from radio backend), update it
+                    const existingIdx = prev.findIndex(a => a.radioId === schEvent.id);
 
-                    const newArtistEntry = {
-                        id: artists.length ? Math.max(...artists.map((a: any) => a.id)) + 1 : 0,
-                        name: dbArtist.name,
-                        location: "Earth",
-                        show: dbArtist.show || "DJ Set",
-                        image: dbArtist.image || "/artists/artist-1.jpg",
-                        startTime: startTimeISO,
-                        endTime: endTimeISO,
+                    const dbArtist = dbArtists.find(a => String(a.id) === String(schEvent.artist_id));
+
+                    const updatedEntry = {
+                        id: (existingIdx !== -1) ? prev[existingIdx].id : (prev.length ? Math.max(...prev.map(a => a.id)) + 1 : 0),
+                        radioId: schEvent.id, // Track the radio backend's entry ID
+                        name: dbArtist ? dbArtist.name : schEvent.title.replace(/\[SYNC\] |\[TRACK\] |\[PLAYLIST\] /g, ''),
+                        location: dbArtist?.location || "Earth",
+                        show: dbArtist?.show || schEvent.title.replace(/\[SYNC\] |\[TRACK\] |\[PLAYLIST\] /g, ''),
+                        image: dbArtist?.image || "/artists/artist-1.jpg",
+                        startTime: new Date(schEvent.start_time).toISOString(),
+                        endTime: new Date(schEvent.end_time).toISOString(),
                         duration: ((schEvent.end_time - schEvent.start_time) / 1000 / 60).toFixed(0) + " min",
-                        description: "Automatically synced from radio schedule",
+                        description: dbArtist?.description || "Synced from radio schedule",
+                        trackName: schEvent.trackName || "",
                         dayIndex: 0,
                         orderInDay: 0,
                         type: "artist"
                     };
 
-                    setArtists([...artists, newArtistEntry]);
-                }
+                    if (existingIdx !== -1) {
+                        const next = [...prev];
+                        next[existingIdx] = updatedEntry;
+                        return next;
+                    } else {
+                        return [...prev, updatedEntry];
+                    }
+                });
+            } else if (event.data.type === 'DELETE_SCHEDULE') {
+                const { id } = event.data;
+                setArtists((prev: any[]) => prev.filter(a => a.radioId !== id));
             }
         };
 
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, [dbArtists, artists, setArtists]);
+    }, [dbArtists, setArtists]);
+
 
     // Send artists to iframe when it loads
     const handleIframeLoad = () => {

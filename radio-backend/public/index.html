@@ -758,10 +758,10 @@
                     body: { title, type, item_id, start_time, end_time }
                 });
 
-                // Sync to parent if requested
+                // Sync to parent
                 const syncCheckbox = document.getElementById('sch-sync');
                 const artistId = document.getElementById('sch-artist').value;
-                if (syncCheckbox.checked && artistId && window.parent) {
+                if (window.parent) {
                     window.parent.postMessage({
                         type: 'SYNC_SCHEDULE',
                         event: {
@@ -771,7 +771,7 @@
                             item_id: item_id,
                             start_time: start_time,
                             end_time: res.end_time || end_time,
-                            artist_id: artistId
+                            artist_id: artistId || null
                         }
                     }, '*');
                 }
@@ -914,10 +914,9 @@
                     }
                 });
 
-                // Sync to parent if requested
-                const syncCheckbox = document.getElementById('edit-sync');
+                // Sync to parent
                 const artistId = document.getElementById('edit-artist').value;
-                if (syncCheckbox.checked && artistId && window.parent) {
+                if (window.parent) {
                     window.parent.postMessage({
                         type: 'SYNC_SCHEDULE',
                         event: {
@@ -927,7 +926,7 @@
                             item_id: editingEvent.item_id,
                             start_time: start,
                             end_time: end,
-                            artist_id: artistId
+                            artist_id: artistId || null
                         }
                     }, '*');
                 }
@@ -942,6 +941,12 @@
             const id = document.getElementById('edit-id').value;
             if (confirm('Удалить это событие?')) {
                 await api(`/schedule/${id}`, { method: 'DELETE' });
+                if (window.parent) {
+                    window.parent.postMessage({
+                        type: 'DELETE_SCHEDULE',
+                        id: parseInt(id)
+                    }, '*');
+                }
                 closeEditModal();
                 loadListView();
                 if (calendar) calendar.refetchEvents();
