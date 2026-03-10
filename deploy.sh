@@ -48,15 +48,31 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   npm run build
   
   echo "   → Unifying audio directories (/var/radio/music)..."
-  # Unify with liquidsoap if dir exists
+  # Support both old and new data structures
   mkdir -p /var/radio/music
   mkdir -p /var/radio/uploads
+  
+  # Ensure target directories exist in app data
+  mkdir -p data/radio/music
+  mkdir -p data/radio/uploads
+
+  # Symlink app data to persistent /var/radio storage if not already symlinked
+  if [ ! -L "data/radio/music" ]; then
+    rm -rf data/radio/music && ln -s /var/radio/music data/radio/music
+  fi
+  if [ ! -L "data/radio/uploads" ]; then
+    rm -rf data/radio/uploads && ln -s /var/radio/uploads data/radio/uploads
+  fi
+
+  # Permissions for liquidsoap and backend
   chown -R liquidsoap:liquidsoap /var/radio/music /var/radio/uploads || true
   chmod -R 775 /var/radio/music /var/radio/uploads
-  # Move existing files from old uploads to unified dir
+  
+  # Move existing files from old uploads to unified dir if any (backward compatibility)
   if [ -d "public/uploads/audio" ]; then
     find public/uploads/audio -name "*.mp3" -exec mv {} /var/radio/music/ \; 2>/dev/null || true
   fi
+  
   # Re-create and symlink for backward compatibility (web access)
   mkdir -p public/uploads/audio
   ln -sf /var/radio/music/*.mp3 public/uploads/audio/ 2>/dev/null || true
@@ -66,6 +82,7 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   ln -sf /var/radio/uploads/* public/broadcast-media/ 2>/dev/null || true
 
   echo "   → перезапуск PM2..."
+
   pm2 restart agileradio
   pm2 restart agileradio-backend
   echo "   → PM2 статус:"

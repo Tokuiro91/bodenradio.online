@@ -27,6 +27,7 @@ export default function UnifiedDashboardPage() {
     const [systemStats, setSystemStats] = useState({ storage: "...", memory: "...", cpu: "...", latency: "..." })
     const [onlineCount, setOnlineCount] = useState(0)
     const [nowPlaying, setNowPlaying] = useState<any>(null)
+    const [isSyncing, setIsSyncing] = useState(false)
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -123,6 +124,23 @@ export default function UnifiedDashboardPage() {
             setSelectedArtistForEdit(null)
         } catch (err) {
             alert("Failed to save artist changes")
+        }
+    }
+
+    const handleManualSync = async () => {
+        setIsSyncing(true)
+        try {
+            const res = await fetch("/api/radio/sync", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ artists }),
+            })
+            if (!res.ok) throw new Error("Sync failed")
+            alert("Сетка успешно синхронизирована с вещателем!")
+        } catch (err) {
+            alert("Ошибка синхронизации")
+        } finally {
+            setIsSyncing(false)
         }
     }
 
@@ -246,8 +264,15 @@ export default function UnifiedDashboardPage() {
                                         <Radio size={14} className="text-[#99CCCC]" />
                                         Управление Эфиром
                                     </h3>
-                                    <span className="text-[10px] font-mono text-[#444]">Sync Enabled</span>
+                                    <button
+                                        onClick={handleManualSync}
+                                        disabled={isSyncing}
+                                        className={`text-[10px] font-mono px-2 py-1 rounded-sm border transition-all ${isSyncing ? "animate-pulse border-[#444] text-[#444]" : "border-[#99CCCC]/30 text-[#99CCCC] hover:bg-[#99CCCC] hover:text-black"}`}
+                                    >
+                                        {isSyncing ? "SYNCING..." : "SYNC NOW"}
+                                    </button>
                                 </div>
+
                                 <div className="p-4 bg-black">
                                     <RadioScheduleManager
                                         artists={artists}
