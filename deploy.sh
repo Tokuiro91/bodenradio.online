@@ -56,7 +56,6 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   
   # Ensure target directory structure exists in app data
   mkdir -p data/radio
-  mkdir -p public/radio
   
   # Symlink app data to persistent /var/radio storage if not already symlinked
   if [ ! -L "data/radio/music" ]; then
@@ -67,10 +66,13 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
     rm -rf data/radio/uploads
     ln -s /var/radio/uploads data/radio/uploads
   fi
-  if [ ! -L "public/radio/mixes" ]; then
-    rm -rf public/radio/mixes
-    ln -s /var/radio/mixes public/radio/mixes
+  if [ ! -L "data/radio/mixes" ]; then
+    rm -rf data/radio/mixes
+    ln -s /var/radio/mixes data/radio/mixes
   fi
+  
+  # REMOVED public/radio/mixes symlink because it breaks Turbopack build
+  rm -rf public/radio
   
   # Move existing files from old uploads to unified dir if any (backward compatibility)
   if [ -d "public/uploads/audio" ]; then

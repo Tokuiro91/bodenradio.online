@@ -33,7 +33,7 @@ function getCurrentTrack() {
             if (currentEntry && currentEntry.file && currentEntry.file !== 'SILENCE') {
                 let filePath = currentEntry.file;
                 if (!filePath.startsWith('/') && !filePath.startsWith('http')) {
-                    filePath = path.join(__dirname, '..', 'public', 'radio', 'mixes', filePath);
+                    filePath = path.join(__dirname, '..', 'data', 'radio', 'mixes', filePath);
                 }
                 return filePath;
             }

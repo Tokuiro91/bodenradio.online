@@ -2,10 +2,40 @@ import { NextRequest, NextResponse } from "next/server"
 import fs from "fs"
 import path from "path"
 
-const MIXES_DIR = path.join(process.cwd(), "public", "radio", "mixes")
+// Use a path that won't cause build-time symlink issues
+const MIXES_DIR = path.join(process.cwd(), "data", "radio", "mixes")
 
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
+        const { searchParams } = new URL(req.url)
+        const filename = searchParams.get("file")
+
+        // 1. Serve file content if filename is provided
+        if (filename) {
+            const safeName = path.basename(filename)
+            const filePath = path.join(MIXES_DIR, safeName)
+            if (!fs.existsSync(filePath)) {
+                return new NextResponse("File not found", { status: 404 })
+            }
+
+            const stats = fs.statSync(filePath)
+            const fileStream = fs.createReadStream(filePath)
+
+            // Dynamic type detection based on extension
+            const ext = path.extname(safeName).toLowerCase()
+            const contentType = ext === ".mp3" ? "audio/mpeg" : "application/octet-stream"
+
+            // @ts-ignore
+            return new NextResponse(fileStream, {
+                headers: {
+                    "Content-Type": contentType,
+                    "Content-Length": stats.size.toString(),
+                    "Accept-Ranges": "bytes",
+                }
+            })
+        }
+
+        // 2. List files
         if (!fs.existsSync(MIXES_DIR)) {
             fs.mkdirSync(MIXES_DIR, { recursive: true })
             return NextResponse.json({ files: [] })
@@ -16,7 +46,7 @@ export async function GET() {
                 const stats = fs.statSync(path.join(MIXES_DIR, f))
                 return {
                     name: f,
-                    url: `/radio/mixes/${f}`,
+                    url: `/api/radio/media?file=${encodeURIComponent(f)}`,
                     size: stats.size,
                     mtime: stats.mtime
                 }
@@ -25,7 +55,8 @@ export async function GET() {
 
         return NextResponse.json({ files })
     } catch (error) {
-        return NextResponse.json({ error: "Failed to list mixes" }, { status: 500 })
+        console.error("Media API error:", error)
+        return NextResponse.json({ error: "Failed to process media request" }, { status: 500 })
     }
 }
 
@@ -48,7 +79,11 @@ export async function POST(req: NextRequest) {
         const arrayBuffer = await file.arrayBuffer()
         fs.writeFileSync(filePath, Buffer.from(arrayBuffer))
 
-        return NextResponse.json({ success: true, url: `/radio/mixes/${safeName}`, name: safeName })
+        return NextResponse.json({
+            success: true,
+            url: `/api/radio/media?file=${encodeURIComponent(safeName)}`,
+            name: safeName
+        })
     } catch (error) {
         console.error("Upload error:", error)
         return NextResponse.json({ error: "Upload failed" }, { status: 500 })
