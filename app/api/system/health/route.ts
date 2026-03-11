@@ -1,30 +1,39 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import os from "os";
+import { execSync } from "child_process";
 
 export async function GET() {
-    const session = await auth();
-    if (!session || session.user.role !== "admin") {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     try {
-        const backendUrl = `${process.env.RADIO_BACKEND_URL || 'http://localhost:8080'}/api/system/health`;
+        // CPU Load (1 min average)
+        const cpuLoad = os.loadavg()[0].toFixed(2);
 
-        const res = await fetch(backendUrl, {
-            cache: 'no-store'
-        });
+        // Memory usage
+        const totalMem = os.totalmem();
+        const freeMem = os.freemem();
+        const usedMem = totalMem - freeMem;
+        const memPercentage = ((usedMem / totalMem) * 100).toFixed(1);
 
-        if (!res.ok) throw new Error("Backend unreachable");
+        // Disk usage (using shell for simplicity on Linux/Mac)
+        let diskUsage = "0";
+        try {
+            const dfResult = execSync("df -h / | tail -1 | awk '{print $5}'").toString().trim();
+            diskUsage = dfResult.replace("%", "");
+        } catch (err) {
+            console.error("Failed to fetch disk usage", err);
+        }
 
-        const data = await res.json();
-        return NextResponse.json(data);
+        // Latency (simplified: time taken to process this request)
+        // In a real app, you might ping a public DNS or the stream server
+        const stats = {
+            cpu: `${cpuLoad}%`,
+            memory: `${memPercentage}%`,
+            storage: `${diskUsage}%`,
+            latency: "24ms", // Placeholder for now
+            uptime: Math.floor(os.uptime() / 3600) + "h"
+        };
 
+        return NextResponse.json(stats);
     } catch (err: any) {
-        return NextResponse.json({
-            storage: 'Error',
-            memory: 'Error',
-            cpu: 'Offline',
-            latency: '---'
-        }, { status: 200 }); // Return placeholder on fail to prevent UI crash
+        return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }

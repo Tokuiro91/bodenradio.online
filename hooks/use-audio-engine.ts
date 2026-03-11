@@ -129,6 +129,28 @@ export function useAudioEngine(artists: Artist[]) {
     useEffect(() => {
         const tick = () => {
             const active = findActiveArtist(artistsRef.current)
+
+            // Strict schedule enforcement
+            if (activeArtist && !active) {
+                // Broadcast just ended - STOP
+                if (isPlayingRef.current) {
+                    audioRef.current?.pause()
+                    setIsPlayingState(false)
+                    isPlayingRef.current = false
+                    toast.info("Broadcast ended. Stream paused.")
+                }
+            } else if (!activeArtist && active) {
+                // New broadcast started - AUTO SWITCH (if it was somehow playing)
+                // Or just update state so user can press play
+            } else if (activeArtist && active && activeArtist.id !== active.id) {
+                // Switched from one broadcast to another - RE-SYNC
+                if (isPlayingRef.current) {
+                    audioRef.current!.src = resolveStreamUrl(UNIFIED_STREAM_URL) + "?t=" + Date.now()
+                    audioRef.current!.load()
+                    audioRef.current!.play().catch(console.error)
+                }
+            }
+
             setActiveArtist(active)
             updateMediaSession(active)
         }
@@ -136,14 +158,16 @@ export function useAudioEngine(artists: Artist[]) {
         tick()
         const interval = setInterval(tick, 5000)
         return () => clearInterval(interval)
-    }, [])
+    }, [activeArtist])
 
     const togglePlay = useCallback(async () => {
         const audio = audioRef.current
         if (!audio) return
 
-        if (!isPlayingRef.current && !activeArtist) {
-            toast.error("Nothing is currently live")
+        // 1. Check if anything is scheduled right now
+        const currentActive = findActiveArtist(artistsRef.current)
+        if (!isPlayingRef.current && !currentActive) {
+            toast.error("Nothing is currently live in AzuraCast schedule")
             return
         }
 
@@ -152,9 +176,7 @@ export function useAudioEngine(artists: Artist[]) {
         isPlayingRef.current = newPlaying
 
         if (newPlaying) {
-            // To ensure we get the FRESH stream (not buffered), sometimes re-setting src helps
-            // but for a chunked stream it should be fine. 
-            // We force a reload to jump to the 'live' edge if possible.
+            // Force refresh to 'live' edge
             audio.src = resolveStreamUrl(UNIFIED_STREAM_URL) + "?t=" + Date.now()
             audio.load()
             try {
@@ -163,10 +185,10 @@ export function useAudioEngine(artists: Artist[]) {
                 console.error("Playback failed:", err)
                 setIsPlayingState(false)
                 isPlayingRef.current = false
+                toast.error("Failed to start playback")
             }
         } else {
             audio.pause()
-            // Clear src to stop background download
             audio.src = ""
             audio.load()
         }

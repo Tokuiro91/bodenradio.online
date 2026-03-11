@@ -289,7 +289,7 @@ export default function UnifiedDashboardPage() {
                 )}
 
                 {activeView === "analytics" && (
-                    <AnalyticsDashboard onlineCount={onlineCount} />
+                    <AnalyticsDashboard onlineCount={onlineCount} systemStats={systemStats} />
                 )}
 
                 {activeView === "database" && (

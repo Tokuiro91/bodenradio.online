@@ -25,7 +25,13 @@ interface AnalyticsData {
     rawSessions: any[]
 }
 
-export function AnalyticsDashboard({ onlineCount = 0 }: { onlineCount?: number }) {
+export function AnalyticsDashboard({
+    onlineCount = 0,
+    systemStats = { storage: "0", memory: "0", cpu: "0", latency: "0ms", uptime: "0h" }
+}: {
+    onlineCount?: number,
+    systemStats?: any
+}) {
     const [data, setData] = useState<AnalyticsData | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
@@ -122,6 +128,14 @@ export function AnalyticsDashboard({ onlineCount = 0 }: { onlineCount?: number }
                 </div>
             </div>
 
+            {/* ── System Health ── */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <HealthCard label="CPU Load" value={systemStats.cpu} color="#99CCCC" />
+                <HealthCard label="RAM Usage" value={systemStats.memory} color="#99CCCC" />
+                <HealthCard label="Disk Space" value={systemStats.storage} color="#99CCCC" />
+                <HealthCard label="Latency" value={systemStats.latency} color="#f97316" />
+            </div>
+
             <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 ${loading ? "opacity-50" : ""}`}>
                 {/* ── Timeline Chart ── */}
                 <div className="bg-[#0a0a0a] border border-[#2a2a2a] p-4 rounded-sm">
@@ -190,6 +204,27 @@ export function AnalyticsDashboard({ onlineCount = 0 }: { onlineCount?: number }
                     </div>
                 </div>
             </div>
+        </div>
+    )
+}
+
+function HealthCard({ label, value, color }: { label: string; value: string; color: string }) {
+    const numericValue = parseInt(value) || 0;
+    return (
+        <div className="bg-[#080808] border border-[#1a1a1a] p-4 rounded-sm">
+            <p className="text-[9px] text-[#444] uppercase font-black tracking-widest mb-2">{label}</p>
+            <div className="flex items-end justify-between mb-1">
+                <span className="text-xl font-mono text-white">{value}</span>
+                {label !== "Latency" && <span className="text-[10px] text-[#2a2a2a] inline-block mb-1">{numericValue}%</span>}
+            </div>
+            {label !== "Latency" && (
+                <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
+                    <div
+                        className="h-full transition-all duration-1000"
+                        style={{ width: `${numericValue}%`, backgroundColor: color }}
+                    />
+                </div>
+            )}
         </div>
     )
 }
