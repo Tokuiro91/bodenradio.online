@@ -58,8 +58,8 @@ export function AzuracastManager() {
                                 // Use a truly unique ID (playlist ID + item ID) to avoid FullCalendar issues
                                 id: `${playlist.id}-${item.id}`,
                                 title: playlist.name,
-                                start: item.start_time_iso ? (item.start_time_iso.endsWith('Z') ? item.start_time_iso : item.start_time_iso + 'Z') : `${item.start_date}T${sTime.slice(0, 2)}:${sTime.slice(2, 4)}:00Z`,
-                                end: item.end_time_iso ? (item.end_time_iso.endsWith('Z') ? item.end_time_iso : item.end_time_iso + 'Z') : `${item.end_date}T${eTime.slice(0, 2)}:${eTime.slice(2, 4)}:00Z`,
+                                start: item.start_time_iso || `${item.start_date}T${sTime.slice(0, 2)}:${sTime.slice(2, 4)}:00Z`,
+                                end: item.end_time_iso || `${item.end_date}T${eTime.slice(0, 2)}:${eTime.slice(2, 4)}:00Z`,
                             })
                         })
                     }
@@ -123,9 +123,11 @@ export function AzuracastManager() {
 
             if (res.ok) {
                 toast.success("Schedule updated")
-                fetchSchedule()
+                // Wait 1s for AzuraCast to persist
+                setTimeout(fetchSchedule, 1000)
             } else {
                 const err = await res.json()
+                console.error("Schedule update error:", err)
                 toast.error(err.error || "Update failed")
                 changeInfo.revert()
             }

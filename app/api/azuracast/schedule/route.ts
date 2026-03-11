@@ -55,10 +55,10 @@ export async function PUT(request: Request) {
             if (String(item.id) === String(itemId)) {
                 return {
                     ...item,
-                    start_time,
-                    end_time,
+                    start_time: Number(start_time),
+                    end_time: Number(end_time),
                     start_date,
-                    end_date: start_date // Assuming single day for now
+                    end_date: start_date
                 };
             }
             return item;
