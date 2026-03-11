@@ -11,6 +11,7 @@ import { DBArtist } from "@/lib/artist-db-store"
 import { BroadcastManager } from "@/components/broadcast-manager"
 import { socketService } from "@/lib/socket"
 import { AzuracastManager } from "@/components/azuracast-manager"
+import { ScheduleManager } from "@/components/schedule-manager"
 import { toast } from "sonner"
 
 export default function UnifiedDashboardPage() {
@@ -19,7 +20,7 @@ export default function UnifiedDashboardPage() {
     const { artists, setArtists, ready } = useArtists()
     const [dbArtists, setDbArtists] = useState<DBArtist[]>([])
     const [dbSearchQuery, setDbSearchQuery] = useState("")
-    const [activeView, setActiveView] = useState<"player" | "database" | "analytics" | "broadcast-list" | "azuracast">("player")
+    const [activeView, setActiveView] = useState<"player" | "database" | "analytics" | "broadcast-list" | "schedule">("player")
     const [selectedArtistForSchedule, setSelectedArtistForSchedule] = useState<DBArtist | null>(null)
     const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false)
     const [selectedArtistForEdit, setSelectedArtistForEdit] = useState<DBArtist | null>(null)
@@ -29,20 +30,6 @@ export default function UnifiedDashboardPage() {
     const [onlineCount, setOnlineCount] = useState(0)
     const [nowPlaying, setNowPlaying] = useState<any>(null)
     const [isSyncing, setIsSyncing] = useState(false)
-    const [azuraStats, setAzuraStats] = useState({ listeners: { current: 0 } })
-
-    useEffect(() => {
-        const fetchAzura = async () => {
-            try {
-                const res = await fetch("/api/azuracast/nowplaying")
-                const data = await res.json()
-                setAzuraStats(data)
-            } catch (err) { }
-        }
-        fetchAzura()
-        const azuraTimer = setInterval(fetchAzura, 15000)
-        return () => clearInterval(azuraTimer)
-    }, [])
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -219,8 +206,8 @@ export default function UnifiedDashboardPage() {
                 </div>
 
                 <nav className="flex-1 p-4 space-y-1">
-                    <NavItem active={activeView === "player"} onClick={() => setActiveView("player")} icon={<Radio size={18} />} label="Player" />
-                    <NavItem active={activeView === "azuracast"} onClick={() => setActiveView("azuracast")} icon={<LayoutDashboard size={18} />} label="Azuracast" />
+                    <NavItem active={activeView === "player"} onClick={() => setActiveView("player")} icon={<LayoutDashboard size={18} />} label="Player" />
+                    <NavItem active={activeView === "schedule"} onClick={() => setActiveView("schedule")} icon={<Calendar size={18} />} label="Schedule CSV" />
                     <NavItem active={activeView === "database"} onClick={() => setActiveView("database")} icon={<Database size={18} />} label="База Артистов" />
                     <NavItem active={activeView === "analytics"} onClick={() => setActiveView("analytics")} icon={<BarChart3 size={18} />} label="Аналитика" />
                 </nav>
@@ -254,7 +241,7 @@ export default function UnifiedDashboardPage() {
                         </div>
                         <h2 className="text-3xl font-bold text-white tracking-tight">
                             {activeView === "player" && "Player"}
-                            {activeView === "azuracast" && "Azuracast Station Manager"}
+                            {activeView === "schedule" && "Radio Schedule (CSV)"}
                             {activeView === "database" && "База Артистов"}
                             {activeView === "analytics" && "Аналитика"}
                         </h2>
@@ -264,7 +251,7 @@ export default function UnifiedDashboardPage() {
                         <div className="flex items-center gap-3 px-4 py-2 bg-black border border-[#1a1a1a] rounded-sm shadow-inner">
                             <div className="flex items-center gap-2">
                                 <Users size={12} className="text-[#99CCCC]" />
-                                <span className="text-[10px] font-black text-white">{azuraStats.listeners?.current || 0}</span>
+                                <span className="text-[10px] font-black text-white">{0}</span>
                             </div>
                             <div className="w-[1px] h-3 bg-[#1a1a1a]"></div>
                             <span className="text-[9px] font-black uppercase tracking-widest text-[#444]">Listeners Online</span>
@@ -279,13 +266,14 @@ export default function UnifiedDashboardPage() {
                     </div>
                 </div>
 
+                {activeView === "schedule" && (
+                    <ScheduleManager />
+                )}
+
                 {activeView === "player" && (
                     <BroadcastManager />
                 )}
 
-                {activeView === "azuracast" && (
-                    <AzuracastManager />
-                )}
 
                 {activeView === "analytics" && (
                     <AnalyticsDashboard onlineCount={onlineCount} systemStats={systemStats} />
