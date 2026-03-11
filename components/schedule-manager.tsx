@@ -92,15 +92,16 @@ export function ScheduleManager() {
     }
 
     const handleAddOrUpdateEntry = () => {
-        if (!form.file) return toast.error("Select an audio file")
+        // We allow empty file now, which means "SILENCE" or "FALLBACK TO ARTIST DB"
+        const entryToSave = { ...form, file: form.file || "SILENCE" }
 
         let updated: ScheduleEntry[]
         if (isEditing !== null) {
             updated = [...schedule]
-            updated[isEditing] = form
+            updated[isEditing] = entryToSave
             setIsEditing(null)
         } else {
-            updated = [...schedule, form]
+            updated = [...schedule, entryToSave]
         }
 
         setSchedule(updated)
@@ -231,15 +232,51 @@ export function ScheduleManager() {
                                         className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors"
                                     />
                                 </div>
-                                <div className="space-y-2">
+                                <div className="space-y-2 col-span-2">
                                     <label className="text-[9px] uppercase font-black text-[#444] tracking-widest">Start Time (HH:MM:SS)</label>
-                                    <input
-                                        type="text"
-                                        placeholder="18:30:00"
-                                        value={form.time}
-                                        onChange={(e) => setForm({ ...form, time: e.target.value })}
-                                        className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] font-mono transition-colors"
-                                    />
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="23"
+                                            placeholder="HH"
+                                            value={form.time.split(":")[0] || "00"}
+                                            onChange={(e) => {
+                                                const parts = form.time.split(":")
+                                                parts[0] = e.target.value.padStart(2, "0")
+                                                setForm({ ...form, time: parts.join(":") })
+                                            }}
+                                            className="w-16 bg-black border border-[#1a1a1a] p-2 text-center text-xs text-white outline-none focus:border-[#99CCCC] font-mono"
+                                        />
+                                        <span className="text-[#333]">:</span>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="59"
+                                            placeholder="MM"
+                                            value={form.time.split(":")[1] || "00"}
+                                            onChange={(e) => {
+                                                const parts = form.time.split(":")
+                                                parts[1] = e.target.value.padStart(2, "0")
+                                                setForm({ ...form, time: parts.join(":") })
+                                            }}
+                                            className="w-16 bg-black border border-[#1a1a1a] p-2 text-center text-xs text-white outline-none focus:border-[#99CCCC] font-mono"
+                                        />
+                                        <span className="text-[#333]">:</span>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="59"
+                                            placeholder="SS"
+                                            value={form.time.split(":")[2] || "00"}
+                                            onChange={(e) => {
+                                                const parts = form.time.split(":")
+                                                parts[2] = e.target.value.padStart(2, "0")
+                                                setForm({ ...form, time: parts.join(":") })
+                                            }}
+                                            className="w-16 bg-black border border-[#1a1a1a] p-2 text-center text-xs text-white outline-none focus:border-[#99CCCC] font-mono"
+                                        />
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[9px] uppercase font-black text-[#444] tracking-widest">Audio File</label>

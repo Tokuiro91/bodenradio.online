@@ -87,6 +87,11 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   rm -f public/broadcast-media/*
   find /var/radio/uploads -maxdepth 1 -not -path '*/.*' -exec ln -sf {} public/broadcast-media/ \; 2>/dev/null || true
 
+  # Stop and remove Azuracast containers if they exist
+  echo "   → stopping Azuracast containers..."
+  docker ps -a --filter "name=azuracast" -q | xargs -r docker stop || true
+  docker ps -a --filter "name=azuracast" -q | xargs -r docker rm || true
+
   echo "   → перезапуск PM2..."
 
   pm2 restart agileradio

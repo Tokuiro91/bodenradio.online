@@ -31,7 +31,7 @@ function resolveStreamUrl(url: string): string {
     return url
 }
 
-const UNIFIED_STREAM_URL = "http://163.245.219.4:1010/listen/bodenradio/radio.mp3"
+const UNIFIED_STREAM_URL = "http://163.245.219.4:8000/radio"
 
 function getAudioUrl(artist: Artist): string {
     return artist.audioUrl || UNIFIED_STREAM_URL
@@ -167,8 +167,9 @@ export function useAudioEngine(artists: Artist[]) {
         // 1. Check if anything is scheduled right now
         const currentActive = findActiveArtist(artistsRef.current)
         if (!isPlayingRef.current && !currentActive) {
-            toast.error("Nothing is currently live in AzuraCast schedule")
-            return
+            // We allow playing even if no artist is active in the UI schedule, 
+            // as Liquidsoap might have its own schedule or fallback.
+            toast.info("Connecting to live stream...")
         }
 
         const newPlaying = !isPlayingRef.current
