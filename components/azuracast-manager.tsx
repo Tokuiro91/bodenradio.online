@@ -100,6 +100,12 @@ export function AzuracastManager() {
         }
     }
 
+    useEffect(() => {
+        if (calendarRef.current) {
+            calendarRef.current.getApi().changeView(view)
+        }
+    }, [view])
+
     return (
         <div className="flex flex-col h-[calc(100vh-160px)] gap-6 animate-in fade-in duration-700">
             {/* Real-time Stats Overlay Header */}
@@ -156,6 +162,7 @@ export function AzuracastManager() {
                             selectable={true}
                             editable={false}
                             nowIndicator={true}
+                            allDaySlot={false}
                             height="100%"
                             select={handleDateSelect}
                             eventClick={handleEventClick}

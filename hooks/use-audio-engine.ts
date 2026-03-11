@@ -30,8 +30,10 @@ function resolveStreamUrl(url: string): string {
     return url
 }
 
+const UNIFIED_STREAM_URL = "http://163.245.219.4:1010/listen/bodenradio/radio.mp3"
+
 function getAudioUrl(artist: Artist): string {
-    return artist.audioUrl || ""
+    return artist.audioUrl || UNIFIED_STREAM_URL
 }
 
 function findActiveArtist(artists: Artist[]): Artist | null {
@@ -83,8 +85,6 @@ function updateMediaSession(artist: Artist | null) {
         })
     }
 }
-
-const UNIFIED_STREAM_URL = "http://163.245.219.4:1010/listen/bodenradio/radio.mp3"
 
 export function useAudioEngine(artists: Artist[]) {
     const audioRef = useRef<HTMLAudioElement | null>(null)
