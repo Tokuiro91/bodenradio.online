@@ -67,17 +67,25 @@ export async function POST(request: Request) {
 
             const playlist = await playlistRes.json();
 
-            // 2. Add file to playlist
-            const addFileRes = await fetch(`${baseUrl}/station/${stationId}/playlist/${playlist.id}/files`, {
-                method: "POST",
+            // 2. Fetch current file details to preserve existing playlists
+            const fileRes = await fetch(`${baseUrl}/station/${stationId}/file/${file_id}`, {
+                headers: { "X-API-Key": apiKey }
+            });
+            const fileData = await fileRes.json();
+            const currentPlaylists = fileData.playlists?.map((p: any) => p.id) || [];
+
+            // 3. Update file with new playlist assignment
+            const updateFileRes = await fetch(`${baseUrl}/station/${stationId}/file/${file_id}`, {
+                method: "PUT",
                 headers: { "X-API-Key": apiKey, "Content-Type": "application/json" },
-                body: JSON.stringify({ ids: [file_id] })
+                body: JSON.stringify({
+                    playlists: [...currentPlaylists, playlist.id]
+                })
             });
 
-            if (!addFileRes.ok) {
-                const addFileErr = await addFileRes.json().catch(() => ({ message: "Unknown error" }));
-                console.error("[AzuraCast] Add file error:", addFileErr);
-                throw new Error(addFileErr.message || "Failed to add file to playlist");
+            if (!updateFileRes.ok) {
+                const err = await updateFileRes.json().catch(() => ({ message: "Failed to update file playlists" }));
+                throw new Error(err.message || "Failed to assign file to playlist");
             }
 
             return NextResponse.json(playlist);
