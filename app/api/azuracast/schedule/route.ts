@@ -64,12 +64,15 @@ export async function PUT(request: Request) {
             return item;
         });
 
-        // 3. Save the playlist with updated schedule
+        // 3. Save the playlist with updated schedule and strictly enforced priorities
         const updateRes = await fetch(`${baseUrl}/station/${stationId}/playlist/${playlistId}`, {
             method: "PUT",
             headers: { "X-API-Key": apiKey, "Content-Type": "application/json" },
             body: JSON.stringify({
                 ...playlist,
+                type: "scheduled",
+                include_in_on_demand: true,
+                backend_options: ["interrupt", "single_track"],
                 schedule_items: updatedScheduleItems
             })
         });
@@ -107,10 +110,12 @@ export async function POST(request: Request) {
                 headers: { "X-API-Key": apiKey, "Content-Type": "application/json" },
                 body: JSON.stringify({
                     name: `Broadcast: ${name}`,
-                    type: "default",
+                    type: "scheduled",
                     source: "songs",
                     order: "shuffle",
                     is_enabled: true,
+                    include_in_on_demand: true,
+                    backend_options: ["interrupt", "single_track"],
                     schedule_items: [{
                         start_time,
                         end_time,
