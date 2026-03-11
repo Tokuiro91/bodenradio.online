@@ -45,6 +45,10 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   npm ci --legacy-peer-deps --silent
   echo "   → npm install for backend..."
   cd radio-backend && npm install --silent && cd ..
+  echo "   → cleanup symlinks before build..."
+  rm -rf data/radio/music data/radio/uploads data/radio/mixes
+  mkdir -p data/radio/music data/radio/uploads data/radio/mixes
+
   echo "   → next build..."
   npm run build
   
@@ -58,10 +62,6 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   mkdir -p data/radio/music
   mkdir -p data/radio/uploads
   mkdir -p data/radio/mixes
-  
-  # Remove symlinks if they exist to prevent build errors
-  rm -rf data/radio/music data/radio/uploads data/radio/mixes
-  mkdir -p data/radio/music data/radio/uploads data/radio/mixes
   
   # REMOVED public/radio/mixes symlink because it breaks Turbopack build
   rm -rf public/radio
