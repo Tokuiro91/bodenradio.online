@@ -75,7 +75,9 @@ export async function POST(request: Request) {
             });
 
             if (!addFileRes.ok) {
-                throw new Error("Failed to add file to playlist");
+                const addFileErr = await addFileRes.json().catch(() => ({ message: "Unknown error" }));
+                console.error("[AzuraCast] Add file error:", addFileErr);
+                throw new Error(addFileErr.message || "Failed to add file to playlist");
             }
 
             return NextResponse.json(playlist);
