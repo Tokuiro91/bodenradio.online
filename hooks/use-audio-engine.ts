@@ -84,7 +84,7 @@ function updateMediaSession(artist: Artist | null) {
     }
 }
 
-const UNIFIED_STREAM_URL = "http://163.245.219.4:1010/public/bodenradio.mp3"
+const UNIFIED_STREAM_URL = "http://163.245.219.4:1010/listen/bodenradio/radio.mp3"
 
 export function useAudioEngine(artists: Artist[]) {
     const audioRef = useRef<HTMLAudioElement | null>(null)
