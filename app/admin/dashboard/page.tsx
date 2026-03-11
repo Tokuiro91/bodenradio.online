@@ -11,7 +11,7 @@ import { DBArtist } from "@/lib/artist-db-store"
 import { Signal } from "lucide-react"
 import { BroadcastManager } from "@/components/broadcast-manager"
 import { socketService } from "@/lib/socket"
-import { List, LayoutDashboard } from "lucide-react"
+import { List, LayoutDashboard, Loader2, Upload, X } from "lucide-react"
 import { AzuracastManager } from "@/components/azuracast-manager"
 import { toast } from "sonner"
 
@@ -476,8 +476,21 @@ function ArtistEditModal({ artist, onClose, onConfirm }: { artist: DBArtist, onC
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Audio (URL)</label>
-                        <input value={audioUrl} onChange={e => setAudioUrl(e.target.value)} placeholder="URL..." className="w-full bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC]" />
+                        <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-black tracking-widest text-[#444] mb-2 block">Audio (AzuraCast Media)</label>
+                            <div className="flex gap-2">
+                                <input
+                                    value={audioUrl}
+                                    onChange={e => setAudioUrl(e.target.value)}
+                                    placeholder="Filename or URL..."
+                                    className="flex-1 bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC] font-mono"
+                                />
+                                <label className={`cursor-pointer px-3 flex items-center justify-center bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#99CCCC] transition-all rounded-sm ${isUploading ? "opacity-50 pointer-events-none" : ""}`}>
+                                    {isUploading ? <Loader2 size={14} className="animate-spin text-[#99CCCC]" /> : <Upload size={14} className="text-[#99CCCC]" />}
+                                    <input type="file" className="hidden" onChange={handleAudioUpload} accept="audio/*" />
+                                </label>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="space-y-1">
@@ -587,8 +600,21 @@ function ArtistCreateModal({ onClose, onConfirm }: { onClose: () => void, onConf
                         </div>
                     </div>
                     <div className="space-y-1">
-                        <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Audio (URL)</label>
-                        <input value={audioUrl} onChange={e => setAudioUrl(e.target.value)} placeholder="URL..." className="w-full bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC]" />
+                        <div className="space-y-1">
+                            <label className="text-[9px] uppercase font-black tracking-widest text-[#444] mb-2 block">Audio (AzuraCast Media)</label>
+                            <div className="flex gap-2">
+                                <input
+                                    value={audioUrl}
+                                    onChange={e => setAudioUrl(e.target.value)}
+                                    placeholder="Filename or URL..."
+                                    className="flex-1 bg-black border border-[#1a1a1a] p-2 text-xs outline-none focus:border-[#99CCCC] font-mono"
+                                />
+                                <label className={`cursor-pointer px-3 flex items-center justify-center bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#99CCCC] transition-all rounded-sm ${isUploading ? "opacity-50 pointer-events-none" : ""}`}>
+                                    {isUploading ? <Loader2 size={14} className="animate-spin text-[#99CCCC]" /> : <Upload size={14} className="text-[#99CCCC]" />}
+                                    <input type="file" className="hidden" onChange={handleAudioUpload} accept="audio/*" />
+                                </label>
+                            </div>
+                        </div>
                     </div>
                     <div className="space-y-1">
                         <label className="text-[9px] uppercase font-black tracking-widest text-[#444]">Описание</label>
