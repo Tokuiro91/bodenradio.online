@@ -64,6 +64,14 @@ export async function GET(req: NextRequest) {
     }
 }
 
+export const config = {
+    api: {
+        bodyParser: {
+            sizeLimit: '500mb',
+        },
+    },
+};
+
 export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData()

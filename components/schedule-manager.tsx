@@ -1,15 +1,21 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { Trash2, Plus, Save, Clock, Calendar, Music, Play, Pause, Upload, X, Edit2, Search, Volume2 } from "lucide-react"
+import { useState, useEffect, useRef, useCallback } from "react"
+import {
+    Trash2, Plus, Save, Music, Play, Pause,
+    Upload, X, Edit2, Search, RefreshCw, Radio,
+    Users, ChevronLeft, ChevronRight, Loader2, Clock
+} from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface ScheduleEntry {
-    date: string
-    time: string
-    end_time: string
-    file: string
+    date: string      // YYYY-MM-DD
+    time: string      // HH:MM:SS
+    end_time: string  // HH:MM:SS
+    file: string      // bare filename
 }
 
 interface AudioFile {
@@ -19,637 +25,868 @@ interface AudioFile {
     mtime: string
 }
 
+interface IcecastStatus {
+    online: boolean
+    listeners: number
+    title: string
+    mountpoint: string
+    bitrate: number
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const HOUR_PX = 64          // pixels per hour in the grid
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const basename = (f: string) => f.split("/").pop() ?? f
+
+function toDateStr(d: Date) { return d.toISOString().split("T")[0] }
+
+function addDays(d: Date, n: number) {
+    const r = new Date(d); r.setDate(r.getDate() + n); return r
+}
+
+function getWeekStart(dateStr: string) {
+    const d = new Date(dateStr + "T12:00:00")
+    d.setDate(d.getDate() - d.getDay())
+    return d
+}
+
+function getMonthGrid(dateStr: string): Array<string | null> {
+    const d = new Date(dateStr + "T12:00:00")
+    const y = d.getFullYear(), mo = d.getMonth()
+    const first = new Date(y, mo, 1)
+    const last = new Date(y, mo + 1, 0)
+    const cells: Array<string | null> = Array(first.getDay()).fill(null)
+    for (let i = 1; i <= last.getDate(); i++) cells.push(toDateStr(new Date(y, mo, i)))
+    while (cells.length % 7 !== 0) cells.push(null)
+    return cells
+}
+
+function secsToHMS(secs: number) {
+    const h = String(Math.floor(secs / 3600)).padStart(2, "0")
+    const m = String(Math.floor((secs % 3600) / 60)).padStart(2, "0")
+    const s = String(secs % 60).padStart(2, "0")
+    return `${h}:${m}:${s}`
+}
+
+function hmsToSecs(hms: string) {
+    const [h, m, s] = (hms || "0:0:0").split(":").map(Number)
+    return (h || 0) * 3600 + (m || 0) * 60 + (s || 0)
+}
+
+function nowHMS() {
+    return new Date().toTimeString().slice(0, 8)
+}
+
+// ─── Timezone Helpers (Local <-> UTC) ────────────────────────────────────────
+
+function toUTC(dateStr: string, hms: string) {
+    const d = new Date(`${dateStr}T${hms}`);
+    if (isNaN(d.getTime())) return { date: dateStr, time: hms };
+    const iso = d.toISOString(); // YYYY-MM-DDTHH:MM:SS.SSSZ
+    return {
+        date: iso.split('T')[0],
+        time: iso.split('T')[1].slice(0, 8)
+    };
+}
+
+function fromUTC(dateStr: string, hms: string) {
+    const d = new Date(`${dateStr}T${hms}Z`);
+    if (isNaN(d.getTime())) return { date: dateStr, time: hms };
+    
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const localDate = `${year}-${month}-${day}`;
+    const localTime = d.toTimeString().slice(0, 8);
+    
+    return { date: localDate, time: localTime };
+}
+
+function nextFreeSlot(entries: ScheduleEntry[], date: string) {
+    const day = entries.filter(e => e.date === date).sort((a, b) => a.time.localeCompare(b.time))
+    if (!day.length) return "00:00:00"
+    return day[day.length - 1].end_time || day[day.length - 1].time
+}
+
+function findActiveEntry(schedule: ScheduleEntry[]): ScheduleEntry | null {
+    const today = toDateStr(new Date())
+    const hms = nowHMS()
+    return schedule.find(e =>
+        e.date === today &&
+        e.time <= hms &&
+        (e.end_time ? e.end_time > hms : true)
+    ) ?? null
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 export function ScheduleManager() {
     const [schedule, setSchedule] = useState<ScheduleEntry[]>([])
     const [mediaFiles, setMediaFiles] = useState<AudioFile[]>([])
-    const [bitrate, setBitrate] = useState<number>(192)
     const [loading, setLoading] = useState(true)
-    const [activeTab, setActiveTab] = useState<"visual" | "list" | "library">("visual")
-    const [isEditing, setIsEditing] = useState<number | null>(null)
-    const [searchQuery, setSearchQuery] = useState("")
+    const [saving, setSaving] = useState(false)
+    const [syncing, setSyncing] = useState(false)
+    const [uploading, setUploading] = useState(false)
+    const [icecast, setIcecast] = useState<IcecastStatus | null>(null)
+    const [nowEntry, setNowEntry] = useState<ScheduleEntry | null>(null)
 
-    // Form state
     const [form, setForm] = useState<ScheduleEntry>({
-        date: new Date().toISOString().split("T")[0],
-        time: "00:00:00",
-        end_time: "00:00:00",
-        file: ""
+        date: toDateStr(new Date()),
+        time: "00:00:00", end_time: "00:00:00", file: ""
     })
+    const [editIndex, setEditIndex] = useState<number | null>(null)
 
-    // Audio player state
-    const [playingFile, setPlayingFile] = useState<string | null>(null)
+    const [playingUrl, setPlayingUrl] = useState<string | null>(null)
     const audioRef = useRef<HTMLAudioElement | null>(null)
+    const uploadInputRef = useRef<HTMLInputElement | null>(null)
 
-    useEffect(() => {
-        fetchSchedule()
-        fetchBitrate()
-        fetchMedia()
-    }, [])
+    // ── Fetch ──────────────────────────────────────────────────────────────
 
-    const fetchBitrate = async () => {
-        try {
-            const res = await fetch("/api/radio/bitrate")
-            const data = await res.json()
-            if (data.bitrate) setBitrate(data.bitrate)
-        } catch (err) { }
-    }
-
-    const fetchSchedule = async () => {
+    const fetchSchedule = useCallback(async () => {
         setLoading(true)
         try {
-            const res = await fetch("/api/schedule")
-            const data = await res.json()
-            if (data.schedule) setSchedule(data.schedule)
-        } catch (err) {
-            toast.error("Failed to fetch schedule")
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const fetchMedia = async () => {
-        try {
-            const res = await fetch("/api/radio/media")
-            const data = await res.json()
-            if (data.files) setMediaFiles(data.files)
-        } catch (err) {
-            toast.error("Failed to fetch media library")
-        }
-    }
-
-    const saveSchedule = async (updatedSchedule: ScheduleEntry[]) => {
-        try {
-            const res = await fetch("/api/schedule", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ schedule: updatedSchedule })
-            })
-            if (res.ok) {
-                toast.success("Schedule updated")
-                fetchSchedule()
+            const r = await fetch("/api/schedule")
+            const d = await r.json()
+            if (d.schedule) {
+                // Convert stored UTC to Local for display
+                const localSchedule = d.schedule.map((e: ScheduleEntry) => {
+                    const startLoc = fromUTC(e.date, e.time);
+                    const endLoc = e.end_time ? fromUTC(e.date, e.end_time) : { date: e.date, time: "" };
+                    return {
+                        ...e,
+                        date: startLoc.date,
+                        time: startLoc.time,
+                        end_time: endLoc.time
+                    };
+                });
+                setSchedule(localSchedule);
             }
-        } catch (err) {
-            toast.error("Failed to save schedule")
+        } catch { toast.error("Failed to load schedule") }
+        finally { setLoading(false) }
+    }, [])
+
+    const fetchMedia = useCallback(async () => {
+        try {
+            const r = await fetch("/api/radio/media")
+            const d = await r.json()
+            if (d.files) setMediaFiles(d.files)
+        } catch { }
+    }, [])
+
+    const fetchIcecast = useCallback(async () => {
+        try {
+            const r = await fetch("/api/radio/status")
+            setIcecast(await r.json())
+        } catch { }
+    }, [])
+
+    useEffect(() => {
+        fetchSchedule(); fetchMedia(); fetchIcecast()
+        const iv = setInterval(fetchIcecast, 10_000)
+        return () => clearInterval(iv)
+    }, [fetchSchedule, fetchMedia, fetchIcecast])
+
+    // ── Reactive "now playing" from local schedule ─────────────────────────
+
+    useEffect(() => {
+        const update = () => setNowEntry(findActiveEntry(schedule))
+        update()
+        const iv = setInterval(update, 15_000)
+        return () => clearInterval(iv)
+    }, [schedule])
+
+    // ── Init form ──────────────────────────────────────────────────────────
+
+    useEffect(() => {
+        if (!loading && editIndex === null) {
+            const today = toDateStr(new Date())
+            const slot = nextFreeSlot(schedule, today)
+            setForm({ date: today, time: slot, end_time: slot, file: "" })
+        }
+    }, [loading]) // eslint-disable-line
+
+    // ── Audio duration ──────────────────────────────────────────────────────
+
+    const suggestEndTime = (filename: string, startTime: string) => {
+        const f = mediaFiles.find(x => x.name === filename)
+        if (!f) return
+        const a = new Audio(f.url)
+        a.addEventListener("loadedmetadata", () => {
+            setForm(prev => ({ ...prev, end_time: secsToHMS(hmsToSecs(startTime) + Math.ceil(a.duration)) }))
+        })
+    }
+
+    // ── Play preview ───────────────────────────────────────────────────────
+
+    const togglePlay = (url: string) => {
+        if (playingUrl === url) {
+            audioRef.current?.pause(); setPlayingUrl(null)
+        } else {
+            setPlayingUrl(url)
+            if (audioRef.current) { audioRef.current.src = url; audioRef.current.play() }
         }
     }
 
-    const handleAddOrUpdateEntry = () => {
-        // We allow empty file now, which means "SILENCE" or "FALLBACK TO ARTIST DB"
-        const entryToSave = { ...form, file: form.file || "SILENCE" }
+    // ── Save ───────────────────────────────────────────────────────────────
 
-        let updated: ScheduleEntry[]
-        if (isEditing !== null) {
-            updated = [...schedule]
-            updated[isEditing] = entryToSave
-            setIsEditing(null)
-        } else {
-            updated = [...schedule, entryToSave]
-        }
+    const persist = async (entries: ScheduleEntry[]) => {
+        setSaving(true)
+        try {
+            const r = await fetch("/api/schedule", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ schedule: entries })
+            })
+            if (!r.ok) throw new Error()
+            // The persist call updates the local state with LOCAL times after successful save
+            // But we already have the local times in the caller (handleSubmit)
+            // To be safe, we can trigger a re-fetch or just update state with local entries
+            setSchedule(entries.map(e => {
+                const startLoc = fromUTC(e.date, e.time);
+                const endLoc = e.end_time ? fromUTC(e.date, e.end_time) : { date: e.date, time: "" };
+                return {
+                    ...e,
+                    date: startLoc.date,
+                    time: startLoc.time,
+                    end_time: endLoc.time
+                };
+            }));
+            toast.success("Schedule saved")
+            reload()
+        } catch { toast.error("Failed to save") }
+        finally { setSaving(false) }
+    }
 
-        setSchedule(updated)
-        saveSchedule(updated)
+    const reload = async () => {
+        setSyncing(true)
+        try {
+            const r = await fetch("/api/radio/reload", { method: "POST" })
+            if (r.ok) toast.success("Liquidsoap reloaded", { duration: 2000 })
+            else toast.warning("Saved (engine offline)")
+        } catch { toast.warning("Saved (engine offline)") }
+        finally { setSyncing(false) }
+    }
+
+    const handleSubmit = () => {
+        const entry = { ...form, file: form.file || "SILENCE" }
+        const updatedLocal = editIndex !== null
+            ? schedule.map((e, i) => i === editIndex ? entry : e)
+            : [...schedule, entry]
+            
+        // Convert whole schedule to UTC for persistence
+        const updatedUTC = updatedLocal.map(e => {
+            const startUTC = toUTC(e.date, e.time);
+            const endUTC = e.end_time ? toUTC(e.date, e.end_time) : { date: e.date, time: "" };
+            return {
+                ...e,
+                date: startUTC.date,
+                time: startUTC.time,
+                end_time: endUTC.time
+            };
+        });
+
+        persist(updatedUTC)
         resetForm()
     }
 
-    const findNextFreeSlot = (entries: ScheduleEntry[], date: string) => {
-        const dayEntries = entries
-            .filter(e => e.date === date)
-            .sort((a, b) => a.time.localeCompare(b.time))
-
-        if (dayEntries.length === 0) return "00:00:00"
-        return dayEntries[dayEntries.length - 1].end_time || dayEntries[dayEntries.length - 1].time
-    }
-
     const resetForm = () => {
-        const nextTime = findNextFreeSlot(schedule, new Date().toISOString().split("T")[0])
-        setForm({
-            date: new Date().toISOString().split("T")[0],
-            time: nextTime,
-            end_time: nextTime,
-            file: ""
-        })
-        setIsEditing(null)
+        const today = toDateStr(new Date())
+        setForm({ date: today, time: nextFreeSlot(schedule, today), end_time: nextFreeSlot(schedule, today), file: "" })
+        setEditIndex(null)
     }
 
-    const suggestDuration = async (filename: string) => {
-        const file = mediaFiles.find(f => f.name === filename)
-        if (!file) return
+    const startEdit = (i: number) => {
+        setEditIndex(i); setForm(schedule[i])
+        window.scrollTo({ top: 0, behavior: "smooth" })
+    }
 
+    const handleDelete = (i: number) => {
+        if (!confirm("Delete this broadcast?")) return
+        persist(schedule.filter((_, idx) => idx !== i))
+    }
+
+    // ── Upload ─────────────────────────────────────────────────────────────
+
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]; if (!file) return
+        setUploading(true)
+        const fd = new FormData(); fd.append("file", file)
         try {
-            const audio = new Audio(file.url)
-            audio.addEventListener('loadedmetadata', () => {
-                const durationSec = Math.ceil(audio.duration)
-                const [h, m, s] = form.time.split(":").map(Number)
-                const startSec = h * 3600 + m * 60 + s
-                const endSecTotal = startSec + durationSec
-
-                const eh = String(Math.floor(endSecTotal / 3600)).padStart(2, "0")
-                const em = String(Math.floor((endSecTotal % 3600) / 60)).padStart(2, "0")
-                const es = String(endSecTotal % 60).padStart(2, "0")
-
-                setForm(prev => ({ ...prev, end_time: `${eh}:${em}:${es}` }))
-            })
-        } catch (err) { }
-    }
-
-    const handleDeleteEntry = (index: number) => {
-        if (!confirm("Delete this entry?")) return
-        const updated = schedule.filter((_, i) => i !== index)
-        setSchedule(updated)
-        saveSchedule(updated)
-    }
-
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        if (!file) return
-
-        const formData = new FormData()
-        formData.append("file", file)
-
-        try {
-            const res = await fetch("/api/radio/media", {
-                method: "POST",
-                body: formData
-            })
-            if (res.ok) {
-                toast.success("File uploaded")
-                fetchMedia()
-            }
-        } catch (err) {
-            toast.error("Upload failed")
+            const r = await fetch("/api/radio/media", { method: "POST", body: fd })
+            if (!r.ok) throw new Error()
+            const d = await r.json()
+            await fetchMedia()
+            setForm(prev => ({ ...prev, file: d.name }))
+            suggestEndTime(d.name, form.time)
+            toast.success(`Uploaded: ${d.name}`)
+        } catch { toast.error("Upload failed") }
+        finally {
+            setUploading(false)
+            if (uploadInputRef.current) uploadInputRef.current.value = ""
         }
     }
 
-    const togglePlay = (url: string) => {
-        if (playingFile === url) {
-            audioRef.current?.pause()
-            setPlayingFile(null)
-        } else {
-            setPlayingFile(url)
-            if (audioRef.current) {
-                audioRef.current.src = url
-                audioRef.current.play()
-            }
-        }
-    }
-
-    const handleBitrateChange = async (newBitrate: number) => {
-        try {
-            setBitrate(newBitrate)
-            await fetch("/api/radio/bitrate", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ bitrate: newBitrate })
-            })
-            toast.success(`Bitrate set to ${newBitrate}kbps`)
-        } catch (err) { }
-    }
-
-    if (loading) return <div className="text-white font-mono text-[10px] uppercase p-8 animate-pulse text-center">Synchronizing Radio Engine...</div>
+    if (loading) return (
+        <div className="flex items-center justify-center p-20 text-[#444] font-mono text-[10px] uppercase tracking-widest">
+            <Loader2 size={16} className="animate-spin mr-3" /> Synchronizing...
+        </div>
+    )
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto">
-            <audio ref={audioRef} onEnded={() => setPlayingFile(null)} hidden />
+        <div className="space-y-4 max-w-[1800px] mx-auto">
+            <audio ref={audioRef} onEnded={() => setPlayingUrl(null)} hidden />
+            <input ref={uploadInputRef} type="file" accept="audio/*" className="hidden" onChange={handleUpload} />
 
-            {/* Header & Bitrate */}
-            <div className="flex flex-col md:flex-row items-center justify-between bg-[#080808] border border-[#1a1a1a] p-5 rounded-sm gap-4">
-                <div className="flex flex-col">
-                    <h2 className="text-white font-black text-lg uppercase tracking-tighter">Radio Scheduler <span className="text-[#99CCCC] text-xs ml-2 font-mono">v2.0 PRECISE</span></h2>
-                    <p className="text-[10px] text-[#444] font-mono uppercase tracking-widest">CSV-based second-precision broadcasting engine</p>
-                </div>
-                <div className="flex items-center gap-4 bg-black p-1.5 rounded-sm border border-[#111]">
-                    <div className="px-2 text-[9px] font-black uppercase text-[#444]">Stream Quality</div>
-                    <div className="flex gap-1">
-                        {[192, 128].map(b => (
-                            <button
-                                key={b}
-                                onClick={() => handleBitrateChange(b)}
-                                className={`px-4 py-1.5 text-[10px] font-black rounded-sm transition-all ${bitrate === b ? "bg-[#99CCCC] text-black" : "text-[#555] hover:text-white"}`}
-                            >
-                                {b}K
-                            </button>
-                        ))}
-                    </div>
+            {/* NOW PLAYING */}
+            <NowPlayingBar
+                icecast={icecast}
+                nowEntry={nowEntry}
+                syncing={syncing}
+                onSync={reload}
+            />
+
+            {/* MAIN LAYOUT */}
+            <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4">
+
+                {/* TIMELINE (left) */}
+                <ScheduleGrid
+                    schedule={schedule}
+                    nowEntry={nowEntry}
+                    onEdit={startEdit}
+                    onDelete={handleDelete}
+                />
+
+                {/* FORM + LIBRARY (right) */}
+                <div className="space-y-4">
+                    <BroadcastForm
+                        form={form} setForm={setForm}
+                        editIndex={editIndex} schedule={schedule}
+                        mediaFiles={mediaFiles} playingUrl={playingUrl}
+                        uploading={uploading} saving={saving}
+                        onTogglePlay={togglePlay}
+                        onUploadClick={() => uploadInputRef.current?.click()}
+                        onSuggestEnd={suggestEndTime}
+                        onSubmit={handleSubmit}
+                        onReset={resetForm}
+                    />
+                    <AudioLibrary
+                        files={mediaFiles} selectedFile={form.file} playingUrl={playingUrl}
+                        onSelect={name => { setForm(p => ({ ...p, file: name })); suggestEndTime(name, form.time) }}
+                        onPlay={togglePlay}
+                        onDelete={async name => {
+                            if (!confirm(`Delete ${name}?`)) return
+                            await fetch("/api/radio/media", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ filename: name }) })
+                            fetchMedia()
+                        }}
+                        onUploadClick={() => uploadInputRef.current?.click()}
+                    />
                 </div>
             </div>
-
-            {/* Tabs */}
-            <div className="flex border-b border-[#1a1a1a] gap-1 px-1">
-                <TabButton active={activeTab === "visual"} onClick={() => setActiveTab("visual")} label="Timeline" />
-                <TabButton active={activeTab === "list"} onClick={() => setActiveTab("list")} label="Schedule List" />
-                <TabButton active={activeTab === "library"} onClick={() => setActiveTab("library")} label="Audio Library" />
-            </div>
-
-            <AnimatePresence mode="wait">
-                {activeTab === "visual" && (
-                    <motion.div key="visual" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-                        <TimelineView schedule={schedule} onEdit={(index) => {
-                            setForm(schedule[index])
-                            setIsEditing(index)
-                            setActiveTab("list")
-                        }} />
-                    </motion.div>
-                )}
-
-                {activeTab === "list" && (
-                    <motion.div key="list" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-                        {/* Entry Form */}
-                        <div className="bg-[#080808] border border-[#1a1a1a] p-6 rounded-sm">
-                            <h3 className="text-[#99CCCC] font-mono text-xs uppercase mb-6 tracking-[0.2em]">{isEditing !== null ? "Edit Entry" : "Add New Broadcast"}</h3>
-
-                            <div className="flex flex-col lg:flex-row gap-8">
-                                <div className="flex-1 space-y-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-                                        <div className="space-y-2">
-                                            <label className="text-[9px] uppercase font-black text-[#444] tracking-widest">Date</label>
-                                            <input
-                                                type="date"
-                                                value={form.date}
-                                                onChange={(e) => {
-                                                    const nextTime = findNextFreeSlot(schedule, e.target.value)
-                                                    setForm({ ...form, date: e.target.value, time: nextTime, end_time: nextTime })
-                                                }}
-                                                className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[9px] uppercase font-black text-[#444] tracking-widest">Audio File</label>
-                                            <div className="flex gap-2">
-                                                <select
-                                                    value={form.file}
-                                                    onChange={(e) => {
-                                                        setForm({ ...form, file: e.target.value })
-                                                        suggestDuration(e.target.value)
-                                                    }}
-                                                    className="flex-1 bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors appearance-none font-mono"
-                                                >
-                                                    <option value="">Select from library...</option>
-                                                    {mediaFiles.map(f => (
-                                                        <option key={f.name} value={f.name}>{f.name}</option>
-                                                    ))}
-                                                </select>
-                                                {form.file && form.file !== "SILENCE" && (
-                                                    <button onClick={() => togglePlay(mediaFiles.find(f => f.name === form.file)?.url || "")} className="p-2.5 bg-[#1a1a1a] text-[#99CCCC] rounded-sm hover:bg-[#99CCCC] hover:text-black transition-all">
-                                                        {playingFile === mediaFiles.find(f => f.name === form.file)?.url ? <Pause size={14} /> : <Play size={14} />}
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div className="space-y-3 p-4 bg-black/40 border border-[#111] rounded-sm">
-                                            <label className="text-[9px] uppercase font-black text-[#99CCCC] tracking-[0.2em] flex items-center gap-2">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-[#99CCCC]" /> Start Time
-                                            </label>
-                                            <TimeInput value={form.time} onChange={(val) => setForm({ ...form, time: val })} />
-                                        </div>
-                                        <div className="space-y-3 p-4 bg-black/40 border border-[#111] rounded-sm">
-                                            <label className="text-[9px] uppercase font-black text-[#FF6347] tracking-[0.2em] flex items-center gap-2">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-[#FF6347]" /> End Time
-                                            </label>
-                                            <TimeInput value={form.end_time} onChange={(val) => setForm({ ...form, end_time: val })} />
-                                        </div>
-                                    </div>
-
-                                    <div className="flex gap-4 pt-4">
-                                        <button
-                                            onClick={handleAddOrUpdateEntry}
-                                            className="flex-1 bg-[#99CCCC] text-black text-[10px] font-black uppercase tracking-widest px-8 py-4 rounded-sm hover:bg-white transition-all flex items-center justify-center gap-3 shadow-[0_0_25px_rgba(153,204,204,0.15)]"
-                                        >
-                                            {isEditing !== null ? <Save size={16} /> : <Plus size={16} />}
-                                            {isEditing !== null ? "Update Broadcast" : "Deploy to Schedule"}
-                                        </button>
-                                        {isEditing !== null && (
-                                            <button onClick={resetForm} className="bg-[#1a1a1a] text-white px-6 py-4 rounded-sm hover:bg-white hover:text-black transition-all">
-                                                <X size={16} />
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Sidebar Audio Palette */}
-                                <div className="w-full lg:w-80 border-l border-[#1a1a1a] pl-0 lg:pl-8 mt-8 lg:mt-0">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <span className="text-[9px] font-black uppercase text-[#444] tracking-widest">Audio Palette</span>
-                                        <Music size={12} className="text-[#222]" />
-                                    </div>
-                                    <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
-                                        {mediaFiles.map(f => (
-                                            <div
-                                                key={f.name}
-                                                onClick={() => {
-                                                    setForm(prev => ({ ...prev, file: f.name }))
-                                                    suggestDuration(f.name)
-                                                    toast.success(`Selected: ${f.name}`, { duration: 1000 })
-                                                }}
-                                                className={`p-3 rounded-sm border cursor-pointer transition-all flex flex-col gap-1 ${form.file === f.name ? "bg-[#99CCCC]/10 border-[#99CCCC]/30" : "bg-black border-[#111] hover:border-[#333]"}`}
-                                            >
-                                                <span className={`text-[10px] font-bold truncate ${form.file === f.name ? "text-[#99CCCC]" : "text-[#777]"}`}>{f.name}</span>
-                                                <span className="text-[8px] text-[#333] font-mono">{(f.size / 1024 / 1024).toFixed(1)}MB • {new Date(f.mtime).toLocaleDateString()}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* List Table */}
-                        <div className="bg-[#080808] border border-[#1a1a1a] rounded-sm overflow-hidden shadow-2xl">
-                            <div className="p-4 border-b border-[#1a1a1a] flex justify-between items-center">
-                                <div className="text-[10px] font-black uppercase text-[#444] tracking-widest">Broadcast History</div>
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#333]" size={12} />
-                                    <input
-                                        placeholder="SEARCH..."
-                                        value={searchQuery}
-                                        onChange={e => setSearchQuery(e.target.value)}
-                                        className="bg-black border border-[#1a1a1a] py-1.5 pl-8 pr-3 text-[10px] font-mono uppercase text-white outline-none focus:border-[#99CCCC] w-48"
-                                    />
-                                </div>
-                            </div>
-                            <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
-                                <table className="w-full text-left text-xs">
-                                    <thead className="sticky top-0 bg-[#0c0c0c] uppercase font-mono text-[9px] text-[#555] z-10">
-                                        <tr>
-                                            <th className="px-6 py-4 border-b border-[#1a1a1a]">Date</th>
-                                            <th className="px-6 py-4 border-b border-[#1a1a1a]">Time</th>
-                                            <th className="px-6 py-4 border-b border-[#1a1a1a]">Audio File</th>
-                                            <th className="px-6 py-4 border-b border-[#1a1a1a] text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="text-white">
-                                        {schedule.filter(s => s.file.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 ? (
-                                            <tr>
-                                                <td colSpan={4} className="px-6 py-12 text-center text-[#333] italic font-mono text-[10px] uppercase tracking-widest">Void space. No scheduled sounds.</td>
-                                            </tr>
-                                        ) : (
-                                            schedule
-                                                .filter(s => s.file.toLowerCase().includes(searchQuery.toLowerCase()))
-                                                .sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`))
-                                                .map((entry, index) => (
-                                                    <tr key={index} className="border-b border-[#1a1a1a] hover:bg-white/[0.02] transition-colors group">
-                                                        <td className="px-6 py-4 text-[#777] font-mono group-hover:text-white transition-colors">{entry.date}</td>
-                                                        <td className="px-6 py-4 font-mono font-bold text-[#99CCCC]">{entry.time}</td>
-                                                        <td className="px-6 py-4 text-[#737373] group-hover:text-white transition-colors">
-                                                            <div className="flex items-center gap-2">
-                                                                <Music size={12} className="text-[#333]" />
-                                                                {entry.file}
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4 text-right">
-                                                            <div className="flex justify-end gap-3 translate-x-4 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300">
-                                                                <button onClick={() => {
-                                                                    setForm(entry)
-                                                                    setIsEditing(schedule.indexOf(entry))
-                                                                    window.scrollTo({ top: 0, behavior: 'smooth' })
-                                                                }} className="text-[#444] hover:text-[#99CCCC] transition-colors"><Edit2 size={14} /></button>
-                                                                <button onClick={() => handleDeleteEntry(schedule.indexOf(entry))} className="text-[#444] hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-
-                {activeTab === "library" && (
-                    <motion.div key="library" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="space-y-6">
-                        <div className="bg-[#080808] border border-[#1a1a1a] p-6 rounded-sm">
-                            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                                <div className="flex-1">
-                                    <h3 className="text-[#99CCCC] font-mono text-xs uppercase mb-2 tracking-widest">Deploy Audio Assets</h3>
-                                    <p className="text-[10px] text-[#444] uppercase font-mono tracking-tight leading-relaxed">Accepted formats: .mp3, .wav. Files are stored in /radio/mixes.<br />Max file size recommended: 500MB.</p>
-                                </div>
-                                <label className="bg-white text-black px-6 py-3 rounded-sm font-black text-[10px] uppercase tracking-widest hover:bg-[#99CCCC] transition-all cursor-pointer shadow-xl flex items-center gap-2">
-                                    <Upload size={14} /> Upload Audio
-                                    <input type="file" className="hidden" accept="audio/*" onChange={handleFileUpload} />
-                                </label>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {mediaFiles.map(file => (
-                                <div key={file.name} className="bg-[#080808] border border-[#1a1a1a] p-4 rounded-sm hover:border-[#333] transition-all group relative overflow-hidden">
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-10 h-10 rounded-sm flex items-center justify-center transition-all ${playingFile === file.url ? "bg-[#99CCCC] text-black" : "bg-black border border-[#1a1a1a] text-[#333]"}`}>
-                                                {playingFile === file.url ? <Volume2 size={18} className="animate-pulse" /> : <Music size={18} />}
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[11px] font-bold text-white max-w-[150px] truncate">{file.name}</span>
-                                                <span className="text-[9px] text-[#444] font-mono uppercase">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => togglePlay(file.url)}
-                                            className={`p-2 rounded-full transition-all ${playingFile === file.url ? "bg-red-500/10 text-red-500" : "bg-[#99CCCC]/10 text-[#99CCCC] hover:bg-[#99CCCC] hover:text-black"}`}
-                                        >
-                                            {playingFile === file.url ? <Pause size={14} /> : <Play size={14} />}
-                                        </button>
-                                    </div>
-                                    <div className="flex items-center justify-between text-[8px] font-mono text-[#333] uppercase">
-                                        <span>Uploaded: {new Date(file.mtime).toLocaleDateString()}</span>
-                                        <button
-                                            onClick={async () => {
-                                                if (confirm(`Delete ${file.name}?`)) {
-                                                    const res = await fetch("/api/radio/media", {
-                                                        method: 'DELETE',
-                                                        headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({ filename: file.name })
-                                                    })
-                                                    if (res.ok) fetchMedia()
-                                                }
-                                            }}
-                                            className="opacity-0 group-hover:opacity-100 text-red-500/50 hover:text-red-500 transition-all font-bold"
-                                        >
-                                            [ DELETE ]
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
 
             <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 3px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1a1a1a; }
-      `}</style>
+                .rscroll::-webkit-scrollbar { width: 4px; height: 4px; }
+                .rscroll::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 2px; }
+            `}</style>
         </div>
     )
 }
 
-function TimeInput({ value, onChange }: { value: string, onChange: (val: string) => void }) {
-    const [h, m, s] = value.split(":")
+// ─── Now Playing Bar ──────────────────────────────────────────────────────────
 
-    const update = (index: number, val: string) => {
-        const parts = value.split(":")
-        parts[index] = val.padStart(2, "0")
-        onChange(parts.join(":"))
-    }
-
-    return (
-        <div className="flex items-center gap-2">
-            <input
-                type="number" min="0" max="23" placeholder="HH"
-                value={h || "00"}
-                onChange={(e) => update(0, e.target.value)}
-                className="w-14 bg-black border border-[#1a1a1a] p-2 text-center text-xs text-white outline-none focus:border-[#99CCCC] font-mono rounded-sm"
-            />
-            <span className="text-[#333] font-mono">:</span>
-            <input
-                type="number" min="0" max="59" placeholder="MM"
-                value={m || "00"}
-                onChange={(e) => update(1, e.target.value)}
-                className="w-14 bg-black border border-[#1a1a1a] p-2 text-center text-xs text-white outline-none focus:border-[#99CCCC] font-mono rounded-sm"
-            />
-            <span className="text-[#333] font-mono">:</span>
-            <input
-                type="number" min="0" max="59" placeholder="SS"
-                value={s || "00"}
-                onChange={(e) => update(2, e.target.value)}
-                className="w-14 bg-black border border-[#1a1a1a] p-2 text-center text-xs text-white outline-none focus:border-[#99CCCC] font-mono rounded-sm"
-            />
-        </div>
-    )
-}
-
-function TabButton({ active, onClick, label }: { active: boolean, onClick: () => void, label: string }) {
-    return (
-        <button
-            onClick={onClick}
-            className={`px-6 py-3 text-[10px] font-black uppercase tracking-[0.2em] transition-all border-t-2 ${active ? "text-white border-[#99CCCC] bg-white/[0.02]" : "text-[#444] border-transparent hover:text-white hover:bg-white/[0.01]"}`}
-        >
-            {label}
-        </button>
-    )
-}
-
-function TimelineView({ schedule, onEdit }: { schedule: ScheduleEntry[], onEdit: (index: number) => void }) {
-    const [viewDate, setViewDate] = useState(new Date().toISOString().split("T")[0])
-    const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day")
-
-    const hours = Array.from({ length: 24 }, (_, i) => i)
-
-    const getEntriesForDate = (date: string) => {
-        return schedule.filter(s => s.date === date)
-    }
-
-    const navigate = (amount: number, unit: "day" | "week" | "month") => {
-        const d = new Date(viewDate)
-        if (unit === "day") d.setDate(d.getDate() + amount)
-        if (unit === "week") d.setDate(d.getDate() + amount * 7)
-        if (unit === "month") d.setMonth(d.getMonth() + amount)
-        setViewDate(d.toISOString().split("T")[0])
-    }
+function NowPlayingBar({ icecast, nowEntry, syncing, onSync }: {
+    icecast: IcecastStatus | null
+    nowEntry: ScheduleEntry | null
+    syncing: boolean
+    onSync: () => void
+}) {
+    const online = icecast?.online
+    // Priority: Icecast title > local schedule entry
+    const trackTitle = icecast?.title || (nowEntry ? basename(nowEntry.file) : null)
+    const timeRange = nowEntry ? `${nowEntry.time.slice(0, 5)} → ${(nowEntry.end_time || "?").slice(0, 5)}` : null
 
     return (
-        <div className="bg-[#080808] border border-[#1a1a1a] rounded-sm p-6 overflow-hidden">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
-                <div className="space-y-1">
-                    <h3 className="text-[#99CCCC] font-mono text-[10px] uppercase tracking-widest flex items-center gap-2">
-                        <Calendar size={12} />
-                        Visual Flow — {viewMode.toUpperCase()} VIEW
-                    </h3>
-                    <div className="flex items-center gap-4">
-                        <span className="text-white font-black text-xl uppercase tracking-tighter">{viewDate}</span>
-                        <div className="flex gap-1 overflow-hidden rounded-sm border border-[#111]">
-                            <button onClick={() => navigate(-1, "day")} className="px-3 py-1 bg-black text-[#444] hover:text-white transition-all text-[10px] font-mono">{"<"}</button>
-                            <button onClick={() => setViewDate(new Date().toISOString().split("T")[0])} className="px-3 py-1 bg-black text-[#444] hover:text-white transition-all text-[10px] font-mono uppercase">Today</button>
-                            <button onClick={() => navigate(1, "day")} className="px-3 py-1 bg-black text-[#444] hover:text-white transition-all text-[10px] font-mono">{">"}</button>
-                        </div>
-                    </div>
+        <div className={`flex flex-wrap items-center gap-4 px-5 py-3 rounded-sm border text-[10px] font-mono uppercase tracking-widest transition-colors ${online ? "bg-[#050f05] border-[#0d2b0d]" : nowEntry ? "bg-[#0a0f0a] border-[#1a2a1a]" : "bg-[#080808] border-[#1a1a1a]"}`}>
+
+            <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${online ? "bg-green-400 shadow-[0_0_8px_#4ade80] animate-pulse" : nowEntry ? "bg-[#99CCCC] shadow-[0_0_6px_#99CCCC] animate-pulse" : "bg-[#2a2a2a]"}`} />
+                <Radio size={11} className={online ? "text-green-400" : nowEntry ? "text-[#99CCCC]" : "text-[#333]"} />
+                <span className={online ? "text-green-400" : nowEntry ? "text-[#99CCCC]" : "text-[#3a3a3a]"}>
+                    {online ? "LIVE" : nowEntry ? "SCHEDULED" : "OFFLINE"}
+                </span>
+                {icecast?.mountpoint && <span className="text-[#2a2a2a]">{icecast.mountpoint}</span>}
+            </div>
+
+            {trackTitle ? (
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <Music size={10} className="text-[#99CCCC] flex-shrink-0" />
+                    <span className="text-[#99CCCC] truncate">{trackTitle}</span>
+                    {timeRange && <span className="text-[#3a4a4a] flex-shrink-0 flex items-center gap-1"><Clock size={9} />{timeRange}</span>}
                 </div>
+            ) : (
+                <span className="text-[#2a2a2a] flex-1">No active broadcast</span>
+            )}
 
-                <div className="flex flex-col items-end gap-3">
-                    <div className="flex gap-1 bg-black p-1 rounded-sm border border-[#111]">
-                        {(["day", "week", "month"] as const).map(m => (
-                            <button
-                                key={m}
-                                onClick={() => setViewMode(m)}
-                                className={`px-4 py-1.5 text-[9px] font-black uppercase rounded-sm transition-all ${viewMode === m ? "bg-[#99CCCC] text-black" : "text-[#444] hover:text-white"}`}
-                            >
+            <div className="flex items-center gap-4 ml-auto">
+                {online && (
+                    <div className="flex items-center gap-1.5 text-[#3a4a4a]">
+                        <Users size={10} />
+                        <span>{icecast!.listeners}</span>
+                        {icecast!.bitrate > 0 && <span className="text-[#2a2a2a]">• {icecast!.bitrate}k</span>}
+                    </div>
+                )}
+                <button onClick={onSync} disabled={syncing}
+                    className="flex items-center gap-1.5 text-[#3a4a4a] hover:text-[#99CCCC] transition-colors disabled:opacity-30">
+                    <RefreshCw size={11} className={syncing ? "animate-spin" : ""} />
+                    SYNC ENGINE
+                </button>
+            </div>
+        </div>
+    )
+}
+
+// ─── Schedule Grid (Timeline with Y=time, X=days) ─────────────────────────────
+
+function ScheduleGrid({ schedule, nowEntry, onEdit, onDelete }: {
+    schedule: ScheduleEntry[]
+    nowEntry: ScheduleEntry | null
+    onEdit: (i: number) => void
+    onDelete: (i: number) => void
+}) {
+    const today = toDateStr(new Date())
+    const [anchor, setAnchor] = useState(today)  // any date in the current view
+    const [mode, setMode] = useState<"week" | "month">("week")
+    const [search, setSearch] = useState("")
+    const gridRef = useRef<HTMLDivElement>(null)
+
+    // scroll to current hour on mount / mode change
+    useEffect(() => {
+        if (mode === "week") {
+            const h = new Date().getHours()
+            if (gridRef.current) {
+                gridRef.current.scrollTop = Math.max(0, h * HOUR_PX - 120)
+            }
+        }
+    }, [mode])
+
+    const navigate = (dir: 1 | -1) => {
+        const d = new Date(anchor + "T12:00:00")
+        if (mode === "week") d.setDate(d.getDate() + dir * 7)
+        else d.setMonth(d.getMonth() + dir)
+        setAnchor(toDateStr(d))
+    }
+
+    const weekStart = getWeekStart(anchor)
+    const weekDays = Array.from({ length: 7 }, (_, i) => toDateStr(addDays(weekStart, i)))
+    const rangeLabel = mode === "week"
+        ? `${weekDays[0]} — ${weekDays[6]}`
+        : new Date(anchor + "T12:00:00").toLocaleString("default", { month: "long", year: "numeric" }).toUpperCase()
+
+    return (
+        <div className="bg-[#080808] border border-[#1a1a1a] rounded-sm overflow-hidden flex flex-col" style={{ minHeight: 600 }}>
+
+            {/* Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-[#1a1a1a] flex-shrink-0">
+                <div className="flex items-center gap-2">
+                    <button onClick={() => navigate(-1)} className="w-7 h-7 flex items-center justify-center text-[#444] hover:text-white border border-[#1a1a1a] rounded-sm transition-colors">
+                        <ChevronLeft size={14} />
+                    </button>
+                    <button onClick={() => setAnchor(today)} className="text-[9px] font-black uppercase px-3 py-1.5 border border-[#1a1a1a] text-[#444] hover:text-white hover:border-[#333] transition-colors rounded-sm tracking-widest">
+                        Today
+                    </button>
+                    <button onClick={() => navigate(1)} className="w-7 h-7 flex items-center justify-center text-[#444] hover:text-white border border-[#1a1a1a] rounded-sm transition-colors">
+                        <ChevronRight size={14} />
+                    </button>
+                    <span className="text-white font-black text-sm uppercase tracking-tight ml-2">{rangeLabel}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                    <div className="relative">
+                        <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#333]" />
+                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="search..."
+                            className="bg-black border border-[#1a1a1a] pl-6 pr-2 py-1.5 text-[9px] font-mono text-white outline-none focus:border-[#99CCCC] w-32 transition-colors" />
+                    </div>
+                    <div className="flex border border-[#1a1a1a] overflow-hidden rounded-sm">
+                        {(["week", "month"] as const).map(m => (
+                            <button key={m} onClick={() => setMode(m)}
+                                className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest transition-all ${mode === m ? "bg-[#99CCCC] text-black" : "text-[#444] hover:text-white"}`}>
                                 {m}
                             </button>
                         ))}
                     </div>
-                    <div className="flex gap-4">
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-[#99CCCC]"></div>
-                            <span className="text-[9px] text-[#444] uppercase font-mono">BROADCAST</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-[#111] border border-[#222]"></div>
-                            <span className="text-[9px] text-[#444] uppercase font-mono">SILENCE</span>
-                        </div>
-                    </div>
                 </div>
             </div>
 
-            {viewMode === "day" && (
-                <div className="space-y-2 max-h-[600px] overflow-y-auto custom-scrollbar pr-4">
-                    {hours.map(hour => {
-                        const dateEntries = getEntriesForDate(viewDate)
-                        const entries = dateEntries.filter(s => parseInt(s.time.split(":")[0]) === hour)
-                        return (
-                            <div key={hour} className="flex gap-6 group">
-                                <div className="w-12 text-right py-2">
-                                    <span className="text-[11px] font-mono font-black text-[#222] group-hover:text-[#99CCCC] transition-colors">{String(hour).padStart(2, "0")}:00</span>
-                                </div>
-                                <div className="flex-1 min-h-[40px] relative border-l border-[#1a1a1a] pl-4 py-1 flex flex-col gap-2">
-                                    {entries.length === 0 ? (
-                                        <div className="h-full border border-dashed border-[#111] rounded-sm flex items-center px-4 opacity-10">
-                                            <span className="text-[8px] font-mono uppercase text-[#222]">Void.</span>
-                                        </div>
-                                    ) : (
-                                        entries.sort((a, b) => a.time.localeCompare(b.time)).map((entry) => (
-                                            <div
-                                                key={`${entry.time}-${entry.file}`}
-                                                onClick={() => onEdit(schedule.indexOf(entry))}
-                                                className="bg-[#99CCCC]/10 border border-[#99CCCC]/20 rounded-sm p-3 cursor-pointer hover:bg-[#99CCCC] hover:text-black transition-all group/item shadow-sm hover:translate-x-1 duration-300"
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="flex flex-col">
-                                                            <span className="font-mono text-[10px] font-bold text-[#99CCCC] group-hover/item:text-black">{entry.time} — {entry.end_time || "??:??:??"}</span>
-                                                            <span className="text-[10px] uppercase font-black tracking-tight group-hover/item:text-black mt-0.5">{entry.file}</span>
-                                                        </div>
-                                                    </div>
-                                                    <Edit2 size={10} className="opacity-0 group-hover/item:opacity-100" />
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
-                        )
-                    })}
-                </div>
-            )}
+            {/* Grid content */}
+            <AnimatePresence mode="wait">
+                {mode === "week" && (
+                    <motion.div key="week" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 overflow-hidden flex flex-col">
+                        {/* Day header row */}
+                        <div className="flex flex-shrink-0 border-b border-[#1a1a1a]">
+                            <div className="w-14 flex-shrink-0" /> {/* spacer for time axis */}
+                            {weekDays.map((date, i) => {
+                                const isToday = date === today
+                                const dayNum = new Date(date + "T12:00:00").getDate()
+                                return (
+                                    <div key={date} className={`flex-1 text-center py-2.5 border-l border-[#111] ${isToday ? "border-b-2 border-b-[#99CCCC]" : ""}`}>
+                                        <div className={`text-[8px] font-black uppercase tracking-widest ${isToday ? "text-[#99CCCC]" : "text-[#333]"}`}>{DAY_LABELS[i]}</div>
+                                        <div className={`text-sm font-black mt-0.5 ${isToday ? "text-white" : "text-[#2a2a2a]"}`}>{dayNum}</div>
+                                    </div>
+                                )
+                            })}
+                        </div>
 
-            {(viewMode === "week" || viewMode === "month") && (
-                <div className="min-h-[400px] flex items-center justify-center border border-dashed border-[#111] rounded-sm bg-black/40">
-                    <div className="text-center space-y-3">
-                        <Calendar className="mx-auto text-[#1a1a1a]" size={40} />
-                        <p className="text-[10px] font-mono uppercase text-[#333] tracking-widest">
-                            {viewMode.toUpperCase()} VIEW UNDER DEVELOPMENT<br />
-                            <span className="text-[8px] opacity-50">USE NAVIGATION BUTTONS IN DAY VIEW FOR PRECISE CONTROL</span>
-                        </p>
-                        <button
-                            onClick={() => setViewMode("day")}
-                            className="text-[#99CCCC] text-[9px] font-black uppercase tracking-widest hover:underline"
-                        >
-                            Return to Day View
+                        {/* Scrollable time grid */}
+                        <div ref={gridRef} className="flex-1 overflow-y-auto rscroll">
+                            <TimeGrid
+                                days={weekDays} today={today} schedule={schedule} search={search}
+                                nowEntry={nowEntry} onEdit={onEdit} onDelete={onDelete}
+                            />
+                        </div>
+                    </motion.div>
+                )}
+
+                {mode === "month" && (
+                    <motion.div key="month" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 overflow-y-auto rscroll">
+                        <MonthView
+                            viewDate={anchor} schedule={schedule} today={today}
+                            onDayClick={d => { setAnchor(d); setMode("week") }}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    )
+}
+
+// ─── Time Grid (the actual calendar with Y=hours, X=days) ─────────────────────
+
+function TimeGrid({ days, today, schedule, search, nowEntry, onEdit, onDelete }: {
+    days: string[]
+    today: string
+    schedule: ScheduleEntry[]
+    search: string
+    nowEntry: ScheduleEntry | null
+    onEdit: (i: number) => void
+    onDelete: (i: number) => void
+}) {
+    const hours = Array.from({ length: 24 }, (_, i) => i)
+    const nowH = new Date().getHours()
+    const nowM = new Date().getMinutes()
+    const nowTopPx = (nowH + nowM / 60) * HOUR_PX
+
+    // Convert HH:MM:SS → pixel offset from top of grid
+    const hmsToY = (hms: string) => hmsToSecs(hms) / 3600 * HOUR_PX
+
+    return (
+        <div className="flex" style={{ height: 24 * HOUR_PX }}>
+
+            {/* Time axis */}
+            <div className="w-14 flex-shrink-0 relative select-none">
+                {hours.map(h => (
+                    <div key={h} style={{ height: HOUR_PX, top: h * HOUR_PX }}
+                        className="absolute w-full flex items-start justify-end pr-2 pt-1">
+                        <span className={`text-[9px] font-mono font-black ${h === nowH ? "text-[#99CCCC]" : "text-[#222]"}`}>
+                            {String(h).padStart(2, "0")}:00
+                        </span>
+                    </div>
+                ))}
+            </div>
+
+            {/* Day columns */}
+            <div className="flex-1 grid relative" style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}>
+
+                {/* Hour lines (behind everything) */}
+                <div className="absolute inset-0 pointer-events-none" style={{ gridColumn: `1 / ${days.length + 1}` }}>
+                    {hours.map(h => (
+                        <div key={h} className={`absolute w-full border-t ${h === 0 ? "border-[#222]" : "border-[#0e0e0e]"}`}
+                            style={{ top: h * HOUR_PX }} />
+                    ))}
+                    {/* 30-min sub-lines */}
+                    {hours.map(h => (
+                        <div key={`h-${h}`} className="absolute w-full border-t border-[#080808]"
+                            style={{ top: h * HOUR_PX + HOUR_PX / 2 }} />
+                    ))}
+                </div>
+
+                {days.map((date, col) => {
+                    const isToday = date === today
+                    const entries = schedule.filter(e =>
+                        e.date === date &&
+                        basename(e.file).toLowerCase().includes(search.toLowerCase())
+                    )
+
+                    return (
+                        <div key={date} className="relative border-l border-[#111]">
+                            {/* Current time line */}
+                            {isToday && (
+                                <div className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
+                                    style={{ top: nowTopPx }}>
+                                    <div className="w-2 h-2 rounded-full bg-[#99CCCC] flex-shrink-0 -ml-1" />
+                                    <div className="flex-1 h-px bg-[#99CCCC]/60" />
+                                </div>
+                            )}
+
+                            {/* Events */}
+                            {entries.map(entry => {
+                                const idx = schedule.indexOf(entry)
+                                const top = hmsToY(entry.time)
+                                const endSecs = entry.end_time ? hmsToSecs(entry.end_time) : hmsToSecs(entry.time) + 3600
+                                const rawH = (endSecs - hmsToSecs(entry.time)) / 3600 * HOUR_PX
+                                const height = Math.max(rawH, 24) // min 24px so short entries are visible
+                                const isNow = nowEntry?.date === entry.date && nowEntry?.time === entry.time && nowEntry?.file === entry.file
+
+                                return (
+                                    <div
+                                        key={`${entry.time}-${entry.file}`}
+                                        style={{ top, height, position: "absolute", left: 3, right: 3, zIndex: 10 }}
+                                        onClick={() => onEdit(idx)}
+                                        className={`rounded-sm px-1.5 py-1 cursor-pointer overflow-hidden group transition-all border ${isNow
+                                            ? "bg-[#99CCCC]/25 border-[#99CCCC]/50 shadow-[0_0_12px_rgba(153,204,204,0.2)]"
+                                            : "bg-[#99CCCC]/10 border-[#99CCCC]/20 hover:bg-[#99CCCC] hover:border-[#99CCCC]"
+                                        }`}
+                                    >
+                                        <div className={`text-[8px] font-mono font-bold leading-tight ${isNow ? "text-[#99CCCC]" : "text-[#99CCCC] group-hover:text-black"}`}>
+                                            {entry.time.slice(0, 5)}
+                                            {isNow && <span className="ml-1 animate-pulse">●</span>}
+                                        </div>
+                                        {height > 30 && (
+                                            <div className={`text-[9px] font-bold truncate leading-tight mt-0.5 ${isNow ? "text-white" : "text-white group-hover:text-black"}`}>
+                                                {basename(entry.file).replace(/\.[^.]+$/, "")}
+                                            </div>
+                                        )}
+                                        {/* Delete on hover */}
+                                        <button
+                                            onClick={e => { e.stopPropagation(); onDelete(idx) }}
+                                            className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-black/50 hover:text-black transition-all"
+                                        >
+                                            <X size={10} />
+                                        </button>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )
+                })}
+            </div>
+        </div>
+    )
+}
+
+// ─── Month View ───────────────────────────────────────────────────────────────
+
+function MonthView({ viewDate, schedule, today, onDayClick }: {
+    viewDate: string
+    schedule: ScheduleEntry[]
+    today: string
+    onDayClick: (date: string) => void
+}) {
+    const cells = getMonthGrid(viewDate)
+
+    return (
+        <div>
+            <div className="grid grid-cols-7 border-b border-[#111]">
+                {DAY_LABELS.map(l => (
+                    <div key={l} className="py-2 text-center text-[9px] font-black uppercase text-[#2a2a2a] tracking-widest">{l}</div>
+                ))}
+            </div>
+            <div className="grid grid-cols-7 divide-x divide-y divide-[#0d0d0d]">
+                {cells.map((date, i) => {
+                    if (!date) return <div key={`e-${i}`} className="min-h-[80px] bg-[#040404]" />
+                    const entries = schedule.filter(e => e.date === date)
+                    const isToday = date === today
+                    return (
+                        <button key={date} onClick={() => onDayClick(date)}
+                            className={`min-h-[80px] p-2 text-left hover:bg-white/[0.02] transition-colors flex flex-col gap-1 group ${isToday ? "ring-1 ring-inset ring-[#99CCCC]/50" : ""}`}>
+                            <span className={`text-[11px] font-black font-mono ${isToday ? "text-[#99CCCC]" : "text-[#2a2a2a] group-hover:text-[#555]"}`}>
+                                {new Date(date + "T12:00:00").getDate()}
+                            </span>
+                            <div className="space-y-0.5 w-full">
+                                {entries.slice(0, 3).map((e, ei) => (
+                                    <div key={ei} className="bg-[#99CCCC]/15 border border-[#99CCCC]/10 rounded-sm px-1.5 py-0.5 text-[7px] font-mono text-[#99CCCC] truncate">
+                                        {e.time.slice(0, 5)} {basename(e.file).replace(/\.[^.]+$/, "").slice(0, 12)}
+                                    </div>
+                                ))}
+                                {entries.length > 3 && <div className="text-[7px] font-mono text-[#333] pl-1">+{entries.length - 3}</div>}
+                            </div>
                         </button>
+                    )
+                })}
+            </div>
+        </div>
+    )
+}
+
+// ─── Broadcast Form ───────────────────────────────────────────────────────────
+
+function BroadcastForm({ form, setForm, editIndex, schedule, mediaFiles, playingUrl,
+    uploading, saving, onTogglePlay, onUploadClick, onSuggestEnd, onSubmit, onReset }: {
+        form: ScheduleEntry; setForm: React.Dispatch<React.SetStateAction<ScheduleEntry>>
+        editIndex: number | null; schedule: ScheduleEntry[]; mediaFiles: AudioFile[]
+        playingUrl: string | null; uploading: boolean; saving: boolean
+        onTogglePlay: (url: string) => void; onUploadClick: () => void
+        onSuggestEnd: (f: string, t: string) => void; onSubmit: () => void; onReset: () => void
+    }) {
+    const isEdit = editIndex !== null
+    const selectedFile = mediaFiles.find(f => f.name === form.file)
+
+    const changeDate = (date: string) => {
+        const slot = nextFreeSlot(schedule, date)
+        setForm(prev => ({ ...prev, date, time: slot, end_time: slot }))
+    }
+    const changeTime = (time: string) => {
+        setForm(prev => ({ ...prev, time }))
+        if (form.file) onSuggestEnd(form.file, time)
+    }
+    const changeFile = (name: string) => {
+        setForm(prev => ({ ...prev, file: name }))
+        if (name) onSuggestEnd(name, form.time)
+    }
+
+    return (
+        <div className="bg-[#080808] border border-[#1a1a1a] rounded-sm overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a1a1a]">
+                <div>
+                    <h3 className="text-white font-black text-sm uppercase tracking-tight">{isEdit ? "Edit Broadcast" : "New Broadcast"}</h3>
+                    <p className="text-[9px] font-mono uppercase text-[#333] tracking-widest mt-0.5">{isEdit ? "Modify entry" : "Add to schedule"}</p>
+                </div>
+                {isEdit && <button onClick={onReset} className="text-[#444] hover:text-white transition-colors"><X size={16} /></button>}
+            </div>
+            <div className="p-5 space-y-4">
+                {/* Date */}
+                <div className="space-y-1.5">
+                    <label className="text-[9px] font-black uppercase text-[#444] tracking-[0.2em]">Date</label>
+                    <input type="date" value={form.date} onChange={e => changeDate(e.target.value)}
+                        className="w-full bg-black border border-[#1a1a1a] px-3 py-2.5 text-xs text-white font-mono outline-none focus:border-[#99CCCC] transition-colors rounded-sm" />
+                </div>
+
+                {/* Start / End */}
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] font-black uppercase text-[#99CCCC] tracking-[0.2em] flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#99CCCC]" /> Start
+                        </label>
+                        <TimeInput value={form.time} onChange={changeTime} />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] font-black uppercase text-[#FF6347] tracking-[0.2em] flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#FF6347]" /> End <span className="text-[#333] font-normal normal-case">auto</span>
+                        </label>
+                        <TimeInput value={form.end_time} onChange={v => setForm(prev => ({ ...prev, end_time: v }))} />
                     </div>
                 </div>
-            )}
+
+                {/* Audio */}
+                <div className="space-y-1.5">
+                    <label className="text-[9px] font-black uppercase text-[#444] tracking-[0.2em] flex items-center gap-1.5"><Music size={10} /> Audio</label>
+                    <div className="flex gap-2">
+                        <select value={form.file} onChange={e => changeFile(e.target.value)}
+                            className="flex-1 bg-black border border-[#1a1a1a] px-3 py-2.5 text-xs text-white font-mono outline-none focus:border-[#99CCCC] transition-colors appearance-none rounded-sm min-w-0">
+                            <option value="">— select from library —</option>
+                            {mediaFiles.map(f => <option key={f.name} value={f.name}>{f.name}</option>)}
+                        </select>
+                        {selectedFile && (
+                            <button onClick={() => onTogglePlay(selectedFile.url)}
+                                className={`flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-sm transition-all ${playingUrl === selectedFile.url ? "bg-red-500/20 text-red-400" : "bg-[#1a1a1a] text-[#99CCCC] hover:bg-[#99CCCC] hover:text-black"}`}>
+                                {playingUrl === selectedFile.url ? <Pause size={14} /> : <Play size={14} />}
+                            </button>
+                        )}
+                        <button onClick={onUploadClick} disabled={uploading}
+                            className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-sm bg-[#1a1a1a] text-[#444] hover:text-[#99CCCC] border border-[#222] transition-all disabled:opacity-40"
+                            title="Upload audio">
+                            {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                        </button>
+                    </div>
+                    {selectedFile && (
+                        <div className="text-[9px] font-mono text-[#333] px-1">
+                            {(selectedFile.size / 1024 / 1024).toFixed(1)} MB · {new Date(selectedFile.mtime).toLocaleDateString()}
+                        </div>
+                    )}
+                </div>
+
+                <button onClick={onSubmit} disabled={saving}
+                    className="w-full bg-[#99CCCC] text-black text-[11px] font-black uppercase tracking-widest py-3.5 rounded-sm hover:bg-white transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                    {saving ? <><Loader2 size={14} className="animate-spin" /> Saving...</>
+                        : isEdit ? <><Save size={14} /> Update</> : <><Plus size={14} /> Deploy to Schedule</>}
+                </button>
+            </div>
+        </div>
+    )
+}
+
+// ─── Audio Library ────────────────────────────────────────────────────────────
+
+function AudioLibrary({ files, selectedFile, playingUrl, onSelect, onPlay, onDelete, onUploadClick }: {
+    files: AudioFile[]; selectedFile: string; playingUrl: string | null
+    onSelect: (n: string) => void; onPlay: (u: string) => void
+    onDelete: (n: string) => void; onUploadClick: () => void
+}) {
+    const [search, setSearch] = useState("")
+    const filtered = files.filter(f => f.name.toLowerCase().includes(search.toLowerCase()))
+
+    return (
+        <div className="bg-[#080808] border border-[#1a1a1a] rounded-sm overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-[#1a1a1a]">
+                <span className="text-[9px] font-black uppercase text-[#444] tracking-[0.2em]">Audio Library</span>
+                <div className="flex items-center gap-2">
+                    <div className="relative">
+                        <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#333]" />
+                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="search..."
+                            className="bg-black border border-[#1a1a1a] pl-6 pr-2 py-1 text-[9px] font-mono text-white outline-none focus:border-[#99CCCC] w-28 transition-colors" />
+                    </div>
+                    <button onClick={onUploadClick}
+                        className="flex items-center gap-1 text-[9px] font-black uppercase text-[#444] hover:text-[#99CCCC] px-2 py-1 border border-[#1a1a1a] hover:border-[#99CCCC] transition-colors">
+                        <Upload size={10} /> Upload
+                    </button>
+                </div>
+            </div>
+            <div className="max-h-60 overflow-y-auto rscroll">
+                {filtered.length === 0 ? (
+                    <div className="px-5 py-8 text-center text-[9px] font-mono uppercase text-[#2a2a2a] tracking-widest">
+                        {files.length === 0 ? "No audio files. Upload one." : "No matches."}
+                    </div>
+                ) : filtered.map(f => (
+                    <div key={f.name} onClick={() => onSelect(f.name)}
+                        className={`flex items-center gap-3 px-5 py-2.5 cursor-pointer border-b border-[#0d0d0d] hover:bg-white/[0.02] transition-colors group ${selectedFile === f.name ? "bg-[#99CCCC]/5" : ""}`}>
+                        <button onClick={e => { e.stopPropagation(); onPlay(f.url) }}
+                            className={`flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-sm transition-all ${playingUrl === f.url ? "bg-red-500/20 text-red-400" : "bg-[#111] text-[#444] hover:text-[#99CCCC]"}`}>
+                            {playingUrl === f.url ? <Pause size={11} /> : <Play size={11} />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                            <div className={`text-[11px] font-bold truncate ${selectedFile === f.name ? "text-[#99CCCC]" : "text-[#888]"}`}>{f.name}</div>
+                            <div className="text-[8px] font-mono text-[#2a2a2a]">{(f.size / 1024 / 1024).toFixed(1)} MB</div>
+                        </div>
+                        {selectedFile === f.name && <span className="text-[8px] font-black uppercase text-[#99CCCC] flex-shrink-0">✓</span>}
+                        <button onClick={e => { e.stopPropagation(); onDelete(f.name) }}
+                            className="opacity-0 group-hover:opacity-100 text-[#333] hover:text-red-500 transition-all flex-shrink-0">
+                            <Trash2 size={12} />
+                        </button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    )
+}
+
+// ─── Time Input ───────────────────────────────────────────────────────────────
+
+function TimeInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+    const parts = (value || "00:00:00").split(":")
+    const h = parts[0] || "00", m = parts[1] || "00", s = parts[2] || "00"
+    const upd = (i: number, v: string) => {
+        const p = [h, m, s]
+        p[i] = String(Math.max(0, Math.min(i === 0 ? 23 : 59, parseInt(v) || 0))).padStart(2, "0")
+        onChange(p.join(":"))
+    }
+    const cls = "w-11 bg-black border border-[#1a1a1a] py-2 text-center text-xs text-white font-mono outline-none focus:border-[#99CCCC] transition-colors rounded-sm"
+    return (
+        <div className="flex items-center gap-1">
+            <input type="number" min={0} max={23} value={h} onChange={e => upd(0, e.target.value)} className={cls} />
+            <span className="text-[#222] font-black">:</span>
+            <input type="number" min={0} max={59} value={m} onChange={e => upd(1, e.target.value)} className={cls} />
+            <span className="text-[#222] font-black">:</span>
+            <input type="number" min={0} max={59} value={s} onChange={e => upd(2, e.target.value)} className={cls} />
         </div>
     )
 }

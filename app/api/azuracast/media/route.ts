@@ -101,3 +101,11 @@ export async function DELETE(request: Request) {
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }
+
+export const config = {
+    api: {
+        bodyParser: {
+            sizeLimit: '500mb',
+        },
+    },
+};

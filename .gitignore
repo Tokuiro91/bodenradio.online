@@ -10,6 +10,15 @@ node_modules/
 .DS_Store
 # Persistent data (server-side storage)
 data/artists.json
+data/artist-db.json
+data/schedule.csv
+data/listeners.json
+data/*.sqlite
+data/*.sqlite-journal
+data/*.txt
+data/*.json.bak
+data/*.jsonl
 
 # Uploaded files
 public/uploads/
+data/radio/

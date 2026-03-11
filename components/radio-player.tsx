@@ -309,7 +309,7 @@ export function RadioPlayer() {
   }, [sortedArtists])
 
   // ── GUARD: Only after ALL hooks ─────────────────────────────────────────────
-  if (!ready || !sortedArtists.length) {
+  if (!ready) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="text-[#737373] font-mono text-[10px] uppercase tracking-widest animate-pulse">

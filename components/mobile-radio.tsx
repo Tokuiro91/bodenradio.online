@@ -288,7 +288,7 @@ export function MobileRadio() {
     }
   }, [currentArtistForLottie?.id, currentArtistForLottie?.type, currentArtistForLottie?.isLottie, currentArtistForLottie?.image])
 
-  if (!ready || !sortedArtists.length) {
+  if (!ready) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center overflow-hidden">
         <div className="flex flex-col items-center gap-4">

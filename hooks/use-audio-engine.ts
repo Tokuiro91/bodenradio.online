@@ -87,6 +87,25 @@ function updateMediaSession(artist: Artist | null) {
     }
 }
 
+interface CsvEntry { date: string; time: string; end_time: string; file: string }
+
+function findActiveCsvEntry(entries: CsvEntry[]): CsvEntry | null {
+    const now = new Date()
+    const currentYear = now.getUTCFullYear();
+    const currentMonth = String(now.getUTCMonth() + 1).padStart(2, '0');
+    const currentDay = String(now.getUTCDate()).padStart(2, '0');
+    const today = `${currentYear}-${currentMonth}-${currentDay}`;
+
+    const currentH = String(now.getUTCHours()).padStart(2, '0');
+    const currentM = String(now.getUTCMinutes()).padStart(2, '0');
+    const currentS = String(now.getUTCSeconds()).padStart(2, '0');
+    const hms = `${currentH}:${currentM}:${currentS}`;
+
+    return entries.find(e =>
+        e.date === today && e.time <= hms && (e.end_time ? e.end_time > hms : true)
+    ) ?? null
+}
+
 export function useAudioEngine(artists: Artist[]) {
     const audioRef = useRef<HTMLAudioElement | null>(null)
     const isPlayingRef = useRef(false)
@@ -99,6 +118,28 @@ export function useAudioEngine(artists: Artist[]) {
     const [volume, setVolumeState] = useState(75)
     const [isMuted, setIsMutedState] = useState(false)
     const [activeArtist, setActiveArtist] = useState<Artist | null>(null)
+    const [activeScheduleEntry, setActiveScheduleEntry] = useState<CsvEntry | null>(null)
+    const csvEntriesRef = useRef<CsvEntry[]>([])
+
+    // Poll schedule.csv every 60s so the engine knows what Liquidsoap is playing
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const r = await fetch("/api/schedule")
+                const d = await r.json()
+                if (d.schedule) {
+                    csvEntriesRef.current = d.schedule
+                    setActiveScheduleEntry(findActiveCsvEntry(d.schedule))
+                }
+            } catch { }
+        }
+        load()
+        const iv = setInterval(() => {
+            setActiveScheduleEntry(findActiveCsvEntry(csvEntriesRef.current))
+            // Reload full list every 5 minutes
+        }, 60_000)
+        return () => clearInterval(iv)
+    }, [])
 
     useEffect(() => { artistsRef.current = artists }, [artists])
     useEffect(() => { isPlayingRef.current = isPlaying }, [isPlaying])
@@ -140,12 +181,18 @@ export function useAudioEngine(artists: Artist[]) {
                     toast.info("Broadcast ended. Stream paused.")
                 }
             } else if (!activeArtist && active) {
-                // New broadcast started - AUTO SWITCH (if it was somehow playing)
-                // Or just update state so user can press play
+                // New broadcast started while player was open — auto-switch if already playing
+                if (isPlayingRef.current && audioRef.current) {
+                    const url = resolveStreamUrl(getAudioUrl(active)) + "?t=" + Date.now()
+                    audioRef.current.src = url
+                    audioRef.current.load()
+                    audioRef.current.play().catch(console.error)
+                }
             } else if (activeArtist && active && activeArtist.id !== active.id) {
-                // Switched from one broadcast to another - RE-SYNC
+                // Switched from one broadcast to another — use new artist's URL
                 if (isPlayingRef.current) {
-                    audioRef.current!.src = resolveStreamUrl(UNIFIED_STREAM_URL) + "?t=" + Date.now()
+                    const url = resolveStreamUrl(getAudioUrl(active)) + "?t=" + Date.now()
+                    audioRef.current!.src = url
                     audioRef.current!.load()
                     audioRef.current!.play().catch(console.error)
                 }
@@ -177,8 +224,10 @@ export function useAudioEngine(artists: Artist[]) {
         isPlayingRef.current = newPlaying
 
         if (newPlaying) {
-            // Force refresh to 'live' edge
-            audio.src = resolveStreamUrl(UNIFIED_STREAM_URL) + "?t=" + Date.now()
+            // Use artist's external URL if set, otherwise fall back to unified Icecast stream
+            const currentActive = findActiveArtist(artistsRef.current)
+            const streamUrl = resolveStreamUrl(currentActive ? getAudioUrl(currentActive) : UNIFIED_STREAM_URL) + "?t=" + Date.now()
+            audio.src = streamUrl
             audio.load()
             try {
                 await audio.play()
@@ -209,6 +258,6 @@ export function useAudioEngine(artists: Artist[]) {
         }
     }, [])
 
-    return { isPlaying, volume, isMuted, activeArtist, togglePlay, setVolume, setIsMuted }
+    return { isPlaying, volume, isMuted, activeArtist, activeScheduleEntry, togglePlay, setVolume, setIsMuted }
 }
 
