@@ -100,6 +100,41 @@ export function AzuracastManager() {
         setIsEditorOpen(true)
     }
 
+    const handleEventChange = async (changeInfo: any) => {
+        const { event } = changeInfo
+        const startDateObj = new Date(event.start)
+        const endDateObj = new Date(event.end)
+
+        // Utility to format time as HHMM in UTC
+        const formatTime = (date: Date) => date.getUTCHours().toString().padStart(2, '0') + date.getUTCMinutes().toString().padStart(2, '0')
+        const formatDate = (date: Date) => date.toISOString().split('T')[0]
+
+        try {
+            const res = await fetch("/api/azuracast/schedule", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: event.id,
+                    start_time: formatTime(startDateObj),
+                    end_time: formatTime(endDateObj),
+                    start_date: formatDate(startDateObj)
+                })
+            })
+
+            if (res.ok) {
+                toast.success("Schedule updated")
+                fetchSchedule()
+            } else {
+                const err = await res.json()
+                toast.error(err.error || "Update failed")
+                changeInfo.revert()
+            }
+        } catch (err) {
+            toast.error("Update failed")
+            changeInfo.revert()
+        }
+    }
+
     const deleteEvent = async () => {
         if (!selectedEvent || !confirm("Remove this broadcast from schedule?")) return
         try {
@@ -178,7 +213,7 @@ export function AzuracastManager() {
                             headerToolbar={false}
                             events={events}
                             selectable={true}
-                            editable={false}
+                            editable={true}
                             nowIndicator={true}
                             allDaySlot={false}
                             slotEventOverlap={false}
@@ -186,6 +221,8 @@ export function AzuracastManager() {
                             height="100%"
                             select={handleDateSelect}
                             eventClick={handleEventClick}
+                            eventDrop={handleEventChange}
+                            eventResize={handleEventChange}
                             eventContent={(info) => (
                                 <div className="p-1 overflow-hidden">
                                     <div className="text-[10px] font-bold text-white uppercase truncate">{info.event.title}</div>

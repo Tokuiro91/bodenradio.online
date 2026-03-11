@@ -24,6 +24,67 @@ export async function GET() {
     }
 }
 
+export async function PUT(request: Request) {
+    try {
+        const baseUrl = process.env.AZURACAST_BASE_URL || "http://163.245.219.4:1010/api";
+        const stationId = process.env.AZURACAST_STATION_ID || "1";
+        const apiKey = process.env.AZURACAST_API_KEY;
+
+        if (!apiKey) {
+            return NextResponse.json({ error: "Missing AZURACAST_API_KEY" }, { status: 401 });
+        }
+
+        const { id, start_time, end_time, start_date } = await request.json();
+        // ID is in format "playlistId-itemId"
+        const [playlistId, itemId] = id.split("-");
+
+        if (!playlistId || !itemId) {
+            return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
+        }
+
+        // 1. Fetch current playlist to get all schedule items
+        const playlistRes = await fetch(`${baseUrl}/station/${stationId}/playlist/${playlistId}`, {
+            headers: { "X-API-Key": apiKey }
+        });
+
+        if (!playlistRes.ok) throw new Error("Failed to fetch playlist");
+        const playlist = await playlistRes.json();
+
+        // 2. Update the specific schedule item
+        const updatedScheduleItems = playlist.schedule_items.map((item: any) => {
+            if (String(item.id) === String(itemId)) {
+                return {
+                    ...item,
+                    start_time,
+                    end_time,
+                    start_date,
+                    end_date: start_date // Assuming single day for now
+                };
+            }
+            return item;
+        });
+
+        // 3. Save the playlist with updated schedule
+        const updateRes = await fetch(`${baseUrl}/station/${stationId}/playlist/${playlistId}`, {
+            method: "PUT",
+            headers: { "X-API-Key": apiKey, "Content-Type": "application/json" },
+            body: JSON.stringify({
+                ...playlist,
+                schedule_items: updatedScheduleItems
+            })
+        });
+
+        if (!updateRes.ok) {
+            const err = await updateRes.json();
+            throw new Error(err.message || "Failed to update schedule");
+        }
+
+        return NextResponse.json({ success: true });
+    } catch (err: any) {
+        return NextResponse.json({ error: err.message }, { status: 500 });
+    }
+}
+
 export async function POST(request: Request) {
     try {
         const baseUrl = process.env.AZURACAST_BASE_URL || "http://163.245.219.4:1010/api";
