@@ -50,11 +50,16 @@ export function AzuracastManager() {
                 data.forEach((playlist: any) => {
                     if (Array.isArray(playlist.schedule_items)) {
                         playlist.schedule_items.forEach((item: any) => {
+                            // Ensure time is string and padded (e.g., 900 -> "0900")
+                            const sTime = String(item.start_time).padStart(4, '0')
+                            const eTime = String(item.end_time).padStart(4, '0')
+
                             allEvents.push({
-                                id: String(playlist.id), // We use playlist ID as event ID for now (AzuraCast specific)
+                                // Use a truly unique ID (playlist ID + item ID) to avoid FullCalendar issues
+                                id: `${playlist.id}-${item.id}`,
                                 title: playlist.name,
-                                start: item.start_time_iso || `${item.start_date}T${item.start_time.slice(0, 2)}:${item.start_time.slice(2, 4)}:00`,
-                                end: item.end_time_iso || `${item.end_date}T${item.end_time.slice(0, 2)}:${item.end_time.slice(2, 4)}:00`,
+                                start: item.start_time_iso || `${item.start_date}T${sTime.slice(0, 2)}:${sTime.slice(2, 4)}:00`,
+                                end: item.end_time_iso || `${item.end_date}T${eTime.slice(0, 2)}:${eTime.slice(2, 4)}:00`,
                             })
                         })
                     }
