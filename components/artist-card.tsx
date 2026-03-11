@@ -146,6 +146,10 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
   const handleCardClick = () => {
     if (isAd && artist.redirectUrl) {
       window.open(artist.redirectUrl, "_blank", "noopener,noreferrer")
+    } else if (effectiveStatus === "playing" && !artist.audioUrl) {
+      // If it's the live artist but no specific audio file, click should expand as before
+      // but the background audio engine is already playing the radio stream
+      setExpanded(!expanded)
     } else {
       setExpanded(!expanded)
     }

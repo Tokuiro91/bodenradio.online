@@ -154,6 +154,7 @@ export function AzuracastManager() {
 
                     <div className="flex-1 min-h-0 azuracast-calendar">
                         <FullCalendar
+                            key={view}
                             ref={calendarRef}
                             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                             initialView={view}
@@ -163,6 +164,8 @@ export function AzuracastManager() {
                             editable={false}
                             nowIndicator={true}
                             allDaySlot={false}
+                            slotEventOverlap={false}
+                            slotDuration="00:15:00"
                             height="100%"
                             select={handleDateSelect}
                             eventClick={handleEventClick}
