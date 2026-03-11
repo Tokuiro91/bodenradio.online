@@ -5,6 +5,7 @@ import FullCalendar from "@fullcalendar/react"
 import dayGridPlugin from "@fullcalendar/daygrid"
 import timeGridPlugin from "@fullcalendar/timegrid"
 import interactionPlugin from "@fullcalendar/interaction"
+import listPlugin from "@fullcalendar/list"
 import { Calendar as CalendarIcon, Clock, Radio, Plus, Settings, ChevronLeft, ChevronRight, LayoutGrid, List, Music, Signal, X, Save, Trash2, ArrowRight, Upload, Search, Loader2, Users } from "lucide-react"
 import { toast } from "sonner"
 
@@ -17,7 +18,7 @@ interface AzuraEvent {
 }
 
 export function AzuracastManager() {
-    const [view, setView] = useState<"timeGridDay" | "timeGridWeek" | "dayGridMonth">("timeGridWeek")
+    const [view, setView] = useState<"timeGridDay" | "timeGridWeek" | "dayGridMonth" | "listWeek">("timeGridWeek")
     const [events, setEvents] = useState<AzuraEvent[]>([])
     const [nowPlaying, setNowPlaying] = useState<any>(null)
     const [isMediaOpen, setIsMediaOpen] = useState(false)
@@ -143,6 +144,7 @@ export function AzuracastManager() {
                         <div className="flex bg-black border border-[#1a1a1a] p-1 rounded-sm gap-1">
                             <ViewButton label="Day" active={view === "timeGridDay"} onClick={() => setView("timeGridDay")} />
                             <ViewButton label="Week" active={view === "timeGridWeek"} onClick={() => setView("timeGridWeek")} />
+                            <ViewButton label="List" active={view === "listWeek"} onClick={() => setView("listWeek")} />
                             <ViewButton label="Month" active={view === "dayGridMonth"} onClick={() => setView("dayGridMonth")} />
                         </div>
                         <div className="flex items-center gap-2">
@@ -156,7 +158,7 @@ export function AzuracastManager() {
                         <FullCalendar
                             key={view}
                             ref={calendarRef}
-                            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
                             initialView={view}
                             headerToolbar={false}
                             events={events}
@@ -215,6 +217,12 @@ export function AzuracastManager() {
                 .azuracast-calendar .fc-timegrid-slot { height: 4rem !important; border-bottom: 1px solid #0a0a0a !important; }
                 .azuracast-calendar .fc-timegrid-slot-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #444; }
                 .azuracast-calendar .fc-col-header-cell-cushion { font-family: 'Tektur', sans-serif; font-size: 10px; font-weight: 900; color: #737373; text-transform: uppercase; }
+                .azuracast-calendar .fc-list-day-cushion { background: #0a0a0a !important; }
+                .azuracast-calendar .fc-list-event:hover td { background: rgba(153, 204, 204, 0.05) !important; }
+                .azuracast-calendar .fc-list-event-title { font-family: 'Tektur', sans-serif; font-size: 11px; font-weight: 700; color: #99CCCC; text-transform: uppercase; }
+                .azuracast-calendar .fc-list-event-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #444; }
+                .azuracast-calendar .fc-list-empty { background: transparent !important; color: #444; font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; }
+                .azuracast-calendar .fc-list { background: transparent !important; border: none !important; }
             `}</style>
         </div>
     )

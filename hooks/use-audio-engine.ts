@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { Artist } from "@/lib/artists-data"
 import { getSyncedTime } from "./use-server-time"
+import { toast } from "sonner"
 
 const FADE_DURATION_MS = 1000
 const FADE_STEPS = 20
@@ -140,6 +141,11 @@ export function useAudioEngine(artists: Artist[]) {
     const togglePlay = useCallback(async () => {
         const audio = audioRef.current
         if (!audio) return
+
+        if (!isPlayingRef.current && !activeArtist) {
+            toast.error("Nothing is currently live")
+            return
+        }
 
         const newPlaying = !isPlayingRef.current
         setIsPlayingState(newPlaying)

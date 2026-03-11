@@ -23,6 +23,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+    console.log("POST /api/azuracast/media started");
     try {
         const baseUrl = process.env.AZURACAST_BASE_URL || "http://163.245.219.4:1010/api";
         const stationId = process.env.AZURACAST_STATION_ID || "1";
@@ -33,29 +34,37 @@ export async function POST(request: Request) {
         }
 
         const formData = await request.formData();
-        const file = formData.get("file");
+        const file = formData.get("file") as File;
 
         if (!file) {
             return NextResponse.json({ error: "No file provided" }, { status: 400 });
         }
 
+        // Convert File to Blob if needed for node-fetch consistency
         const azuraFormData = new FormData();
         azuraFormData.append("file", file);
 
+        console.log(`Uploading file ${file.name} to AzuraCast...`);
         const res = await fetch(`${baseUrl}/station/${stationId}/files`, {
             method: "POST",
-            headers: { "X-API-Key": apiKey },
+            headers: {
+                "X-API-Key": apiKey,
+                // Do NOT set Content-Type, let fetch handle it with the boundary
+            },
             body: azuraFormData
         });
 
         if (!res.ok) {
-            const error = await res.json();
-            throw new Error(error.message || "Failed to upload file");
+            const errorText = await res.text();
+            console.error("AzuraCast upload failed:", errorText);
+            throw new Error(`Failed to upload file: ${errorText}`);
         }
 
         const data = await res.json();
+        console.log("Upload successful:", data);
         return NextResponse.json(data);
     } catch (err: any) {
+        console.error("POST /api/azuracast/media error:", err.message);
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }
@@ -69,7 +78,7 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ error: "Missing file ID" }, { status: 400 });
         }
 
-        const baseUrl = process.env.AZURACAST_BASE_URL || "http://127.0.0.1:1010/api";
+        const baseUrl = process.env.AZURACAST_BASE_URL || "http://163.245.219.4:1010/api";
         const stationId = process.env.AZURACAST_STATION_ID || "1";
         const apiKey = process.env.AZURACAST_API_KEY;
 
