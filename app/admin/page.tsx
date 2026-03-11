@@ -11,6 +11,8 @@ import { Search, Radio, Users, Database, BarChart3, Bell } from "lucide-react"
 import { StickerPackManager } from "@/components/sticker-pack-manager"
 import type { DBArtist } from "@/lib/artist-db-store"
 import type { Listener } from "@/lib/listeners-store"
+import { AzuracastManager } from "@/components/azuracast-manager"
+import { LayoutDashboard } from "lucide-react"
 
 function formatDuration(ms: number) {
   const totalSec = Math.max(0, Math.floor(ms / 1000))
@@ -58,7 +60,7 @@ export default function AdminPage() {
 
   const [editingId, setEditingId] = useState<number | null>(null)
   const [dbEditingId, setDbEditingId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<"artists" | "admins" | "analytics" | "stickers" | "artist-db" | "listeners">("analytics")
+  const [activeTab, setActiveTab] = useState<"artists" | "admins" | "analytics" | "stickers" | "artist-db" | "listeners" | "azuracast">("analytics")
   const [dbSearchQuery, setDbSearchQuery] = useState("")
   const [artistsSearchQuery, setArtistsSearchQuery] = useState("")
 
@@ -89,6 +91,20 @@ export default function AdminPage() {
   useEffect(() => {
     fetch("/api/admins").then(r => r.json()).then(d => d.admins && setAdminEmails(d.admins)).catch(() => { })
     fetch("/api/artist-db").then(r => r.json()).then(setDbArtists).catch(() => { })
+
+    const [azuraStats, setAzuraStats] = useState({ listeners: { current: 0 } })
+    useEffect(() => {
+      const fetchAzura = async () => {
+        try {
+          const res = await fetch("/api/azuracast/nowplaying")
+          const data = await res.json()
+          setAzuraStats(data)
+        } catch (err) { }
+      }
+      fetchAzura()
+      const azuraTimer = setInterval(fetchAzura, 15000)
+      return () => clearInterval(azuraTimer)
+    }, [])
   }, [])
 
   useEffect(() => {
@@ -543,6 +559,7 @@ export default function AdminPage() {
               PLAYER
             </button>
             <button onClick={() => setActiveTab("artists")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "artists" ? "bg-[#99CCCC] text-black font-bold" : "text-[#737373] hover:text-white"}`}>Расписание</button>
+            <button onClick={() => setActiveTab("azuracast")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "azuracast" ? "bg-[#99CCCC] text-black font-bold" : "text-[#737373] hover:text-white"}`}>Azuracast</button>
             <button onClick={() => setActiveTab("artist-db")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "artist-db" ? "bg-[#99CCCC] text-black font-bold" : "text-[#737373] hover:text-white"}`}>База Артистов</button>
             <button onClick={() => setActiveTab("admins")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "admins" ? "bg-[#99CCCC] text-black font-bold" : "text-[#737373] hover:text-white"}`}>Администраторы</button>
             <button onClick={() => setActiveTab("listeners")} className={`px-3 py-1 text-xs rounded-sm transition ${activeTab === "listeners" ? "bg-[#99CCCC] text-black font-bold" : "text-[#737373] hover:text-white"}`}>Слушатели</button>
@@ -553,6 +570,11 @@ export default function AdminPage() {
           </div>
         </div>
         <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 px-3 py-1.5 bg-black border border-[#2a2a2a] rounded-sm mr-2 shadow-inner">
+            <Users size={12} className="text-[#99CCCC]" />
+            <span className="text-[10px] font-black text-white">{azuraStats.listeners?.current || 0}</span>
+            <span className="text-[8px] font-black uppercase tracking-widest text-[#444] ml-1">Listeners</span>
+          </div>
           <div className="flex flex-col items-end">
             <span className="text-[10px] font-mono text-white leading-tight">{session?.user?.email}</span>
             <span className={`text-[8px] font-mono uppercase px-1 rounded-sm ${session?.user?.role === 'admin' ? 'bg-[#99CCCC]/20 text-[#99CCCC]' : 'bg-red-500/20 text-red-500'}`}>
@@ -576,6 +598,12 @@ export default function AdminPage() {
       {activeTab === "analytics" && (
         <div className="p-6">
           <AnalyticsDashboard />
+        </div>
+      )}
+
+      {activeTab === "azuracast" && (
+        <div className="p-6 h-[calc(100vh-100px)] overflow-hidden">
+          <AzuracastManager />
         </div>
       )}
 
