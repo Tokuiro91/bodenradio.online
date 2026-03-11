@@ -58,8 +58,8 @@ export function AzuracastManager() {
                                 // Use a truly unique ID (playlist ID + item ID) to avoid FullCalendar issues
                                 id: `${playlist.id}-${item.id}`,
                                 title: playlist.name,
-                                start: item.start_time_iso || `${item.start_date}T${sTime.slice(0, 2)}:${sTime.slice(2, 4)}:00`,
-                                end: item.end_time_iso || `${item.end_date}T${eTime.slice(0, 2)}:${eTime.slice(2, 4)}:00`,
+                                start: item.start_time_iso ? (item.start_time_iso.endsWith('Z') ? item.start_time_iso : item.start_time_iso + 'Z') : `${item.start_date}T${sTime.slice(0, 2)}:${sTime.slice(2, 4)}:00Z`,
+                                end: item.end_time_iso ? (item.end_time_iso.endsWith('Z') ? item.end_time_iso : item.end_time_iso + 'Z') : `${item.end_date}T${eTime.slice(0, 2)}:${eTime.slice(2, 4)}:00Z`,
                             })
                         })
                     }
@@ -396,7 +396,7 @@ function AzuracastMediaLibrary({ events, onScheduled }: { events: AzuraEvent[], 
         const startDateObj = new Date(startTime)
         const endDateObj = new Date(endTime)
 
-        const formatTime = (date: Date) => date.getHours().toString().padStart(2, '0') + date.getMinutes().toString().padStart(2, '0')
+        const formatTime = (date: Date) => date.getUTCHours().toString().padStart(2, '0') + date.getUTCMinutes().toString().padStart(2, '0')
         const formatDate = (date: Date) => date.toISOString().split('T')[0]
 
         try {

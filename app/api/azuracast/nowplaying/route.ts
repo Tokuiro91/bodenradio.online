@@ -28,7 +28,8 @@ export async function GET() {
                 current: data.listeners.current
             },
             now_playing: data.now_playing?.song?.text || "None",
-            is_online: data.station.mounts.some((m: any) => m.is_default)
+            is_online: data.station.mounts.some((m: any) => m.is_default),
+            timezone: data.station.timezone
         });
     } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 500 });
