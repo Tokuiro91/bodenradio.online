@@ -42,15 +42,25 @@ export function AzuracastManager() {
         try {
             const res = await fetch("/api/azuracast/schedule")
             const data = await res.json()
-            // Transform AzuraCast playlists/schedule into FullCalendar events
-            // This is a placeholder as AzuraCast structure varies
-            const transformed = Array.isArray(data) ? data.map((p: any) => ({
-                id: String(p.id),
-                title: p.name,
-                start: p.schedule?.[0]?.start_time || new Date().toISOString(),
-                end: p.schedule?.[0]?.end_time || new Date().toISOString(),
-            })) : []
-            setEvents(transformed)
+
+            // AzuraCast returns an array of playlists. Each playlist can have multiple schedule_items.
+            const allEvents: AzuraEvent[] = []
+
+            if (Array.isArray(data)) {
+                data.forEach((playlist: any) => {
+                    if (Array.isArray(playlist.schedule_items)) {
+                        playlist.schedule_items.forEach((item: any) => {
+                            allEvents.push({
+                                id: String(playlist.id), // We use playlist ID as event ID for now (AzuraCast specific)
+                                title: playlist.name,
+                                start: item.start_time_iso || `${item.start_date}T${item.start_time.slice(0, 2)}:${item.start_time.slice(2, 4)}:00`,
+                                end: item.end_time_iso || `${item.end_date}T${item.end_time.slice(0, 2)}:${item.end_time.slice(2, 4)}:00`,
+                            })
+                        })
+                    }
+                })
+            }
+            setEvents(allEvents)
         } catch (err) {
             console.error("Failed to fetch schedule", err)
         }
@@ -293,16 +303,31 @@ function AzuracastMediaLibrary({ events, onScheduled }: { events: AzuraEvent[], 
         if (schedulingFile) {
             // Find last event end time or use now
             let suggestStart = new Date()
+
             if (events.length > 0) {
-                const sorted = [...events].sort((a, b) => new Date(b.end).getTime() - new Date(a.end).getTime())
-                const lastEnd = new Date(sorted[0].end)
-                if (lastEnd > suggestStart) suggestStart = lastEnd
+                // Get all end times
+                const endTimes = events.map(e => new Date(e.end).getTime())
+                const maxEnd = Math.max(...endTimes)
+                const lastEnd = new Date(maxEnd)
+
+                // If last broadcast ends in the future, start suggest from there
+                if (lastEnd > suggestStart) {
+                    suggestStart = lastEnd
+                }
             }
+
+            // Align to nearest 5-minute interval for cleaner suggestions
+            const mins = suggestStart.getMinutes()
+            const roundedMins = Math.ceil(mins / 5) * 5
+            suggestStart.setMinutes(roundedMins)
+            suggestStart.setSeconds(0)
+            suggestStart.setMilliseconds(0)
 
             // Format to datetime-local (YYYY-MM-DDTHH:MM:SS)
             const formatForInput = (date: Date) => {
                 const tzOffset = date.getTimezoneOffset() * 60000
-                return new Date(date.getTime() - tzOffset).toISOString().slice(0, 19)
+                const localDate = new Date(date.getTime() - tzOffset)
+                return localDate.toISOString().slice(0, 19)
             }
 
             const startStr = formatForInput(suggestStart)
@@ -361,6 +386,8 @@ function AzuracastMediaLibrary({ events, onScheduled }: { events: AzuraEvent[], 
 
     const handleScheduleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
+        if (loading) return
+        setLoading(true)
         const startDateObj = new Date(startTime)
         const endDateObj = new Date(endTime)
 
@@ -384,13 +411,16 @@ function AzuracastMediaLibrary({ events, onScheduled }: { events: AzuraEvent[], 
             if (res.ok) {
                 toast.success("Scheduled successfully")
                 setSchedulingFile(null)
-                onScheduled()
+                // Force a delay to let AzuraCast process before refresh
+                setTimeout(onScheduled, 1000)
             } else {
                 const err = await res.json()
                 toast.error(err.error || "Scheduling failed")
             }
         } catch (err) {
             toast.error("Scheduling failed")
+        } finally {
+            setLoading(false)
         }
     }
 

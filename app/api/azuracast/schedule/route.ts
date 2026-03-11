@@ -26,7 +26,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
     try {
-        const baseUrl = process.env.AZURACAST_BASE_URL || "http://127.0.0.1:1010/api";
+        const baseUrl = process.env.AZURACAST_BASE_URL || "http://163.245.219.4:1010/api";
         const stationId = process.env.AZURACAST_STATION_ID || "1";
         const apiKey = process.env.AZURACAST_API_KEY;
 
