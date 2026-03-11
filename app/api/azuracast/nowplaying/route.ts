@@ -8,12 +8,16 @@ export async function GET() {
         const headers: Record<string, string> = {};
         if (apiKey) headers["X-API-Key"] = apiKey;
 
+        console.log(`[AzuraCast] Fetching nowplaying from: ${baseUrl}/nowplaying/${stationId}`);
         const res = await fetch(`${baseUrl}/nowplaying/${stationId}`, {
             headers,
             next: { revalidate: 15 } // Cache for 15 seconds
         });
 
-        if (!res.ok) throw new Error("Failed to fetch nowplaying data");
+        if (!res.ok) {
+            console.error(`[AzuraCast] Fetch failed with status: ${res.status}`);
+            throw new Error("Failed to fetch nowplaying data");
+        }
 
         const data = await res.json();
 
