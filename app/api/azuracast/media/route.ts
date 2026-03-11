@@ -59,3 +59,36 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }
+
+export async function DELETE(request: Request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const fileId = searchParams.get("id");
+
+        if (!fileId) {
+            return NextResponse.json({ error: "Missing file ID" }, { status: 400 });
+        }
+
+        const baseUrl = process.env.AZURACAST_BASE_URL || "http://127.0.0.1:1010/api";
+        const stationId = process.env.AZURACAST_STATION_ID || "1";
+        const apiKey = process.env.AZURACAST_API_KEY;
+
+        if (!apiKey) {
+            return NextResponse.json({ error: "Missing AZURACAST_API_KEY" }, { status: 401 });
+        }
+
+        const res = await fetch(`${baseUrl}/station/${stationId}/file/${fileId}`, {
+            method: "DELETE",
+            headers: { "X-API-Key": apiKey }
+        });
+
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.message || "Failed to delete file");
+        }
+
+        return NextResponse.json({ success: true });
+    } catch (err: any) {
+        return NextResponse.json({ error: err.message }, { status: 500 });
+    }
+}

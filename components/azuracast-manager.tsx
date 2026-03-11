@@ -224,6 +224,7 @@ function AzuracastMediaLibrary() {
     const [files, setFiles] = useState<any[]>([])
     const [loading, setLoading] = useState(false)
     const [uploading, setUploading] = useState(false)
+    const [schedulingFile, setSchedulingFile] = useState<any>(null)
 
     const fetchFiles = useCallback(async () => {
         setLoading(true)
@@ -261,6 +262,62 @@ function AzuracastMediaLibrary() {
         }
     }
 
+    const deleteFile = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this file?")) return
+        try {
+            const res = await fetch(`/api/azuracast/media?id=${id}`, { method: "DELETE" })
+            if (res.ok) {
+                toast.success("File deleted")
+                fetchFiles()
+            }
+        } catch (err) {
+            toast.error("Delete failed")
+        }
+    }
+
+    const handleScheduleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        const formData = new FormData(e.currentTarget)
+        const start = formData.get("start") as string
+        const end = formData.get("end") as string
+
+        const startDateObj = new Date(start)
+        const endDateObj = new Date(end)
+
+        const formatTime = (date: Date) => {
+            return date.getHours().toString().padStart(2, '0') + date.getMinutes().toString().padStart(2, '0')
+        }
+
+        const formatDate = (date: Date) => {
+            return date.toISOString().split('T')[0]
+        }
+
+        try {
+            const res = await fetch("/api/azuracast/schedule", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "schedule_file",
+                    file_id: schedulingFile.id,
+                    name: schedulingFile.text || schedulingFile.path,
+                    start_time: formatTime(startDateObj),
+                    end_time: formatTime(endDateObj),
+                    start_date: formatDate(startDateObj)
+                })
+            })
+
+            if (res.ok) {
+                toast.success("Scheduled successfully")
+                setSchedulingFile(null)
+            } else {
+                const err = await res.json()
+                toast.error(err.error || "Scheduling failed")
+            }
+        } catch (err) {
+            toast.error("Scheduling failed")
+        }
+    }
+
     return (
         <div className="flex-1 bg-[#080808] border border-[#1a1a1a] rounded-sm flex flex-col min-h-0 shadow-2xl">
             <div className="p-4 border-b border-[#1a1a1a] flex items-center justify-between bg-black">
@@ -271,16 +328,79 @@ function AzuracastMediaLibrary() {
                 </label>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
-                {files.map((f: any) => (
-                    <div key={f.path} className="p-3 bg-black border border-[#1a1a1a] hover:border-[#99CCCC]/30 transition-all group flex items-center gap-3">
+                {loading && <div className="flex justify-center p-4"><Loader2 className="animate-spin text-[#444]" size={20} /></div>}
+                {!loading && files.map((f: any) => (
+                    <div key={f.id} className="p-3 bg-black border border-[#1a1a1a] hover:border-[#99CCCC]/30 transition-all group flex items-center gap-3">
                         <Music size={14} className="text-[#444] group-hover:text-[#99CCCC]" />
                         <div className="flex-1 min-w-0">
-                            <div className="text-[10px] font-bold text-white truncate font-mono">{f.name}</div>
-                            <div className="text-[8px] text-[#444] uppercase">{Math.round(f.size / 1024 / 1024)} MB</div>
+                            <div className="text-[10px] font-bold text-white truncate font-mono">{f.text || f.path}</div>
+                            <div className="text-[8px] text-[#444] uppercase">{f.length_text} | {Math.round(f.size / 1024 / 1024)} MB</div>
+                        </div>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                                onClick={() => setSchedulingFile(f)}
+                                className="p-1 hover:bg-[#99CCCC] hover:text-black text-[#444] rounded-sm transition-colors"
+                                title="Schedule"
+                            >
+                                <CalendarIcon size={12} />
+                            </button>
+                            <button
+                                onClick={() => deleteFile(f.id)}
+                                className="p-1 hover:bg-red-500/20 hover:text-red-500 text-[#444] rounded-sm transition-colors"
+                                title="Delete"
+                            >
+                                <Trash2 size={12} />
+                            </button>
                         </div>
                     </div>
                 ))}
             </div>
+
+            {schedulingFile && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+                    <form onSubmit={handleScheduleSubmit} className="w-full max-w-md bg-[#0a0a0a] border border-[#1a1a1a] p-8 rounded-sm shadow-2xl">
+                        <div className="flex justify-between items-center mb-8">
+                            <div className="flex flex-col">
+                                <h3 className="text-xs font-black uppercase text-[#99CCCC] tracking-widest mb-1">Schedule Broadcast</h3>
+                                <span className="text-[9px] text-[#444] font-mono truncate max-w-[200px]">{schedulingFile.text || schedulingFile.path}</span>
+                            </div>
+                            <button type="button" onClick={() => setSchedulingFile(null)}><X size={20} className="text-[#444] hover:text-white" /></button>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 gap-4">
+                                <div>
+                                    <label className="text-[9px] uppercase font-black text-[#444] block mb-2 tracking-widest">Start Date & Time</label>
+                                    <input
+                                        name="start"
+                                        type="datetime-local"
+                                        required
+                                        className="w-full bg-black border border-[#1a1a1a] p-3 text-xs text-white focus:border-[#99CCCC] outline-none transition-colors rounded-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[9px] uppercase font-black text-[#444] block mb-2 tracking-widest">End Date & Time</label>
+                                    <input
+                                        name="end"
+                                        type="datetime-local"
+                                        required
+                                        className="w-full bg-black border border-[#1a1a1a] p-3 text-xs text-white focus:border-[#99CCCC] outline-none transition-colors rounded-none"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="pt-4">
+                                <button
+                                    type="submit"
+                                    className="w-full py-4 bg-[#99CCCC] text-black text-[10px] font-black uppercase tracking-[0.3em] rounded-sm hover:bg-[#88bbbb] transition-all hover:translate-y-[-1px] active:translate-y-[0px] shadow-lg shadow-[#99CCCC]/10"
+                                >
+                                    Confirm Broadcast
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            )}
         </div>
     )
 }
