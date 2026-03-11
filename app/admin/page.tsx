@@ -91,20 +91,20 @@ export default function AdminPage() {
   useEffect(() => {
     fetch("/api/admins").then(r => r.json()).then(d => d.admins && setAdminEmails(d.admins)).catch(() => { })
     fetch("/api/artist-db").then(r => r.json()).then(setDbArtists).catch(() => { })
+  }, [])
 
-    const [azuraStats, setAzuraStats] = useState({ listeners: { current: 0 } })
-    useEffect(() => {
-      const fetchAzura = async () => {
-        try {
-          const res = await fetch("/api/azuracast/nowplaying")
-          const data = await res.json()
-          setAzuraStats(data)
-        } catch (err) { }
-      }
-      fetchAzura()
-      const azuraTimer = setInterval(fetchAzura, 15000)
-      return () => clearInterval(azuraTimer)
-    }, [])
+  const [azuraStats, setAzuraStats] = useState({ listeners: { current: 0 } })
+  useEffect(() => {
+    const fetchAzura = async () => {
+      try {
+        const res = await fetch("/api/azuracast/nowplaying")
+        const data = await res.json()
+        setAzuraStats(data)
+      } catch (err) { }
+    }
+    fetchAzura()
+    const azuraTimer = setInterval(fetchAzura, 15000)
+    return () => clearInterval(azuraTimer)
   }, [])
 
   useEffect(() => {
