@@ -13,6 +13,7 @@ import { BroadcastManager } from "@/components/broadcast-manager"
 import { socketService } from "@/lib/socket"
 import { List, LayoutDashboard } from "lucide-react"
 import { AzuracastManager } from "@/components/azuracast-manager"
+import { toast } from "sonner"
 
 export default function UnifiedDashboardPage() {
     const { data: session, status } = useSession()
@@ -381,6 +382,36 @@ function ArtistEditModal({ artist, onClose, onConfirm }: { artist: DBArtist, onC
     const [bandcampUrl, setBandcampUrl] = useState(artist.bandcampUrl || "")
     const [audioUrl, setAudioUrl] = useState(artist.audioUrl || "")
     const [isSaving, setIsSaving] = useState(false)
+    const [isUploading, setIsUploading] = useState(false)
+
+    const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        setIsUploading(true)
+        const formData = new FormData()
+        formData.append("file", file)
+
+        try {
+            const res = await fetch("/api/azuracast/media", {
+                method: "POST",
+                body: formData
+            })
+            if (!res.ok) throw new Error("Upload failed")
+            const data = await res.json()
+
+            // AzuraCast returns the path/filename. We store it as the audioUrl.
+            // If the backend returns a specific path, we use it, otherwise we assume the filename.
+            const uploadedPath = data.path || file.name
+            setAudioUrl(uploadedPath)
+            toast.success(`Audio uploaded to AzuraCast: ${uploadedPath}`)
+        } catch (err) {
+            console.error(err)
+            toast.error("Failed to upload audio to AzuraCast")
+        } finally {
+            setIsUploading(false)
+        }
+    }
 
     const handleSave = async () => {
         setIsSaving(true)
@@ -474,6 +505,34 @@ function ArtistCreateModal({ onClose, onConfirm }: { onClose: () => void, onConf
     const [bandcampUrl, setBandcampUrl] = useState("")
     const [audioUrl, setAudioUrl] = useState("")
     const [isSaving, setIsSaving] = useState(false)
+    const [isUploading, setIsUploading] = useState(false)
+
+    const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        setIsUploading(true)
+        const formData = new FormData()
+        formData.append("file", file)
+
+        try {
+            const res = await fetch("/api/azuracast/media", {
+                method: "POST",
+                body: formData
+            })
+            if (!res.ok) throw new Error("Upload failed")
+            const data = await res.json()
+
+            const uploadedPath = data.path || file.name
+            setAudioUrl(uploadedPath)
+            toast.success(`Audio uploaded to AzuraCast: ${uploadedPath}`)
+        } catch (err) {
+            console.error(err)
+            toast.error("Failed to upload audio to AzuraCast")
+        } finally {
+            setIsUploading(false)
+        }
+    }
 
     const handleSave = async () => {
         if (!name) return alert("Имя обязательно")
