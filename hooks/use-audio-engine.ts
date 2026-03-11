@@ -84,7 +84,7 @@ function updateMediaSession(artist: Artist | null) {
     }
 }
 
-const UNIFIED_STREAM_URL = "/api/radio/stream.mp3"
+const UNIFIED_STREAM_URL = "http://163.245.219.4:1010/public/bodenradio.mp3"
 
 export function useAudioEngine(artists: Artist[]) {
     const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -149,7 +149,7 @@ export function useAudioEngine(artists: Artist[]) {
             // To ensure we get the FRESH stream (not buffered), sometimes re-setting src helps
             // but for a chunked stream it should be fine. 
             // We force a reload to jump to the 'live' edge if possible.
-            audio.src = UNIFIED_STREAM_URL + "?t=" + Date.now()
+            audio.src = resolveStreamUrl(UNIFIED_STREAM_URL) + "?t=" + Date.now()
             audio.load()
             try {
                 await audio.play()

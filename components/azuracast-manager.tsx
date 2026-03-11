@@ -74,10 +74,29 @@ export function AzuracastManager() {
     }
 
     const handleEventClick = (clickInfo: any) => {
-        const ev = events.find(e => e.id === clickInfo.event.id)
-        if (ev) {
-            setSelectedEvent(ev)
-            setIsEditorOpen(true)
+        const ev = {
+            id: clickInfo.event.id,
+            title: clickInfo.event.title,
+            start: clickInfo.event.startStr,
+            end: clickInfo.event.endStr
+        }
+        setSelectedEvent(ev)
+        setIsEditorOpen(true)
+    }
+
+    const deleteEvent = async () => {
+        if (!selectedEvent || !confirm("Remove this broadcast from schedule?")) return
+        try {
+            const res = await fetch(`/api/azuracast/schedule?id=${selectedEvent.id}`, { method: "DELETE" })
+            if (res.ok) {
+                toast.success("Broadcast removed")
+                setIsEditorOpen(false)
+                fetchSchedule()
+            } else {
+                toast.error("Failed to remove broadcast")
+            }
+        } catch (err) {
+            toast.error("Failed to remove broadcast")
         }
     }
 
@@ -102,11 +121,11 @@ export function AzuracastManager() {
                     <div className="relative z-10 flex flex-col">
                         <span className="text-[9px] font-black uppercase tracking-widest text-[#444] mb-1">Now Playing</span>
                         <h3 className="text-sm font-bold text-white uppercase tracking-tight truncate max-w-[200px]">
-                            {nowPlaying?.now_playing || "Offline"}
+                            {nowPlaying?.now_playing?.song?.text || "Offline"}
                         </h3>
                     </div>
                     <div className="relative z-10 p-2 bg-[#99CCCC]/10 rounded-sm">
-                        <Radio size={20} className={nowPlaying?.is_online ? "text-[#99CCCC] animate-pulse" : "text-[#444]"} />
+                        <Radio size={20} className={nowPlaying?.station?.mounts?.[0]?.is_default ? "text-[#99CCCC] animate-pulse" : "text-[#444]"} />
                     </div>
                 </div>
             </div>
@@ -135,7 +154,7 @@ export function AzuracastManager() {
                             headerToolbar={false}
                             events={events}
                             selectable={true}
-                            editable={true}
+                            editable={false}
                             nowIndicator={true}
                             height="100%"
                             select={handleDateSelect}
@@ -151,30 +170,30 @@ export function AzuracastManager() {
                 </div>
 
                 <div className="w-80 flex flex-col gap-6">
-                    <AzuracastMediaLibrary />
+                    <AzuracastMediaLibrary events={events} onScheduled={fetchSchedule} />
                 </div>
             </div>
 
-            {/* Editor Modal Placeholder */}
-            {isEditorOpen && (
+            {/* Editor Modal / Delete Confirmation */}
+            {isEditorOpen && selectedEvent && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                    <div className="w-full max-w-lg bg-[#0a0a0a] border border-[#1a1a1a] p-6 rounded-sm">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xs font-black uppercase text-[#99CCCC] tracking-widest">Schedule Broadcast</h3>
-                            <button onClick={() => setIsEditorOpen(false)}><X size={20} className="text-[#444] hover:text-white" /></button>
-                        </div>
+                    <div className="w-full max-w-sm bg-[#0a0a0a] border border-[#1a1a1a] p-8 rounded-sm shadow-2xl relative">
+                        <button onClick={() => setIsEditorOpen(false)} className="absolute top-4 right-4 text-[#444] hover:text-white"><X size={20} /></button>
+                        <h3 className="text-xs font-black uppercase text-[#99CCCC] tracking-widest mb-6">Manage Broadcast</h3>
                         <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[9px] uppercase font-black text-[#444] block mb-1">Start Time</label>
-                                    <input type="datetime-local" step="1" className="w-full bg-black border border-[#1a1a1a] p-2 text-xs text-white" />
-                                </div>
-                                <div>
-                                    <label className="text-[9px] uppercase font-black text-[#444] block mb-1">End Time</label>
-                                    <input type="datetime-local" step="1" className="w-full bg-black border border-[#1a1a1a] p-2 text-xs text-white" />
+                            <div className="p-4 bg-black border border-[#1a1a1a]">
+                                <div className="text-[10px] font-bold text-white uppercase mb-1">{selectedEvent.title}</div>
+                                <div className="text-[9px] font-mono text-[#444]">
+                                    {new Date(selectedEvent.start).toLocaleString()} - <br />
+                                    {new Date(selectedEvent.end).toLocaleString()}
                                 </div>
                             </div>
-                            <button className="w-full py-3 bg-[#99CCCC] text-black text-[10px] font-black uppercase tracking-widest rounded-sm">Save to AzuraCast</button>
+                            <button
+                                onClick={deleteEvent}
+                                className="w-full py-4 border border-red-500/30 text-red-500 text-[10px] font-black uppercase tracking-[0.2em] rounded-sm hover:bg-red-500 hover:text-white transition-all"
+                            >
+                                Remove from Schedule
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -220,11 +239,14 @@ function ViewButton({ label, active, onClick }: { label: string, active: boolean
     )
 }
 
-function AzuracastMediaLibrary() {
+function AzuracastMediaLibrary({ events, onScheduled }: { events: AzuraEvent[], onScheduled: () => void }) {
     const [files, setFiles] = useState<any[]>([])
+    const [search, setSearch] = useState("")
     const [loading, setLoading] = useState(false)
     const [uploading, setUploading] = useState(false)
     const [schedulingFile, setSchedulingFile] = useState<any>(null)
+    const [startTime, setStartTime] = useState("")
+    const [endTime, setEndTime] = useState("")
 
     const fetchFiles = useCallback(async () => {
         setLoading(true)
@@ -242,6 +264,50 @@ function AzuracastMediaLibrary() {
     useEffect(() => {
         fetchFiles()
     }, [fetchFiles])
+
+    const filteredFiles = files.filter(f =>
+        (f.text || f.path || "").toLowerCase().includes(search.toLowerCase()) ||
+        (f.artist || "").toLowerCase().includes(search.toLowerCase())
+    )
+
+    // Suggest time when file selected
+    useEffect(() => {
+        if (schedulingFile) {
+            // Find last event end time or use now
+            let suggestStart = new Date()
+            if (events.length > 0) {
+                const sorted = [...events].sort((a, b) => new Date(b.end).getTime() - new Date(a.end).getTime())
+                const lastEnd = new Date(sorted[0].end)
+                if (lastEnd > suggestStart) suggestStart = lastEnd
+            }
+
+            // Format to datetime-local (YYYY-MM-DDTHH:MM:SS)
+            const formatForInput = (date: Date) => {
+                const tzOffset = date.getTimezoneOffset() * 60000
+                return new Date(date.getTime() - tzOffset).toISOString().slice(0, 19)
+            }
+
+            const startStr = formatForInput(suggestStart)
+            setStartTime(startStr)
+
+            // Auto end time based on length
+            if (schedulingFile.length) {
+                const end = new Date(suggestStart.getTime() + schedulingFile.length * 1000)
+                setEndTime(formatForInput(end))
+            }
+        }
+    }, [schedulingFile, events])
+
+    // Update end time when start time changed
+    const handleStartTimeChange = (val: string) => {
+        setStartTime(val)
+        if (schedulingFile?.length) {
+            const start = new Date(val)
+            const end = new Date(start.getTime() + schedulingFile.length * 1000)
+            const tzOffset = end.getTimezoneOffset() * 60000
+            setEndTime(new Date(end.getTime() - tzOffset).toISOString().slice(0, 19))
+        }
+    }
 
     const onFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -263,7 +329,7 @@ function AzuracastMediaLibrary() {
     }
 
     const deleteFile = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this file?")) return
+        if (!confirm("Are you sure you want to delete this file from the server?")) return
         try {
             const res = await fetch(`/api/azuracast/media?id=${id}`, { method: "DELETE" })
             if (res.ok) {
@@ -277,20 +343,11 @@ function AzuracastMediaLibrary() {
 
     const handleScheduleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
-        const formData = new FormData(e.currentTarget)
-        const start = formData.get("start") as string
-        const end = formData.get("end") as string
+        const startDateObj = new Date(startTime)
+        const endDateObj = new Date(endTime)
 
-        const startDateObj = new Date(start)
-        const endDateObj = new Date(end)
-
-        const formatTime = (date: Date) => {
-            return date.getHours().toString().padStart(2, '0') + date.getMinutes().toString().padStart(2, '0')
-        }
-
-        const formatDate = (date: Date) => {
-            return date.toISOString().split('T')[0]
-        }
+        const formatTime = (date: Date) => date.getHours().toString().padStart(2, '0') + date.getMinutes().toString().padStart(2, '0')
+        const formatDate = (date: Date) => date.toISOString().split('T')[0]
 
         try {
             const res = await fetch("/api/azuracast/schedule", {
@@ -309,6 +366,7 @@ function AzuracastMediaLibrary() {
             if (res.ok) {
                 toast.success("Scheduled successfully")
                 setSchedulingFile(null)
+                onScheduled()
             } else {
                 const err = await res.json()
                 toast.error(err.error || "Scheduling failed")
@@ -320,16 +378,28 @@ function AzuracastMediaLibrary() {
 
     return (
         <div className="flex-1 bg-[#080808] border border-[#1a1a1a] rounded-sm flex flex-col min-h-0 shadow-2xl">
-            <div className="p-4 border-b border-[#1a1a1a] flex items-center justify-between bg-black">
-                <span className="text-[10px] font-black uppercase tracking-widest text-[#99CCCC]">Azura Media</span>
-                <label className="cursor-pointer p-1.5 bg-[#1a1a1a] hover:bg-[#99CCCC] hover:text-black rounded-sm transition-all text-[#444]">
-                    {uploading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                    <input type="file" className="hidden" onChange={onFileUpload} disabled={uploading} />
-                </label>
+            <div className="p-4 border-b border-[#1a1a1a] space-y-3 bg-black">
+                <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[#99CCCC]">Azura Media</span>
+                    <label className="cursor-pointer p-1.5 bg-[#1a1a1a] hover:bg-[#99CCCC] hover:text-black rounded-sm transition-all text-[#444]">
+                        {uploading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                        <input type="file" className="hidden" onChange={onFileUpload} disabled={uploading} />
+                    </label>
+                </div>
+                <div className="relative">
+                    <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#444]" />
+                    <input
+                        type="text"
+                        placeholder="SEARCH MEDIA..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full bg-black border border-[#1a1a1a] p-2 pl-9 text-[9px] font-black text-white focus:border-[#99CCCC] outline-none transition-colors tracking-widest"
+                    />
+                </div>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
                 {loading && <div className="flex justify-center p-4"><Loader2 className="animate-spin text-[#444]" size={20} /></div>}
-                {!loading && files.map((f: any) => (
+                {!loading && filteredFiles.map((f: any) => (
                     <div key={f.id} className="p-3 bg-black border border-[#1a1a1a] hover:border-[#99CCCC]/30 transition-all group flex items-center gap-3">
                         <Music size={14} className="text-[#444] group-hover:text-[#99CCCC]" />
                         <div className="flex-1 min-w-0">
@@ -337,64 +407,56 @@ function AzuracastMediaLibrary() {
                             <div className="text-[8px] text-[#444] uppercase">{f.length_text} | {Math.round(f.size / 1024 / 1024)} MB</div>
                         </div>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                                onClick={() => setSchedulingFile(f)}
-                                className="p-1 hover:bg-[#99CCCC] hover:text-black text-[#444] rounded-sm transition-colors"
-                                title="Schedule"
-                            >
-                                <CalendarIcon size={12} />
-                            </button>
-                            <button
-                                onClick={() => deleteFile(f.id)}
-                                className="p-1 hover:bg-red-500/20 hover:text-red-500 text-[#444] rounded-sm transition-colors"
-                                title="Delete"
-                            >
-                                <Trash2 size={12} />
-                            </button>
+                            <button onClick={() => setSchedulingFile(f)} className="p-1 hover:bg-[#99CCCC] hover:text-black text-[#444] rounded-sm transition-colors" title="Schedule"><CalendarIcon size={12} /></button>
+                            <button onClick={() => deleteFile(f.id)} className="p-1 hover:bg-red-500/20 hover:text-red-500 text-[#444] rounded-sm transition-colors" title="Delete"><Trash2 size={12} /></button>
                         </div>
                     </div>
                 ))}
             </div>
 
             {schedulingFile && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-                    <form onSubmit={handleScheduleSubmit} className="w-full max-w-md bg-[#0a0a0a] border border-[#1a1a1a] p-8 rounded-sm shadow-2xl">
-                        <div className="flex justify-between items-center mb-8">
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
+                    <form onSubmit={handleScheduleSubmit} className="w-full max-w-md bg-[#0a0a0a] border border-[#1a1a1a] p-10 rounded-sm shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-[#99CCCC]"></div>
+                        <div className="flex justify-between items-center mb-10">
                             <div className="flex flex-col">
-                                <h3 className="text-xs font-black uppercase text-[#99CCCC] tracking-widest mb-1">Schedule Broadcast</h3>
-                                <span className="text-[9px] text-[#444] font-mono truncate max-w-[200px]">{schedulingFile.text || schedulingFile.path}</span>
+                                <h3 className="text-xs font-black uppercase text-[#99CCCC] tracking-[0.3em] mb-2">Initialize Broadcast</h3>
+                                <span className="text-[10px] text-white font-mono truncate max-w-[280px] bg-white/5 py-1 px-2 rounded-sm">{schedulingFile.text || schedulingFile.path}</span>
                             </div>
-                            <button type="button" onClick={() => setSchedulingFile(null)}><X size={20} className="text-[#444] hover:text-white" /></button>
+                            <button type="button" onClick={() => setSchedulingFile(null)} className="text-[#444] hover:text-white transition-colors"><X size={24} /></button>
                         </div>
 
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-1 gap-4">
+                        <div className="space-y-8">
+                            <div className="grid grid-cols-1 gap-6">
                                 <div>
-                                    <label className="text-[9px] uppercase font-black text-[#444] block mb-2 tracking-widest">Start Date & Time</label>
+                                    <label className="text-[10px] uppercase font-black text-[#444] block mb-3 tracking-[0.2em]">Launch sequence start</label>
                                     <input
                                         name="start"
                                         type="datetime-local"
+                                        step="1"
                                         required
-                                        className="w-full bg-black border border-[#1a1a1a] p-3 text-xs text-white focus:border-[#99CCCC] outline-none transition-colors rounded-none"
+                                        value={startTime}
+                                        onChange={(e) => handleStartTimeChange(e.target.value)}
+                                        className="w-full bg-black border border-[#1a1a1a] p-4 text-xs text-white focus:border-[#99CCCC] outline-none transition-all rounded-none font-mono"
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-[9px] uppercase font-black text-[#444] block mb-2 tracking-widest">End Date & Time</label>
+                                    <label className="text-[10px] uppercase font-black text-[#444] block mb-3 tracking-[0.2em]">Estimated termination</label>
                                     <input
                                         name="end"
                                         type="datetime-local"
+                                        step="1"
                                         required
-                                        className="w-full bg-black border border-[#1a1a1a] p-3 text-xs text-white focus:border-[#99CCCC] outline-none transition-colors rounded-none"
+                                        value={endTime}
+                                        onChange={(e) => setEndTime(e.target.value)}
+                                        className="w-full bg-black border border-[#1a1a1a] p-4 text-xs text-white focus:border-[#99CCCC] outline-none transition-all rounded-none font-mono"
                                     />
                                 </div>
                             </div>
 
-                            <div className="pt-4">
-                                <button
-                                    type="submit"
-                                    className="w-full py-4 bg-[#99CCCC] text-black text-[10px] font-black uppercase tracking-[0.3em] rounded-sm hover:bg-[#88bbbb] transition-all hover:translate-y-[-1px] active:translate-y-[0px] shadow-lg shadow-[#99CCCC]/10"
-                                >
-                                    Confirm Broadcast
+                            <div className="pt-6">
+                                <button type="submit" className="w-full py-5 bg-[#99CCCC] text-black text-[11px] font-black uppercase tracking-[0.4em] rounded-sm hover:bg-white transition-all shadow-2xl shadow-[#99CCCC]/20 flex items-center justify-center gap-3">
+                                    Finalize Entry <ArrowRight size={14} />
                                 </button>
                             </div>
                         </div>
