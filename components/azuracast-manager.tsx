@@ -143,7 +143,7 @@ export function AzuracastManager() {
                     <div className="relative z-10 flex flex-col">
                         <span className="text-[9px] font-black uppercase tracking-widest text-[#444] mb-1">Now Playing</span>
                         <h3 className="text-sm font-bold text-white uppercase tracking-tight truncate max-w-[200px]">
-                            {nowPlaying?.now_playing?.song?.text || "Offline"}
+                            {nowPlaying?.now_playing || "Offline"}
                         </h3>
                     </div>
                     <div className="relative z-10 p-2 bg-[#99CCCC]/10 rounded-sm">
@@ -457,7 +457,7 @@ function AzuracastMediaLibrary({ events, onScheduled }: { events: AzuraEvent[], 
                         <Music size={14} className="text-[#444] group-hover:text-[#99CCCC]" />
                         <div className="flex-1 min-w-0">
                             <div className="text-[10px] font-bold text-white truncate font-mono">{f.text || f.path}</div>
-                            <div className="text-[8px] text-[#444] uppercase">{f.length_text} | {Math.round(f.size / 1024 / 1024)} MB</div>
+                            <div className="text-[8px] text-[#444] uppercase">{f.length_text} | {f.size ? Math.round(f.size / 1024 / 1024) : 0} MB</div>
                         </div>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => setSchedulingFile(f)} className="p-1 hover:bg-[#99CCCC] hover:text-black text-[#444] rounded-sm transition-colors" title="Schedule"><CalendarIcon size={12} /></button>
