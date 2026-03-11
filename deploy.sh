@@ -51,10 +51,12 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   # Ensure persistent directories exist and have correct permissions
   mkdir -p /var/radio/music
   mkdir -p /var/radio/uploads
+  mkdir -p /var/radio/mixes
   chmod -R 777 /var/radio
   
   # Ensure target directory structure exists in app data
   mkdir -p data/radio
+  mkdir -p public/radio
   
   # Symlink app data to persistent /var/radio storage if not already symlinked
   if [ ! -L "data/radio/music" ]; then
@@ -64,6 +66,10 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   if [ ! -L "data/radio/uploads" ]; then
     rm -rf data/radio/uploads
     ln -s /var/radio/uploads data/radio/uploads
+  fi
+  if [ ! -L "public/radio/mixes" ]; then
+    rm -rf public/radio/mixes
+    ln -s /var/radio/mixes public/radio/mixes
   fi
   
   # Move existing files from old uploads to unified dir if any (backward compatibility)
