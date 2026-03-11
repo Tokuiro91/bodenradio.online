@@ -54,22 +54,14 @@ sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_IP" << 'E
   mkdir -p /var/radio/mixes
   chmod -R 777 /var/radio
   
-  # Ensure target directory structure exists in app data
-  mkdir -p data/radio
+  # Ensure target directory structure exists in app data (empty, not symlinked)
+  mkdir -p data/radio/music
+  mkdir -p data/radio/uploads
+  mkdir -p data/radio/mixes
   
-  # Symlink app data to persistent /var/radio storage if not already symlinked
-  if [ ! -L "data/radio/music" ]; then
-    rm -rf data/radio/music
-    ln -s /var/radio/music data/radio/music
-  fi
-  if [ ! -L "data/radio/uploads" ]; then
-    rm -rf data/radio/uploads
-    ln -s /var/radio/uploads data/radio/uploads
-  fi
-  if [ ! -L "data/radio/mixes" ]; then
-    rm -rf data/radio/mixes
-    ln -s /var/radio/mixes data/radio/mixes
-  fi
+  # Remove symlinks if they exist to prevent build errors
+  rm -rf data/radio/music data/radio/uploads data/radio/mixes
+  mkdir -p data/radio/music data/radio/uploads data/radio/mixes
   
   # REMOVED public/radio/mixes symlink because it breaks Turbopack build
   rm -rf public/radio

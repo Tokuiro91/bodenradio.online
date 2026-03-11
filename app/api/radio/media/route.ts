@@ -3,7 +3,11 @@ import fs from "fs"
 import path from "path"
 
 // Use a path that won't cause build-time symlink issues
-const MIXES_DIR = path.join(process.cwd(), "data", "radio", "mixes")
+// On VPS, we use the absolute path directly to avoid Turbopack symlink errors
+let MIXES_DIR = path.join(process.cwd(), "data", "radio", "mixes")
+if (fs.existsSync("/var/radio/mixes")) {
+    MIXES_DIR = "/var/radio/mixes"
+}
 
 export async function GET(req: NextRequest) {
     try {
