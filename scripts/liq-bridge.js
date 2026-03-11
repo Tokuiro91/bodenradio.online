@@ -16,19 +16,17 @@ function getCurrentTrack() {
             const data = fs.readFileSync(CSV_PATH, 'utf8');
             const lines = data.split('\n').filter(line => line.trim() !== '');
             const entries = lines.slice(1).map(line => {
-                const [date, time, file] = line.split(',');
-                return { date, time, file };
+                const [date, time, end_time, file] = line.split(',');
+                return { date, time, end_time, file };
             });
 
             // Find the most recent applicable entry
-            let currentEntry = null;
-            for (const entry of entries) {
-                if (entry.date === currentDate && entry.time <= currentTime) {
-                    if (!currentEntry || entry.time > currentEntry.time) {
-                        currentEntry = entry;
-                    }
-                }
-            }
+            // We look for entry where time <= currentTime < end_time
+            const currentEntry = entries.find(entry => {
+                if (entry.date !== currentDate) return false;
+                if (!entry.end_time) return entry.time <= currentTime; // Legacy support
+                return entry.time <= currentTime && currentTime < entry.end_time;
+            });
 
             if (currentEntry && currentEntry.file && currentEntry.file !== 'SILENCE') {
                 let filePath = currentEntry.file;

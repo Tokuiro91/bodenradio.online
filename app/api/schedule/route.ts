@@ -12,8 +12,8 @@ export async function GET() {
         const data = fs.readFileSync(CSV_PATH, "utf8")
         const lines = data.split("\n").filter(line => line.trim() !== "")
         const schedule = lines.slice(1).map(line => {
-            const [date, time, file] = line.split(",")
-            return { date, time, file }
+            const [date, time, end_time, file] = line.split(",")
+            return { date, time, end_time: end_time || "", file }
         })
         return NextResponse.json({ schedule })
     } catch (error) {
@@ -24,9 +24,9 @@ export async function GET() {
 export async function POST(req: NextRequest) {
     try {
         const { schedule } = await req.json()
-        let csvContent = "date,time,file\n"
+        let csvContent = "date,time,end_time,file\n"
         schedule.forEach((entry: any) => {
-            csvContent += `${entry.date},${entry.time},${entry.file}\n`
+            csvContent += `${entry.date},${entry.time},${entry.end_time || ""},${entry.file}\n`
         })
         fs.writeFileSync(CSV_PATH, csvContent)
         return NextResponse.json({ success: true })

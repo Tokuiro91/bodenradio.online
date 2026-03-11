@@ -8,6 +8,7 @@ import { toast } from "sonner"
 interface ScheduleEntry {
     date: string
     time: string
+    end_time: string
     file: string
 }
 
@@ -31,6 +32,7 @@ export function ScheduleManager() {
     const [form, setForm] = useState<ScheduleEntry>({
         date: new Date().toISOString().split("T")[0],
         time: "00:00:00",
+        end_time: "00:00:00",
         file: ""
     })
 
@@ -109,13 +111,45 @@ export function ScheduleManager() {
         resetForm()
     }
 
+    const findNextFreeSlot = (entries: ScheduleEntry[], date: string) => {
+        const dayEntries = entries
+            .filter(e => e.date === date)
+            .sort((a, b) => a.time.localeCompare(b.time))
+
+        if (dayEntries.length === 0) return "00:00:00"
+        return dayEntries[dayEntries.length - 1].end_time || dayEntries[dayEntries.length - 1].time
+    }
+
     const resetForm = () => {
+        const nextTime = findNextFreeSlot(schedule, new Date().toISOString().split("T")[0])
         setForm({
             date: new Date().toISOString().split("T")[0],
-            time: "00:00:00",
+            time: nextTime,
+            end_time: nextTime,
             file: ""
         })
         setIsEditing(null)
+    }
+
+    const suggestDuration = async (filename: string) => {
+        const file = mediaFiles.find(f => f.name === filename)
+        if (!file) return
+
+        try {
+            const audio = new Audio(file.url)
+            audio.addEventListener('loadedmetadata', () => {
+                const durationSec = Math.ceil(audio.duration)
+                const [h, m, s] = form.time.split(":").map(Number)
+                const startSec = h * 3600 + m * 60 + s
+                const endSecTotal = startSec + durationSec
+
+                const eh = String(Math.floor(endSecTotal / 3600)).padStart(2, "0")
+                const em = String(Math.floor((endSecTotal % 3600) / 60)).padStart(2, "0")
+                const es = String(endSecTotal % 60).padStart(2, "0")
+
+                setForm(prev => ({ ...prev, end_time: `${eh}:${em}:${es}` }))
+            })
+        } catch (err) { }
     }
 
     const handleDeleteEntry = (index: number) => {
@@ -212,7 +246,7 @@ export function ScheduleManager() {
                         <TimelineView schedule={schedule} onEdit={(index) => {
                             setForm(schedule[index])
                             setIsEditing(index)
-                            setActiveTab("list") // Switch to list/form to edit
+                            setActiveTab("list")
                         }} />
                     </motion.div>
                 )}
@@ -222,88 +256,100 @@ export function ScheduleManager() {
                         {/* Entry Form */}
                         <div className="bg-[#080808] border border-[#1a1a1a] p-6 rounded-sm">
                             <h3 className="text-[#99CCCC] font-mono text-xs uppercase mb-6 tracking-[0.2em]">{isEditing !== null ? "Edit Entry" : "Add New Broadcast"}</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
-                                <div className="space-y-2">
-                                    <label className="text-[9px] uppercase font-black text-[#444] tracking-widest">Date</label>
-                                    <input
-                                        type="date"
-                                        value={form.date}
-                                        onChange={(e) => setForm({ ...form, date: e.target.value })}
-                                        className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors"
-                                    />
-                                </div>
-                                <div className="space-y-2 col-span-2">
-                                    <label className="text-[9px] uppercase font-black text-[#444] tracking-widest">Start Time (HH:MM:SS)</label>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="23"
-                                            placeholder="HH"
-                                            value={form.time.split(":")[0] || "00"}
-                                            onChange={(e) => {
-                                                const parts = form.time.split(":")
-                                                parts[0] = e.target.value.padStart(2, "0")
-                                                setForm({ ...form, time: parts.join(":") })
-                                            }}
-                                            className="w-16 bg-black border border-[#1a1a1a] p-2 text-center text-xs text-white outline-none focus:border-[#99CCCC] font-mono"
-                                        />
-                                        <span className="text-[#333]">:</span>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="59"
-                                            placeholder="MM"
-                                            value={form.time.split(":")[1] || "00"}
-                                            onChange={(e) => {
-                                                const parts = form.time.split(":")
-                                                parts[1] = e.target.value.padStart(2, "0")
-                                                setForm({ ...form, time: parts.join(":") })
-                                            }}
-                                            className="w-16 bg-black border border-[#1a1a1a] p-2 text-center text-xs text-white outline-none focus:border-[#99CCCC] font-mono"
-                                        />
-                                        <span className="text-[#333]">:</span>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="59"
-                                            placeholder="SS"
-                                            value={form.time.split(":")[2] || "00"}
-                                            onChange={(e) => {
-                                                const parts = form.time.split(":")
-                                                parts[2] = e.target.value.padStart(2, "0")
-                                                setForm({ ...form, time: parts.join(":") })
-                                            }}
-                                            className="w-16 bg-black border border-[#1a1a1a] p-2 text-center text-xs text-white outline-none focus:border-[#99CCCC] font-mono"
-                                        />
+
+                            <div className="flex flex-col lg:flex-row gap-8">
+                                <div className="flex-1 space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                                        <div className="space-y-2">
+                                            <label className="text-[9px] uppercase font-black text-[#444] tracking-widest">Date</label>
+                                            <input
+                                                type="date"
+                                                value={form.date}
+                                                onChange={(e) => {
+                                                    const nextTime = findNextFreeSlot(schedule, e.target.value)
+                                                    setForm({ ...form, date: e.target.value, time: nextTime, end_time: nextTime })
+                                                }}
+                                                className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[9px] uppercase font-black text-[#444] tracking-widest">Audio File</label>
+                                            <div className="flex gap-2">
+                                                <select
+                                                    value={form.file}
+                                                    onChange={(e) => {
+                                                        setForm({ ...form, file: e.target.value })
+                                                        suggestDuration(e.target.value)
+                                                    }}
+                                                    className="flex-1 bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors appearance-none font-mono"
+                                                >
+                                                    <option value="">Select from library...</option>
+                                                    {mediaFiles.map(f => (
+                                                        <option key={f.name} value={f.name}>{f.name}</option>
+                                                    ))}
+                                                </select>
+                                                {form.file && form.file !== "SILENCE" && (
+                                                    <button onClick={() => togglePlay(mediaFiles.find(f => f.name === form.file)?.url || "")} className="p-2.5 bg-[#1a1a1a] text-[#99CCCC] rounded-sm hover:bg-[#99CCCC] hover:text-black transition-all">
+                                                        {playingFile === mediaFiles.find(f => f.name === form.file)?.url ? <Pause size={14} /> : <Play size={14} />}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="space-y-3 p-4 bg-black/40 border border-[#111] rounded-sm">
+                                            <label className="text-[9px] uppercase font-black text-[#99CCCC] tracking-[0.2em] flex items-center gap-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-[#99CCCC]" /> Start Time
+                                            </label>
+                                            <TimeInput value={form.time} onChange={(val) => setForm({ ...form, time: val })} />
+                                        </div>
+                                        <div className="space-y-3 p-4 bg-black/40 border border-[#111] rounded-sm">
+                                            <label className="text-[9px] uppercase font-black text-[#FF6347] tracking-[0.2em] flex items-center gap-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-[#FF6347]" /> End Time
+                                            </label>
+                                            <TimeInput value={form.end_time} onChange={(val) => setForm({ ...form, end_time: val })} />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-4 pt-4">
+                                        <button
+                                            onClick={handleAddOrUpdateEntry}
+                                            className="flex-1 bg-[#99CCCC] text-black text-[10px] font-black uppercase tracking-widest px-8 py-4 rounded-sm hover:bg-white transition-all flex items-center justify-center gap-3 shadow-[0_0_25px_rgba(153,204,204,0.15)]"
+                                        >
+                                            {isEditing !== null ? <Save size={16} /> : <Plus size={16} />}
+                                            {isEditing !== null ? "Update Broadcast" : "Deploy to Schedule"}
+                                        </button>
+                                        {isEditing !== null && (
+                                            <button onClick={resetForm} className="bg-[#1a1a1a] text-white px-6 py-4 rounded-sm hover:bg-white hover:text-black transition-all">
+                                                <X size={16} />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-[9px] uppercase font-black text-[#444] tracking-widest">Audio File</label>
-                                    <select
-                                        value={form.file}
-                                        onChange={(e) => setForm({ ...form, file: e.target.value })}
-                                        className="w-full bg-black border border-[#1a1a1a] p-2.5 text-xs text-white outline-none focus:border-[#99CCCC] transition-colors appearance-none"
-                                    >
-                                        <option value="">Select from library...</option>
+
+                                {/* Sidebar Audio Palette */}
+                                <div className="w-full lg:w-80 border-l border-[#1a1a1a] pl-0 lg:pl-8 mt-8 lg:mt-0">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <span className="text-[9px] font-black uppercase text-[#444] tracking-widest">Audio Palette</span>
+                                        <Music size={12} className="text-[#222]" />
+                                    </div>
+                                    <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
                                         {mediaFiles.map(f => (
-                                            <option key={f.name} value={f.name}>{f.name}</option>
+                                            <div
+                                                key={f.name}
+                                                onClick={() => {
+                                                    setForm(prev => ({ ...prev, file: f.name }))
+                                                    suggestDuration(f.name)
+                                                    toast.success(`Selected: ${f.name}`, { duration: 1000 })
+                                                }}
+                                                className={`p-3 rounded-sm border cursor-pointer transition-all flex flex-col gap-1 ${form.file === f.name ? "bg-[#99CCCC]/10 border-[#99CCCC]/30" : "bg-black border-[#111] hover:border-[#333]"}`}
+                                            >
+                                                <span className={`text-[10px] font-bold truncate ${form.file === f.name ? "text-[#99CCCC]" : "text-[#777]"}`}>{f.name}</span>
+                                                <span className="text-[8px] text-[#333] font-mono">{(f.size / 1024 / 1024).toFixed(1)}MB • {new Date(f.mtime).toLocaleDateString()}</span>
+                                            </div>
                                         ))}
-                                    </select>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={handleAddOrUpdateEntry}
-                                        className="flex-1 bg-[#99CCCC] text-black text-[10px] font-black uppercase tracking-widest px-4 py-3 rounded-sm hover:bg-white transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(153,204,204,0.2)]"
-                                    >
-                                        {isEditing !== null ? <Save size={14} /> : <Plus size={14} />}
-                                        {isEditing !== null ? "Save Changes" : "Create Entry"}
-                                    </button>
-                                    {isEditing !== null && (
-                                        <button onClick={resetForm} className="bg-[#1a1a1a] text-white p-3 rounded-sm hover:bg-white hover:text-black transition-all">
-                                            <X size={14} />
-                                        </button>
-                                    )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -439,6 +485,41 @@ export function ScheduleManager() {
     )
 }
 
+function TimeInput({ value, onChange }: { value: string, onChange: (val: string) => void }) {
+    const [h, m, s] = value.split(":")
+
+    const update = (index: number, val: string) => {
+        const parts = value.split(":")
+        parts[index] = val.padStart(2, "0")
+        onChange(parts.join(":"))
+    }
+
+    return (
+        <div className="flex items-center gap-2">
+            <input
+                type="number" min="0" max="23" placeholder="HH"
+                value={h || "00"}
+                onChange={(e) => update(0, e.target.value)}
+                className="w-14 bg-black border border-[#1a1a1a] p-2 text-center text-xs text-white outline-none focus:border-[#99CCCC] font-mono rounded-sm"
+            />
+            <span className="text-[#333] font-mono">:</span>
+            <input
+                type="number" min="0" max="59" placeholder="MM"
+                value={m || "00"}
+                onChange={(e) => update(1, e.target.value)}
+                className="w-14 bg-black border border-[#1a1a1a] p-2 text-center text-xs text-white outline-none focus:border-[#99CCCC] font-mono rounded-sm"
+            />
+            <span className="text-[#333] font-mono">:</span>
+            <input
+                type="number" min="0" max="59" placeholder="SS"
+                value={s || "00"}
+                onChange={(e) => update(2, e.target.value)}
+                className="w-14 bg-black border border-[#1a1a1a] p-2 text-center text-xs text-white outline-none focus:border-[#99CCCC] font-mono rounded-sm"
+            />
+        </div>
+    )
+}
+
 function TabButton({ active, onClick, label }: { active: boolean, onClick: () => void, label: string }) {
     return (
         <button
@@ -451,65 +532,124 @@ function TabButton({ active, onClick, label }: { active: boolean, onClick: () =>
 }
 
 function TimelineView({ schedule, onEdit }: { schedule: ScheduleEntry[], onEdit: (index: number) => void }) {
-    const hours = Array.from({ length: 24 }, (_, i) => i)
-    const today = new Date().toISOString().split("T")[0]
+    const [viewDate, setViewDate] = useState(new Date().toISOString().split("T")[0])
+    const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day")
 
-    // Group entries by hour for easier rendering
-    const getEntriesForHour = (hour: number) => {
-        return schedule.filter(s => s.date === today && parseInt(s.time.split(":")[0]) === hour)
+    const hours = Array.from({ length: 24 }, (_, i) => i)
+
+    const getEntriesForDate = (date: string) => {
+        return schedule.filter(s => s.date === date)
+    }
+
+    const navigate = (amount: number, unit: "day" | "week" | "month") => {
+        const d = new Date(viewDate)
+        if (unit === "day") d.setDate(d.getDate() + amount)
+        if (unit === "week") d.setDate(d.getDate() + amount * 7)
+        if (unit === "month") d.setMonth(d.getMonth() + amount)
+        setViewDate(d.toISOString().split("T")[0])
     }
 
     return (
         <div className="bg-[#080808] border border-[#1a1a1a] rounded-sm p-6 overflow-hidden">
-            <div className="flex items-center justify-between mb-8">
-                <h3 className="text-[#99CCCC] font-mono text-[10px] uppercase tracking-widest">Visual Deployment Flow — Today ({today})</h3>
-                <div className="flex gap-4">
-                    <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-[#99CCCC]"></div>
-                        <span className="text-[9px] text-[#444] uppercase font-mono">Scheduled Broadcast</span>
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
+                <div className="space-y-1">
+                    <h3 className="text-[#99CCCC] font-mono text-[10px] uppercase tracking-widest flex items-center gap-2">
+                        <Calendar size={12} />
+                        Visual Flow — {viewMode.toUpperCase()} VIEW
+                    </h3>
+                    <div className="flex items-center gap-4">
+                        <span className="text-white font-black text-xl uppercase tracking-tighter">{viewDate}</span>
+                        <div className="flex gap-1 overflow-hidden rounded-sm border border-[#111]">
+                            <button onClick={() => navigate(-1, "day")} className="px-3 py-1 bg-black text-[#444] hover:text-white transition-all text-[10px] font-mono">{"<"}</button>
+                            <button onClick={() => setViewDate(new Date().toISOString().split("T")[0])} className="px-3 py-1 bg-black text-[#444] hover:text-white transition-all text-[10px] font-mono uppercase">Today</button>
+                            <button onClick={() => navigate(1, "day")} className="px-3 py-1 bg-black text-[#444] hover:text-white transition-all text-[10px] font-mono">{">"}</button>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-[#111] border border-[#222]"></div>
-                        <span className="text-[9px] text-[#444] uppercase font-mono">Void / Silence</span>
+                </div>
+
+                <div className="flex flex-col items-end gap-3">
+                    <div className="flex gap-1 bg-black p-1 rounded-sm border border-[#111]">
+                        {(["day", "week", "month"] as const).map(m => (
+                            <button
+                                key={m}
+                                onClick={() => setViewMode(m)}
+                                className={`px-4 py-1.5 text-[9px] font-black uppercase rounded-sm transition-all ${viewMode === m ? "bg-[#99CCCC] text-black" : "text-[#444] hover:text-white"}`}
+                            >
+                                {m}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex gap-4">
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-[#99CCCC]"></div>
+                            <span className="text-[9px] text-[#444] uppercase font-mono">BROADCAST</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-[#111] border border-[#222]"></div>
+                            <span className="text-[9px] text-[#444] uppercase font-mono">SILENCE</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div className="space-y-2 max-h-[600px] overflow-y-auto custom-scrollbar pr-4">
-                {hours.map(hour => {
-                    const entries = getEntriesForHour(hour)
-                    return (
-                        <div key={hour} className="flex gap-6 group">
-                            <div className="w-12 text-right py-2">
-                                <span className="text-[11px] font-mono font-black text-[#222] group-hover:text-[#99CCCC] transition-colors">{String(hour).padStart(2, "0")}:00</span>
-                            </div>
-                            <div className="flex-1 min-h-[40px] relative border-l border-[#1a1a1a] pl-4 py-1 flex flex-col gap-2">
-                                {entries.length === 0 ? (
-                                    <div className="h-full border border-dashed border-[#111] rounded-sm flex items-center px-4 opacity-20">
-                                        <span className="text-[8px] font-mono uppercase text-[#333]">Static / Silence</span>
-                                    </div>
-                                ) : (
-                                    entries.sort((a, b) => a.time.localeCompare(b.time)).map((entry) => (
-                                        <div
-                                            key={`${entry.time}-${entry.file}`}
-                                            onClick={() => onEdit(schedule.indexOf(entry))}
-                                            className="bg-[#99CCCC]/10 border border-[#99CCCC]/20 rounded-sm p-3 cursor-pointer hover:bg-[#99CCCC] hover:text-black transition-all group/item"
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="font-mono text-[10px] font-bold">{entry.time}</span>
-                                                    <span className="text-[10px] uppercase font-black tracking-tight truncate max-w-[200px]">{entry.file}</span>
-                                                </div>
-                                                <Edit2 size={10} className="opacity-0 group-hover/item:opacity-100" />
-                                            </div>
+            {viewMode === "day" && (
+                <div className="space-y-2 max-h-[600px] overflow-y-auto custom-scrollbar pr-4">
+                    {hours.map(hour => {
+                        const dateEntries = getEntriesForDate(viewDate)
+                        const entries = dateEntries.filter(s => parseInt(s.time.split(":")[0]) === hour)
+                        return (
+                            <div key={hour} className="flex gap-6 group">
+                                <div className="w-12 text-right py-2">
+                                    <span className="text-[11px] font-mono font-black text-[#222] group-hover:text-[#99CCCC] transition-colors">{String(hour).padStart(2, "0")}:00</span>
+                                </div>
+                                <div className="flex-1 min-h-[40px] relative border-l border-[#1a1a1a] pl-4 py-1 flex flex-col gap-2">
+                                    {entries.length === 0 ? (
+                                        <div className="h-full border border-dashed border-[#111] rounded-sm flex items-center px-4 opacity-10">
+                                            <span className="text-[8px] font-mono uppercase text-[#222]">Void.</span>
                                         </div>
-                                    ))
-                                )}
+                                    ) : (
+                                        entries.sort((a, b) => a.time.localeCompare(b.time)).map((entry) => (
+                                            <div
+                                                key={`${entry.time}-${entry.file}`}
+                                                onClick={() => onEdit(schedule.indexOf(entry))}
+                                                className="bg-[#99CCCC]/10 border border-[#99CCCC]/20 rounded-sm p-3 cursor-pointer hover:bg-[#99CCCC] hover:text-black transition-all group/item shadow-sm hover:translate-x-1 duration-300"
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-mono text-[10px] font-bold text-[#99CCCC] group-hover/item:text-black">{entry.time} — {entry.end_time || "??:??:??"}</span>
+                                                            <span className="text-[10px] uppercase font-black tracking-tight group-hover/item:text-black mt-0.5">{entry.file}</span>
+                                                        </div>
+                                                    </div>
+                                                    <Edit2 size={10} className="opacity-0 group-hover/item:opacity-100" />
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    )
-                })}
-            </div>
+                        )
+                    })}
+                </div>
+            )}
+
+            {(viewMode === "week" || viewMode === "month") && (
+                <div className="min-h-[400px] flex items-center justify-center border border-dashed border-[#111] rounded-sm bg-black/40">
+                    <div className="text-center space-y-3">
+                        <Calendar className="mx-auto text-[#1a1a1a]" size={40} />
+                        <p className="text-[10px] font-mono uppercase text-[#333] tracking-widest">
+                            {viewMode.toUpperCase()} VIEW UNDER DEVELOPMENT<br />
+                            <span className="text-[8px] opacity-50">USE NAVIGATION BUTTONS IN DAY VIEW FOR PRECISE CONTROL</span>
+                        </p>
+                        <button
+                            onClick={() => setViewMode("day")}
+                            className="text-[#99CCCC] text-[9px] font-black uppercase tracking-widest hover:underline"
+                        >
+                            Return to Day View
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
