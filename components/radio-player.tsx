@@ -52,18 +52,18 @@ export function RadioPlayer() {
   const [progress, setProgress] = useState(0)
   const [visibleIndex, setVisibleIndex] = useState(0)
   const [now, setNow] = useState(0)
-  const [userFavorites, setUserFavorites] = useState<number[]>([])
+  const [userFavorites, setUserFavorites] = useState<string[]>([])
 
   useEffect(() => {
     fetch("/api/listeners/favorites")
       .then(r => r.json())
       .then(data => {
-        if (data.favoriteArtists) setUserFavorites(data.favoriteArtists)
+        if (data.favoriteArtists) setUserFavorites(data.favoriteArtists.map(String))
       })
       .catch()
   }, [])
 
-  const toggleFavorite = async (artistId: number) => {
+  const toggleFavorite = async (artistId: string) => {
     const isFav = userFavorites.includes(artistId)
     setUserFavorites(prev => isFav ? prev.filter(id => id !== artistId) : [...prev, artistId])
     try {
@@ -131,8 +131,12 @@ export function RadioPlayer() {
       const viewportCenter = x + el.clientWidth / 2
       // Each card is at: 32 + i * CARD_WIDTH [to] 32 + i * CARD_WIDTH + 312
       // Middle of card i is: 32 + i * CARD_WIDTH + 156
-      const idx = Math.floor((viewportCenter - 32 - 156) / CARD_WIDTH) % TOTAL_CARDS
-      setVisibleIndex(idx >= 0 ? idx : 0)
+      if (TOTAL_CARDS > 0) {
+        const idx = Math.floor((viewportCenter - 32 - 156) / CARD_WIDTH) % TOTAL_CARDS
+        setVisibleIndex(idx >= 0 ? idx : 0)
+      } else {
+        setVisibleIndex(0)
+      }
     }
 
     el.addEventListener("scroll", handleScroll, { passive: true })
@@ -386,7 +390,7 @@ export function RadioPlayer() {
                     artist={artist}
                     status={getStatus(i)}
                     progress={realIndex === currentPlayingIndex ? progress : 0}
-                    isFavorite={userFavorites.includes(artist.id)}
+                    isFavorite={userFavorites.includes(artist.dbId || String(artist.id))}
                     onToggleFavorite={toggleFavorite}
                   />
                 </div>

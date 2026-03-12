@@ -1,5 +1,6 @@
 import fs from "fs"
 import path from "path"
+import { randomUUID } from "crypto"
 
 const DB_FILE = path.join(process.cwd(), "data", "artist-db.json")
 
@@ -15,6 +16,7 @@ export interface DBArtist {
     soundcloudUrl?: string
     bandcampUrl?: string
     isLottie?: boolean
+    favoritesCount?: number // computed by API, not stored in JSON
 }
 
 function ensureDirectoryExistence(filePath: string) {
@@ -43,7 +45,7 @@ export function createDBArtist(data: Omit<DBArtist, "id">): DBArtist {
     const artists = getArtistDB()
     const newArtist: DBArtist = {
         ...data,
-        id: Date.now().toString(),
+        id: randomUUID(),
     }
     artists.push(newArtist)
     saveArtistDB(artists)
@@ -78,7 +80,7 @@ export function syncDBArtists(newArtistsData: Omit<DBArtist, "id">[]) {
         } else {
             artists.push({
                 ...data,
-                id: Date.now().toString() + Math.random().toString(36).substr(2, 5)
+                id: randomUUID()
             })
             updated = true
         }

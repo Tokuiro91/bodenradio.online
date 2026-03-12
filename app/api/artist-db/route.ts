@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server"
 import { getArtistDB, createDBArtist, updateDBArtist, deleteDBArtist, syncDBArtists } from "@/lib/artist-db-store"
+import { getListeners } from "@/lib/listeners-store"
 import { auth } from "@/lib/auth"
 
 export async function GET() {
-    return NextResponse.json(getArtistDB())
+    const artists = getArtistDB()
+    const listeners = getListeners()
+    const counts: Record<string, number> = {}
+    for (const listener of listeners) {
+        for (const artistId of (listener.favoriteArtists || [])) {
+            counts[artistId] = (counts[artistId] || 0) + 1
+        }
+    }
+    return NextResponse.json(artists.map(a => ({ ...a, favoritesCount: counts[a.id] || 0 })))
 }
 
 export async function POST(req: Request) {

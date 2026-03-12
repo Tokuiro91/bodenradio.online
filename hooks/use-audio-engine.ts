@@ -1,8 +1,8 @@
 "use client"
 
 /**
- * useAudioEngine — единый движок воспроизведения для расписания радио.
- * Обновлено для использования серверного времени и Media Session API.
+ * useAudioEngine — unified playback engine for the radio schedule.
+ * Updated for server time, Media Session API, and smooth fade transitions.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -10,10 +10,11 @@ import type { Artist } from "@/lib/artists-data"
 import { getSyncedTime } from "./use-server-time"
 import { toast } from "sonner"
 
-const FADE_DURATION_MS = 1000
 const FADE_STEPS = 20
 const PRELOAD_BEFORE_MS = 10 * 60 * 1000  // 10 min before start
 const RELEASE_AFTER_MS = 10 * 60 * 1000   // 10 min after end
+const FADE_IN_DURATION_MS = 3000           // 3s fade-in for new broadcast
+const SWITCH_FADE_OUT_MS = 1500            // fade-out for broadcast switch / manual pause
 
 function isExternalUrl(url: string) {
     return url.startsWith("http://") || url.startsWith("https://")
@@ -31,7 +32,7 @@ function resolveStreamUrl(url: string): string {
     return url
 }
 
-const UNIFIED_STREAM_URL = "http://163.245.219.4:8000/radio"
+const UNIFIED_STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL || "http://163.245.219.4:8000/radio"
 
 function getAudioUrl(artist: Artist): string {
     return artist.audioUrl || UNIFIED_STREAM_URL
@@ -87,19 +88,40 @@ function updateMediaSession(artist: Artist | null) {
     }
 }
 
+/** Linearly fade audio volume from `fromVol` to `toVol` over `durationMs` ms. */
+function startFade(
+    audio: HTMLAudioElement,
+    fromVol: number,
+    toVol: number,
+    durationMs: number,
+    onDone?: () => void
+): ReturnType<typeof setInterval> {
+    const stepMs = Math.max(durationMs / FADE_STEPS, 16)
+    let step = 0
+    const id = setInterval(() => {
+        step++
+        audio.volume = Math.max(0, Math.min(1, fromVol + (toVol - fromVol) * step / FADE_STEPS))
+        if (step >= FADE_STEPS) {
+            clearInterval(id)
+            onDone?.()
+        }
+    }, stepMs)
+    return id
+}
+
 interface CsvEntry { date: string; time: string; end_time: string; file: string }
 
 function findActiveCsvEntry(entries: CsvEntry[]): CsvEntry | null {
     const now = new Date()
-    const currentYear = now.getUTCFullYear();
-    const currentMonth = String(now.getUTCMonth() + 1).padStart(2, '0');
-    const currentDay = String(now.getUTCDate()).padStart(2, '0');
-    const today = `${currentYear}-${currentMonth}-${currentDay}`;
+    const y = now.getUTCFullYear()
+    const mo = String(now.getUTCMonth() + 1).padStart(2, '0')
+    const d = String(now.getUTCDate()).padStart(2, '0')
+    const today = `${y}-${mo}-${d}`
 
-    const currentH = String(now.getUTCHours()).padStart(2, '0');
-    const currentM = String(now.getUTCMinutes()).padStart(2, '0');
-    const currentS = String(now.getUTCSeconds()).padStart(2, '0');
-    const hms = `${currentH}:${currentM}:${currentS}`;
+    const h = String(now.getUTCHours()).padStart(2, '0')
+    const min = String(now.getUTCMinutes()).padStart(2, '0')
+    const s = String(now.getUTCSeconds()).padStart(2, '0')
+    const hms = `${h}:${min}:${s}`
 
     return entries.find(e =>
         e.date === today && e.time <= hms && (e.end_time ? e.end_time > hms : true)
@@ -112,7 +134,9 @@ export function useAudioEngine(artists: Artist[]) {
     const volumeRef = useRef(75)
     const isMutedRef = useRef(false)
     const artistsRef = useRef(artists)
-    const tickRunningRef = useRef(false)
+    const fadeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+    const isFadingRef = useRef(false)
+    const schedulePausedRef = useRef(false)  // stopped by schedule end, not user
 
     const [isPlaying, setIsPlayingState] = useState(false)
     const [volume, setVolumeState] = useState(75)
@@ -136,7 +160,6 @@ export function useAudioEngine(artists: Artist[]) {
         load()
         const iv = setInterval(() => {
             setActiveScheduleEntry(findActiveCsvEntry(csvEntriesRef.current))
-            // Reload full list every 5 minutes
         }, 60_000)
         return () => clearInterval(iv)
     }, [])
@@ -150,51 +173,76 @@ export function useAudioEngine(artists: Artist[]) {
     useEffect(() => {
         if (!audioRef.current) {
             audioRef.current = new Audio()
-            audioRef.current.preload = "none" // Don't preload until played
+            audioRef.current.preload = "none"
             audioRef.current.src = UNIFIED_STREAM_URL
             audioRef.current.crossOrigin = "anonymous"
         }
 
         return () => {
+            if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current)
             audioRef.current?.pause()
             if (audioRef.current) audioRef.current.src = ""
         }
     }, [])
 
+    // Sync volume/mute (skip while fading to avoid fighting the fade)
     useEffect(() => {
         const audio = audioRef.current
-        if (!audio) return
+        if (!audio || isFadingRef.current) return
         audio.volume = isMuted ? 0 : volume / 100
     }, [volume, isMuted])
 
+    // Pre-end monitor: intentionally no-op — stream runs continuously until user stops it
+
+    // Main schedule tick: detect artist changes and handle transitions
     useEffect(() => {
         const tick = () => {
             const active = findActiveArtist(artistsRef.current)
 
-            // Strict schedule enforcement
             if (activeArtist && !active) {
-                // Broadcast just ended - STOP
-                if (isPlayingRef.current) {
-                    audioRef.current?.pause()
-                    setIsPlayingState(false)
-                    isPlayingRef.current = false
-                    toast.info("Broadcast ended. Stream paused.")
-                }
+                // Broadcast ended — keep playing, just update state
             } else if (!activeArtist && active) {
-                // New broadcast started while player was open — auto-switch if already playing
-                if (isPlayingRef.current && audioRef.current) {
+                // New broadcast started — auto-start if playing or paused by schedule end
+                if ((isPlayingRef.current || schedulePausedRef.current) && audioRef.current) {
+                    schedulePausedRef.current = false
+                    if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current)
+                    isFadingRef.current = true
                     const url = resolveStreamUrl(getAudioUrl(active)) + "?t=" + Date.now()
                     audioRef.current.src = url
+                    audioRef.current.volume = 0
                     audioRef.current.load()
-                    audioRef.current.play().catch(console.error)
+                    audioRef.current.play().then(() => {
+                        setIsPlayingState(true)
+                        isPlayingRef.current = true
+                        const targetVol = isMutedRef.current ? 0 : volumeRef.current / 100
+                        fadeIntervalRef.current = startFade(audioRef.current!, 0, targetVol, FADE_IN_DURATION_MS, () => {
+                            isFadingRef.current = false
+                        })
+                    }).catch((err) => {
+                        console.error("Auto-start failed:", err)
+                        isFadingRef.current = false
+                    })
                 }
             } else if (activeArtist && active && activeArtist.id !== active.id) {
-                // Switched from one broadcast to another — use new artist's URL
-                if (isPlayingRef.current) {
-                    const url = resolveStreamUrl(getAudioUrl(active)) + "?t=" + Date.now()
-                    audioRef.current!.src = url
-                    audioRef.current!.load()
-                    audioRef.current!.play().catch(console.error)
+                // Switched from one broadcast to another — fade out, switch, fade in
+                if (isPlayingRef.current && audioRef.current) {
+                    if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current)
+                    isFadingRef.current = true
+                    const audio = audioRef.current
+                    fadeIntervalRef.current = startFade(audio, audio.volume, 0, SWITCH_FADE_OUT_MS, () => {
+                        const url = resolveStreamUrl(getAudioUrl(active)) + "?t=" + Date.now()
+                        audio.src = url
+                        audio.volume = 0
+                        audio.load()
+                        audio.play().then(() => {
+                            const targetVol = isMutedRef.current ? 0 : volumeRef.current / 100
+                            fadeIntervalRef.current = startFade(audio, 0, targetVol, FADE_IN_DURATION_MS, () => {
+                                isFadingRef.current = false
+                            })
+                        }).catch(() => {
+                            isFadingRef.current = false
+                        })
+                    })
                 }
             }
 
@@ -211,11 +259,16 @@ export function useAudioEngine(artists: Artist[]) {
         const audio = audioRef.current
         if (!audio) return
 
-        // 1. Check if anything is scheduled right now
+        // Cancel any in-progress fade
+        if (fadeIntervalRef.current) {
+            clearInterval(fadeIntervalRef.current)
+            fadeIntervalRef.current = null
+        }
+        isFadingRef.current = false
+        schedulePausedRef.current = false
+
         const currentActive = findActiveArtist(artistsRef.current)
         if (!isPlayingRef.current && !currentActive) {
-            // We allow playing even if no artist is active in the UI schedule, 
-            // as Liquidsoap might have its own schedule or fallback.
             toast.info("Connecting to live stream...")
         }
 
@@ -224,13 +277,17 @@ export function useAudioEngine(artists: Artist[]) {
         isPlayingRef.current = newPlaying
 
         if (newPlaying) {
-            // Use artist's external URL if set, otherwise fall back to unified Icecast stream
-            const currentActive = findActiveArtist(artistsRef.current)
             const streamUrl = resolveStreamUrl(currentActive ? getAudioUrl(currentActive) : UNIFIED_STREAM_URL) + "?t=" + Date.now()
             audio.src = streamUrl
+            audio.volume = 0
             audio.load()
             try {
                 await audio.play()
+                isFadingRef.current = true
+                const targetVol = isMutedRef.current ? 0 : volumeRef.current / 100
+                fadeIntervalRef.current = startFade(audio, 0, targetVol, FADE_IN_DURATION_MS, () => {
+                    isFadingRef.current = false
+                })
             } catch (err) {
                 console.error("Playback failed:", err)
                 setIsPlayingState(false)
@@ -238,26 +295,30 @@ export function useAudioEngine(artists: Artist[]) {
                 toast.error("Failed to start playback")
             }
         } else {
-            audio.pause()
-            audio.src = ""
-            audio.load()
+            // Fade out then stop
+            isFadingRef.current = true
+            fadeIntervalRef.current = startFade(audio, audio.volume, 0, SWITCH_FADE_OUT_MS, () => {
+                audio.pause()
+                audio.src = ""
+                audio.load()
+                isFadingRef.current = false
+            })
         }
     }, [])
 
     const setVolume = useCallback((v: number) => {
         setVolumeState(v)
-        if (audioRef.current && !isMutedRef.current) {
+        if (audioRef.current && !isMutedRef.current && !isFadingRef.current) {
             audioRef.current.volume = v / 100
         }
     }, [])
 
     const setIsMuted = useCallback((m: boolean) => {
         setIsMutedState(m)
-        if (audioRef.current) {
+        if (audioRef.current && !isFadingRef.current) {
             audioRef.current.volume = m ? 0 : volumeRef.current / 100
         }
     }, [])
 
     return { isPlaying, volume, isMuted, activeArtist, activeScheduleEntry, togglePlay, setVolume, setIsMuted }
 }
-

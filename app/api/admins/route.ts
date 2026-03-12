@@ -48,7 +48,8 @@ export async function DELETE(request: Request) {
 
     const { email } = await request.json()
 
-    if (email.toLowerCase() === "chyrukoleksii@gmail.com") {
+    const superadmin = (process.env.SUPERADMIN_EMAIL || "").toLowerCase().trim()
+    if (superadmin && email.toLowerCase() === superadmin) {
         return NextResponse.json({ error: "Cannot delete the main administrator" }, { status: 403 })
     }
 

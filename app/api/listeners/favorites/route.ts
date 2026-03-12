@@ -25,7 +25,7 @@ export async function PUT(req: Request) {
         }
 
         const { artistId } = await req.json()
-        if (typeof artistId !== "number") {
+        if (!artistId && artistId !== 0) {
             return NextResponse.json({ error: "Invalid artist ID" }, { status: 400 })
         }
 

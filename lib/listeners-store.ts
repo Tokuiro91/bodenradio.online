@@ -12,7 +12,7 @@ export interface Listener {
     avatar?: string
     favoriteArtists: string[] // IDs (dbId)
     role: "listener"
-    provider: "credentials" | "google" | "apple"
+    provider: "credentials" | "google" | "apple" | "email"
     isPremium?: boolean
     pushSubscriptions?: any[] // Web Push subscriptions
     pushEnabled?: boolean
@@ -44,7 +44,7 @@ export async function createListener(data: {
     email: string
     password?: string
     name?: string
-    provider: "credentials" | "google" | "apple"
+    provider: "credentials" | "google" | "apple" | "email"
     favoriteArtists?: string[]
 }): Promise<Listener> {
     const listeners = getListeners()
@@ -71,6 +71,10 @@ export async function createListener(data: {
 
 export function findListenerByEmail(email: string): Listener | undefined {
     return getListeners().find((l) => l.email === email.toLowerCase())
+}
+
+export function findListenerByName(name: string): Listener | undefined {
+    return getListeners().find((l) => l.name?.toLowerCase() === name.toLowerCase().trim())
 }
 
 export function deleteListener(email: string) {

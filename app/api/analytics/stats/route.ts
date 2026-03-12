@@ -66,7 +66,7 @@ export async function GET(req: Request) {
         const geoData = Object.entries(geoMap)
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value)
-            .slice(0, 10)
+            .slice(0, 100)
 
         const timelineData = Object.entries(timelineMap)
             .sort((a, b) => a[0].localeCompare(b[0]))

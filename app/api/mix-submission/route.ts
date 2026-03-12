@@ -1,9 +1,5 @@
-import { google } from 'googleapis';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-
-const SPREADSHEET_ID = process.env.GOOGLE_MIX_SUBMISSION_SPREADSHEET_ID || '1gH2majqCcRkQGUPvWE8bqpo6MhdZf8z31Q6mf2t0pBM';
-const RANGE = 'A:L'; // Expanded to cover all columns
 
 export async function POST(req: Request) {
     try {
@@ -14,7 +10,6 @@ export async function POST(req: Request) {
 
         const data = await req.json();
 
-        // Validation (simplified, Zod is recommended for frontend)
         const requiredFields = ['artistName', 'mixName', 'location', 'artistPhoto', 'audioUrl', 'description', 'contact'];
         for (const field of requiredFields) {
             if (!data[field]) {
@@ -22,62 +17,37 @@ export async function POST(req: Request) {
             }
         }
 
-        let privateKey = process.env.GOOGLE_PRIVATE_KEY;
-        if (!privateKey) {
-            console.error('GOOGLE_PRIVATE_KEY is missing from environment');
-            return NextResponse.json({ error: 'Server configuration error (key)' }, { status: 500 });
+        const scriptUrl = process.env.GOOGLE_APPS_SCRIPT_URL;
+        if (!scriptUrl) {
+            return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
         }
 
-        // Handle both actual newlines and literal \n sequences
-        privateKey = privateKey.replace(/\\n/g, '\n');
+        const payload = {
+            timestamp: new Date().toISOString(),
+            artistName: data.artistName,
+            mixName: data.mixName,
+            location: data.location,
+            contact: data.contact,
+            instagram: data.instagram || '',
+            soundcloud: data.soundcloud || '',
+            bandcamp: data.bandcamp || '',
+            artistPhoto: data.artistPhoto,
+            audioUrl: data.audioUrl,
+            description: data.description,
+            genresBpm: data.genresBpm || '',
+        };
 
-        // Ensure it starts/ends correctly and has actual newlines
-        if (!privateKey.includes('\n')) {
-            console.warn('Private key does not contain newlines, this might cause OSSL errors');
-        }
-
-        const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-        if (!clientEmail) {
-            console.error('GOOGLE_SERVICE_ACCOUNT_EMAIL is missing from environment');
-            return NextResponse.json({ error: 'Server configuration error (email)' }, { status: 500 });
-        }
-
-        // Use JWT for better control and debugging
-        const jwtClient = new google.auth.JWT({
-            email: clientEmail,
-            key: privateKey,
-            scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+        const res = await fetch(scriptUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
         });
 
-        const sheets = google.sheets({ version: 'v4', auth: jwtClient });
-
-        // Append to Spreadsheet
-        // Order: Timestamp, Artist Name, Mix Name, Location, Contact, Instagram, SoundCloud, Bandcamp, Photo URL, Audio URL, Bio, Genres/BPM
-        const values = [
-            [
-                new Date().toISOString(),
-                data.artistName,
-                data.mixName,
-                data.location,
-                data.contact,
-                data.instagram || '',
-                data.soundcloud || '',
-                data.bandcamp || '',
-                data.artistPhoto,
-                data.audioUrl,
-                data.description,
-                data.genresBpm || ''
-            ],
-        ];
-
-        await sheets.spreadsheets.values.append({
-            spreadsheetId: SPREADSHEET_ID,
-            range: RANGE,
-            valueInputOption: 'USER_ENTERED',
-            requestBody: {
-                values,
-            },
-        });
+        if (!res.ok) {
+            const text = await res.text();
+            console.error('Apps Script error:', text);
+            return NextResponse.json({ error: 'Failed to submit' }, { status: 500 });
+        }
 
         return NextResponse.json({ ok: true });
     } catch (error: any) {

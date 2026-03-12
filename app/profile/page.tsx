@@ -23,7 +23,7 @@ export default function ProfilePage() {
         avatar: "",
         notifications: true,
     })
-    const [favorites, setFavorites] = useState<number[]>([])
+    const [favorites, setFavorites] = useState<string[]>([])
 
     useEffect(() => {
         if (status === "unauthenticated") {
@@ -49,7 +49,7 @@ export default function ProfilePage() {
         signOut({ callbackUrl: "/" })
     }
 
-    const removeFavorite = async (artistId: number) => {
+    const removeFavorite = async (artistId: string) => {
         setFavorites(prev => prev.filter(id => id !== artistId))
         try {
             await fetch("/api/listeners/favorites", {
@@ -109,14 +109,14 @@ export default function ProfilePage() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                            {artists.filter(a => favorites.map(fId => Number(fId)).includes(a.id)).map(artist => (
+                            {artists.filter(a => favorites.includes(a.dbId || String(a.id))).map(artist => (
                                 <div key={artist.id} className="relative aspect-square rounded-sm overflow-hidden group border border-[#1a1a1a]">
                                     <Image src={artist.image} alt={artist.name} fill className="object-cover transition-transform group-hover:scale-110" />
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity" />
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation()
-                                            removeFavorite(artist.id)
+                                            removeFavorite(artist.dbId || String(artist.id))
                                         }}
                                         className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-full text-white/40 hover:text-white transition-colors opacity-0 group-hover:opacity-100 z-10"
                                     >

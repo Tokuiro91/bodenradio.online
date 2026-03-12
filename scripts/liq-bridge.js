@@ -25,36 +25,72 @@ function getCurrentTrack() {
                 const parts = line.split(',').map(p => p.trim());
                 if (parts.length === 3) {
                     // Old format: date,time,file
-                    return { date: parts[0], time: parts[1], end_time: '', file: parts[2] };
+                    return { date: parts[0], time: parts[1], end_time: '', end_date: '', file: parts[2] };
+                } else if (parts.length === 4) {
+                    // Format: date,time,end_time,file
+                    return { date: parts[0], time: parts[1], end_time: parts[2], end_date: '', file: parts[3] };
+                } else {
+                    // New format: date,time,end_time,end_date,file
+                    return { date: parts[0], time: parts[1], end_time: parts[2], end_date: parts[3], file: parts[4] };
                 }
-                // New format: date,time,end_time,file
-                return { date: parts[0], time: parts[1], end_time: parts[2], file: parts[3] };
             });
 
             const currentEntry = entries.find(entry => {
-                if (entry.date !== currentDate) return false;
-                if (!entry.end_time) return entry.time <= currentTime;
-                return entry.time <= currentTime && currentTime < entry.end_time;
+                const endDate = entry.end_date || entry.date;
+                // Check date range (supports multi-day entries)
+                if (currentDate < entry.date || currentDate > endDate) return false;
+                // On start day: must be at or after start time
+                if (currentDate === entry.date && currentTime < entry.time) return false;
+                // On end day: must be before end time
+                if (currentDate === endDate && entry.end_time && currentTime >= entry.end_time) return false;
+                return true;
             });
 
             if (currentEntry && currentEntry.file && currentEntry.file !== 'SILENCE') {
-                // Prevent looping: check if this slot was already played
                 const slotId = `${currentEntry.date}_${currentEntry.time}_${currentEntry.file}`;
-                let lastPlayed = '';
+
+                // Compute slot duration so we block re-queuing for the whole slot
+                const startMs = new Date(`${currentEntry.date}T${currentEntry.time}Z`).getTime();
+                const endDateStr = currentEntry.end_date || currentEntry.date;
+                const endTimeStr = currentEntry.end_time || '23:59:59';
+                const endMs = new Date(`${endDateStr}T${endTimeStr}Z`).getTime();
+                const slotDurationMs = Math.max(endMs - startMs, 60 * 1000); // at least 1 min
+
+                // State file format: "slotId|epochMs"
+                let lastSlotId = '';
+                let lastTimestamp = 0;
                 if (fs.existsSync(STATE_FILE)) {
-                    lastPlayed = fs.readFileSync(STATE_FILE, 'utf8').trim();
+                    const state = fs.readFileSync(STATE_FILE, 'utf8').trim();
+                    const pipe = state.lastIndexOf('|');
+                    if (pipe !== -1) {
+                        lastSlotId = state.slice(0, pipe);
+                        lastTimestamp = parseInt(state.slice(pipe + 1), 10) || 0;
+                    } else {
+                        lastSlotId = state; // legacy format — treat as already played
+                    }
                 }
 
-                if (lastPlayed === slotId) {
+                const nowMs = now.getTime();
+                if (lastSlotId === slotId && (nowMs - lastTimestamp) < slotDurationMs) {
+                    // Already handed this slot to Liquidsoap; still within slot duration
                     return "SILENCE";
                 }
 
-                // Mark as played
-                fs.writeFileSync(STATE_FILE, slotId);
+                // Mark slot as started
+                fs.writeFileSync(STATE_FILE, `${slotId}|${nowMs}`);
 
                 let filePath = currentEntry.file;
                 if (!filePath.startsWith('/') && !filePath.startsWith('http')) {
                     filePath = path.join(__dirname, '..', 'data', 'radio', 'mixes', filePath);
+                }
+
+                // Tell Liquidsoap to stop the file at slot end (cue_out = slot duration in seconds)
+                // This ensures a 60-min file stops at 13:05 if slot ends at 13:05
+                if (currentEntry.end_time) {
+                    const actualDurationSec = (endMs - startMs) / 1000;
+                    if (actualDurationSec > 0) {
+                        return `annotate:liq_cue_out=${actualDurationSec.toFixed(3)}:${filePath}`;
+                    }
                 }
                 return filePath;
             }

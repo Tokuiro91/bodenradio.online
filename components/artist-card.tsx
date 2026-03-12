@@ -72,7 +72,7 @@ interface ArtistCardProps {
   status?: "played" | "playing" | "upcoming"
   progress?: number
   isFavorite?: boolean
-  onToggleFavorite?: (id: number) => void
+  onToggleFavorite?: (id: string) => void
 }
 
 export function ArtistCard({ artist, status, progress: externalProgress = 0, isFavorite, onToggleFavorite }: ArtistCardProps) {
@@ -304,7 +304,7 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      onToggleFavorite(artist.id)
+                      onToggleFavorite(artist.dbId || String(artist.id))
                     }}
                     className={`transition-colors flex-shrink-0 ${isFavorite
                       ? "text-[#99CCCC]"

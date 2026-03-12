@@ -26,13 +26,18 @@ export async function PUT(req: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
-        const { pushEnabled } = await req.json()
-        if (typeof pushEnabled !== "boolean") {
-            return NextResponse.json({ error: "Invalid preference" }, { status: 400 })
+        const body = await req.json()
+        const updates: Record<string, unknown> = {}
+
+        if (typeof body.pushEnabled === "boolean") updates.pushEnabled = body.pushEnabled
+        if (typeof body.name === "string" && body.name.trim()) updates.name = body.name.trim()
+
+        if (Object.keys(updates).length === 0) {
+            return NextResponse.json({ error: "Nothing to update" }, { status: 400 })
         }
 
-        updateListener(session.user.email, { pushEnabled })
-        return NextResponse.json({ ok: true, pushEnabled })
+        updateListener(session.user.email, updates)
+        return NextResponse.json({ ok: true })
     } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 500 })
     }

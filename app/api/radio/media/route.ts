@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from "next/server"
 import fs from "fs"
 import path from "path"
 
+/** Wrap a Node.js ReadableStream into a Web API ReadableStream. */
+function nodeToWebStream(nodeStream: fs.ReadStream): ReadableStream<Uint8Array> {
+    return new ReadableStream({
+        start(controller) {
+            nodeStream.on("data", (chunk: Buffer | string) => {
+                controller.enqueue(typeof chunk === "string" ? Buffer.from(chunk) : chunk)
+            })
+            nodeStream.on("end", () => controller.close())
+            nodeStream.on("error", (err) => controller.error(err))
+        },
+        cancel() {
+            nodeStream.destroy()
+        }
+    })
+}
+
 // Use a path that won't cause build-time symlink issues
 // On VPS, we use the absolute path directly to avoid Turbopack symlink errors
 let MIXES_DIR = path.join(process.cwd(), "data", "radio", "mixes")
@@ -23,19 +39,36 @@ export async function GET(req: NextRequest) {
             }
 
             const stats = fs.statSync(filePath)
-            const fileStream = fs.createReadStream(filePath)
-
-            // Dynamic type detection based on extension
             const ext = path.extname(safeName).toLowerCase()
             const contentType = ext === ".mp3" ? "audio/mpeg" : "application/octet-stream"
+            const fileSize = stats.size
 
-            // @ts-ignore
-            return new NextResponse(fileStream, {
+            // Handle Range requests for audio seeking
+            const rangeHeader = req.headers.get("range")
+            if (rangeHeader) {
+                const [, rangeStr] = rangeHeader.split("=")
+                const [startStr, endStr] = rangeStr.split("-")
+                const start = parseInt(startStr, 10)
+                const end = endStr ? parseInt(endStr, 10) : fileSize - 1
+                const chunkSize = end - start + 1
+
+                return new NextResponse(nodeToWebStream(fs.createReadStream(filePath, { start, end })), {
+                    status: 206,
+                    headers: {
+                        "Content-Type": contentType,
+                        "Content-Length": chunkSize.toString(),
+                        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+                        "Accept-Ranges": "bytes",
+                    },
+                })
+            }
+
+            return new NextResponse(nodeToWebStream(fs.createReadStream(filePath)), {
                 headers: {
                     "Content-Type": contentType,
-                    "Content-Length": stats.size.toString(),
+                    "Content-Length": fileSize.toString(),
                     "Accept-Ranges": "bytes",
-                }
+                },
             })
         }
 
@@ -63,14 +96,6 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: "Failed to process media request" }, { status: 500 })
     }
 }
-
-export const config = {
-    api: {
-        bodyParser: {
-            sizeLimit: '500mb',
-        },
-    },
-};
 
 export async function POST(req: NextRequest) {
     try {

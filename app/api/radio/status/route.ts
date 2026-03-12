@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
-const ICECAST_URL = "http://admin:admin@localhost:8000/admin/stats"
+const ICECAST_PASS = process.env.ICECAST_PASSWORD || "admin"
+const ICECAST_URL = `http://admin:${ICECAST_PASS}@localhost:8000/admin/stats`
 const CACHE_TTL_MS = 10_000
 
 let cache: { data: IcecastStatus; ts: number } | null = null

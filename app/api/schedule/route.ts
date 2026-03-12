@@ -38,10 +38,14 @@ export async function GET() {
                 // Old format: date,time,file
                 const [date, time, file] = parts
                 return { date, time, end_time: "", file: toDisplayName(file) }
-            } else {
-                // New format: date,time,end_time,file
+            } else if (parts.length === 4) {
+                // Format: date,time,end_time,file
                 const [date, time, end_time, file] = parts
                 return { date, time, end_time: end_time || "", file: toDisplayName(file) }
+            } else {
+                // New format: date,time,end_time,end_date,file
+                const [date, time, end_time, end_date, file] = parts
+                return { date, time, end_time: end_time || "", end_date: end_date || undefined, file: toDisplayName(file) }
             }
         })
         return NextResponse.json({ schedule })
@@ -60,7 +64,7 @@ export async function POST(req: NextRequest) {
             return a.time.localeCompare(b.time);
         });
 
-        let csvContent = "date,time,end_time,file\n"
+        let csvContent = "date,time,end_time,end_date,file\n"
         sortedSchedule.forEach((entry: any) => {
             // Convert to full filesystem path for Liquidsoap
             const fullPath = toFullPath(entry.file)
@@ -68,7 +72,8 @@ export async function POST(req: NextRequest) {
             const safeDate = entry.date.trim()
             const safeTime = entry.time.trim()
             const safeEnd = (entry.end_time || "").trim()
-            csvContent += `${safeDate},${safeTime},${safeEnd},${fullPath}\n`
+            const safeEndDate = (entry.end_date || "").trim()
+            csvContent += `${safeDate},${safeTime},${safeEnd},${safeEndDate},${fullPath}\n`
         })
         fs.writeFileSync(CSV_PATH, csvContent)
         return NextResponse.json({ success: true })

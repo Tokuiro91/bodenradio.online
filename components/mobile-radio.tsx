@@ -16,6 +16,9 @@ import {
   Menu,
   ExternalLink,
   Star,
+  Share2,
+  Download,
+  X,
 } from "lucide-react"
 import { ReactionPicker } from "@/components/reaction-picker"
 
@@ -81,7 +84,7 @@ function calcProgress(artist: { startTime: string; endTime: string }): number {
 }
 
 export function MobileRadio() {
-  const { status: authStatus } = useSession()
+  const { status: authStatus, data: session } = useSession()
   const { artists, ready } = useArtists()
   const [showVolume, setShowVolume] = useState(false)
   const [currentPlayingIndex, setCurrentPlayingIndex] = useState(-1)
@@ -93,10 +96,12 @@ export function MobileRadio() {
   const [touchDelta, setTouchDelta] = useState(0)
   const [isSwiping, setIsSwiping] = useState(false)
   const [userFavorites, setUserFavorites] = useState<string[]>([])
+  const [shareOpen, setShareOpen] = useState(false)
   const miniTimelineRef = useRef<HTMLDivElement>(null)
 
-  // Load user favorites
+  // Load user favorites whenever auth status changes
   useEffect(() => {
+    if (authStatus !== "authenticated") return
     fetch("/api/listeners/favorites")
       .then(r => r.json())
       .then(data => {
@@ -104,8 +109,8 @@ export function MobileRadio() {
           setUserFavorites(data.favoriteArtists)
         }
       })
-      .catch() // Ignore if not logged in
-  }, [])
+      .catch(() => { })
+  }, [authStatus])
 
   const toggleFavorite = async (artistId: string) => {
     // Optimistic UI update
@@ -288,7 +293,7 @@ export function MobileRadio() {
     }
   }, [currentArtistForLottie?.id, currentArtistForLottie?.type, currentArtistForLottie?.isLottie, currentArtistForLottie?.image])
 
-  if (!ready) {
+  if (!ready || !sortedArtists.length) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center overflow-hidden">
         <div className="flex flex-col items-center gap-4">
@@ -495,8 +500,8 @@ export function MobileRadio() {
                 </div>
               )}
 
-              {/* Gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/20 to-transparent" />
+              {/* Gradient overlay — dark from bottom, transparent at 35% */}
+              <div className="absolute inset-0" style={{ background: "linear-gradient(to top, #0a0a0a 0%, rgba(10,10,10,0.7) 18%, transparent 35%)" }} />
 
               {/* Playing progress bar */}
               {status === "playing" && !isAd && (
@@ -544,11 +549,21 @@ export function MobileRadio() {
                       }}
                       className={`transition-colors ${userFavorites.includes(artist.dbId || String(artist.id))
                         ? "text-[#99CCCC]"
-                        : "text-[#737373] hover:text-[#99CCCC]"
+                        : "text-white/70 hover:text-[#99CCCC]"
                         }`}
                       aria-label={userFavorites.includes(artist.dbId || String(artist.id)) ? "Remove from favorites" : "Add to favorites"}
                     >
                       <Star className={`w-5 h-5 ${userFavorites.includes(artist.dbId || String(artist.id)) ? "fill-current" : ""}`} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShareOpen(true)
+                      }}
+                      className="text-white/70 hover:text-[#99CCCC] transition-colors"
+                      aria-label="Share"
+                    >
+                      <Share2 className="w-4 h-4" />
                     </button>
 
                     {artist.instagramUrl && (
@@ -556,7 +571,7 @@ export function MobileRadio() {
                         href={artist.instagramUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[#737373] hover:text-[#99CCCC] transition-colors"
+                        className="text-white/70 hover:text-[#99CCCC] transition-colors"
                         aria-label="Instagram"
                       >
                         <InstagramIcon className="w-4 h-4" />
@@ -567,7 +582,7 @@ export function MobileRadio() {
                         href={artist.soundcloudUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[#737373] hover:text-[#99CCCC] transition-colors"
+                        className="text-white/70 hover:text-[#99CCCC] transition-colors"
                         aria-label="SoundCloud"
                       >
                         <SoundcloudIcon className="w-4 h-4" />
@@ -578,7 +593,7 @@ export function MobileRadio() {
                         href={artist.bandcampUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[#737373] hover:text-[#99CCCC] transition-colors"
+                        className="text-white/70 hover:text-[#99CCCC] transition-colors"
                         aria-label="Bandcamp"
                       >
                         <BandcampIcon className="w-4 h-4" />
@@ -633,6 +648,10 @@ export function MobileRadio() {
         </button>
       </div>
 
+      {shareOpen && (
+        <ShareModal artist={artist} onClose={() => setShareOpen(false)} isAdmin={session?.user?.role === "admin"} />
+      )}
+
       {/* Bottom control bar */}
       <div className="bg-[#0a0a0a] border-t border-[#2a2a2a] px-3 pt-4 pb-[max(env(safe-area-inset-bottom),1rem)] z-20 flex flex-col gap-4">
         {/* Controls row */}
@@ -660,6 +679,205 @@ export function MobileRadio() {
             <ReactionPicker isFixed={false} className="!p-0 !bg-transparent !border-none !shadow-none" />
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Share card modal ──────────────────────────────────────────────────────────
+
+function ShareModal({ artist, onClose, isAdmin = false }: { artist: Artist, onClose: () => void, isAdmin?: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [isGenerating, setIsGenerating] = useState(true)
+  const [canShare, setCanShare] = useState(false)
+
+  const fmtTime = (iso: string) => {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return "--:--"
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+  }
+
+  const fmtTimeUTC = (iso: string) => {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return "--:--"
+    return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`
+  }
+
+  useEffect(() => {
+    setCanShare(typeof navigator !== "undefined" && !!navigator.share && !!navigator.canShare)
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    const W = 1080, H = 1920
+    canvas.width = W
+    canvas.height = H
+
+    const draw = (img: HTMLImageElement | null) => {
+      // Background
+      ctx.fillStyle = "#0a0a0a"
+      ctx.fillRect(0, 0, W, H)
+
+      if (img) {
+        const scale = Math.max(W / img.naturalWidth, H / img.naturalHeight)
+        const iw = img.naturalWidth * scale
+        const ih = img.naturalHeight * scale
+        ctx.drawImage(img, (W - iw) / 2, (H - ih) / 2, iw, ih)
+      }
+
+      // Top gradient
+      const topG = ctx.createLinearGradient(0, 0, 0, 700)
+      topG.addColorStop(0, "rgba(0,0,0,0.90)")
+      topG.addColorStop(1, "rgba(0,0,0,0)")
+      ctx.fillStyle = topG
+      ctx.fillRect(0, 0, W, 700)
+
+      // Bottom gradient
+      const botG = ctx.createLinearGradient(0, 1050, 0, H)
+      botG.addColorStop(0, "rgba(0,0,0,0)")
+      botG.addColorStop(0.35, "rgba(0,0,0,0.82)")
+      botG.addColorStop(1, "rgba(0,0,0,0.97)")
+      ctx.fillStyle = botG
+      ctx.fillRect(0, 1050, W, H - 1050)
+
+      // — Top row — (shifted down 10% of canvas height)
+      const topY = 320
+      const timeDisplay = isAdmin
+        ? `${fmtTimeUTC(artist.startTime)} → ${fmtTimeUTC(artist.endTime)}`
+        : `${fmtTime(artist.startTime)} → ${fmtTime(artist.endTime)}`
+
+      // Cyan dot
+      ctx.beginPath()
+      ctx.arc(80, topY, 14, 0, Math.PI * 2)
+      ctx.fillStyle = "#99CCCC"
+      ctx.fill()
+
+      // Time string — JetBrains Mono
+      ctx.font = "600 52px 'JetBrains Mono', monospace"
+      ctx.fillStyle = "#ffffff"
+      ctx.textAlign = "left"
+      ctx.textBaseline = "middle"
+      ctx.fillText(timeDisplay, 112, topY)
+
+      // UTC+0 label for admins
+      if (isAdmin) {
+        const timeWidth = ctx.measureText(timeDisplay).width
+        ctx.font = "500 34px 'JetBrains Mono', monospace"
+        ctx.fillStyle = "rgba(153,204,204,0.75)"
+        ctx.fillText(" UTC+0", 112 + timeWidth, topY)
+      }
+
+      // BØDEN logo — Tektur
+      ctx.font = "500 68px 'Tektur', sans-serif"
+      ctx.fillStyle = "#99CCCC"
+      ctx.textAlign = "right"
+      ctx.fillText("BØDEN", W - 72, topY)
+
+      // — Bottom block —
+      // Artist name (large, auto-shrink) — Space Grotesk, cyan
+      const name = artist.name.toUpperCase()
+      ctx.textAlign = "left"
+      ctx.textBaseline = "alphabetic"
+      let fontSize = 130
+      ctx.font = `900 ${fontSize}px 'Space Grotesk', sans-serif`
+      while (ctx.measureText(name).width > W - 160 && fontSize > 60) {
+        fontSize -= 4
+        ctx.font = `900 ${fontSize}px 'Space Grotesk', sans-serif`
+      }
+      ctx.fillStyle = "#99CCCC"
+      ctx.fillText(name, 80, 1630)
+
+      // Show name — Space Grotesk, white
+      ctx.font = "500 52px 'Space Grotesk', sans-serif"
+      ctx.fillStyle = "#ffffff"
+      ctx.fillText(artist.show.toUpperCase(), 80, 1710)
+
+      // Site URL
+      ctx.font = "400 38px 'Space Grotesk', sans-serif"
+      ctx.fillStyle = "rgba(255,255,255,0.38)"
+      ctx.fillText("bodenradio.online", 80, 1810)
+
+      setIsGenerating(false)
+    }
+
+    const loadFonts = async () => {
+      await Promise.allSettled([
+        document.fonts.load("500 100px 'Tektur'"),
+        document.fonts.load("900 100px 'Space Grotesk'"),
+        document.fonts.load("600 100px 'JetBrains Mono'"),
+      ])
+    }
+
+    const img = new window.Image()
+    img.onload = async () => { await loadFonts(); draw(img) }
+    img.onerror = async () => { await loadFonts(); draw(null) }
+    img.src = artist.image
+  }, [artist, isAdmin])
+
+  const handleDownload = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const link = document.createElement("a")
+    link.download = `${artist.name.toLowerCase().replace(/\s+/g, "-")}-boden.png`
+    link.href = canvas.toDataURL("image/png")
+    link.click()
+  }
+
+  const handleShare = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    canvas.toBlob(async (blob) => {
+      if (!blob) return
+      const file = new File([blob], `${artist.name}-boden.png`, { type: "image/png" })
+      try {
+        await navigator.share({ files: [file], title: `${artist.name} @ BØDEN` })
+      } catch {
+        handleDownload()
+      }
+    }, "image/png")
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center p-5 gap-5">
+      <button onClick={onClose} className="absolute top-5 right-5 text-[#737373] hover:text-white transition-colors">
+        <X className="w-6 h-6" />
+      </button>
+
+      {/* Canvas preview */}
+      <div className="relative w-full max-w-[220px]" style={{ aspectRatio: "9/16" }}>
+        {isGenerating && (
+          <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0a] rounded-sm border border-[#2a2a2a]">
+            <span className="text-[#99CCCC] text-[10px] font-mono uppercase tracking-widest animate-pulse">Generating...</span>
+          </div>
+        )}
+        <canvas
+          ref={canvasRef}
+          className="w-full h-full rounded-sm"
+          style={{ display: isGenerating ? "none" : "block" }}
+        />
+      </div>
+
+      {/* Buttons */}
+      <div className="flex gap-3 w-full max-w-[280px]">
+        {canShare && (
+          <button
+            onClick={handleShare}
+            disabled={isGenerating}
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#99CCCC] text-black text-[11px] font-black uppercase tracking-widest rounded-sm disabled:opacity-40"
+          >
+            <Share2 className="w-4 h-4" />
+            Share
+          </button>
+        )}
+        <button
+          onClick={handleDownload}
+          disabled={isGenerating}
+          className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#1a1a1a] text-white text-[11px] font-black uppercase tracking-widest rounded-sm border border-[#2a2a2a] disabled:opacity-40"
+        >
+          <Download className="w-4 h-4" />
+          Save
+        </button>
       </div>
     </div>
   )

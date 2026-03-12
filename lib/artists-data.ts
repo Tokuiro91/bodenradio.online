@@ -95,12 +95,12 @@ function parseDurationToMs(duration: string) {
 export function generateArtists(): Artist[] {
   const artists: Artist[] = []
 
-  // Старт каждого дня = 18:00 по Тбилиси (UTC+4 → 14:00Z)
-  const baseDates = [
-    "2026-03-01T14:00:00Z",
-    "2026-03-02T14:00:00Z",
-    "2026-03-03T14:00:00Z",
-  ]
+    const now = new Date()
+    const baseDates = [
+      new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 0, 0).toISOString(),
+      new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 14, 0, 0).toISOString(),
+      new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2, 14, 0, 0).toISOString(),
+    ]
 
   for (let i = 0; i < 30; i++) {
     const dayIndex = Math.floor(i / 10)
@@ -136,4 +136,8 @@ export function generateArtists(): Artist[] {
   return artists
 }
 
-export const DAY_LABELS = ["1 МАРТА", "2 МАРТА", "3 МАРТА"]
+export const DAY_LABELS = [
+  new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }).toUpperCase(),
+  new Date(Date.now() + 86400000).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }).toUpperCase(),
+  new Date(Date.now() + 172800000).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }).toUpperCase(),
+]

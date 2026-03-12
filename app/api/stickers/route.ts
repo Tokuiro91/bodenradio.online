@@ -5,8 +5,6 @@ import path from "path"
 
 const STICKERS_FILE = path.join(process.cwd(), "data", "sticker-packs.json")
 
-const SUPERADMIN_EMAIL = "chyrukoleksii@gmail.com"
-
 export async function GET() {
     try {
         const data = fs.readFileSync(STICKERS_FILE, "utf-8")

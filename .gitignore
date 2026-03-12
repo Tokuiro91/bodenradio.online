@@ -13,12 +13,17 @@ data/artists.json
 data/artist-db.json
 data/schedule.csv
 data/listeners.json
+data/admins.json
 data/*.sqlite
 data/*.sqlite-journal
 data/*.txt
 data/*.json.bak
 data/*.jsonl
+data/radio/
+
+# Radio backend DB
+radio-backend/*.db
+radio-backend/*.db-journal
 
 # Uploaded files
 public/uploads/
-data/radio/

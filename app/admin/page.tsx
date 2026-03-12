@@ -11,8 +11,6 @@ import { Search, Radio, Users, Database, BarChart3, Bell } from "lucide-react"
 import { StickerPackManager } from "@/components/sticker-pack-manager"
 import type { DBArtist } from "@/lib/artist-db-store"
 import type { Listener } from "@/lib/listeners-store"
-import { AzuracastManager } from "@/components/azuracast-manager"
-import { LayoutDashboard, Calendar as CalendarIcon } from "lucide-react"
 import { ScheduleManager } from "@/components/schedule-manager"
 
 function formatDuration(ms: number) {
@@ -615,7 +613,7 @@ export default function AdminPage() {
             {adminEmails.map((email) => (
               <li key={email} className="flex items-center justify-between bg-[#0a0a0a] border border-[#2a2a2a] rounded-sm px-3 py-2">
                 <span className="text-xs font-mono text-[#e5e5e5]">{email}</span>
-                {email.toLowerCase() !== "chyrukoleksii@gmail.com" && (
+                {(!isSuperAdmin || email.toLowerCase() !== session?.user?.email?.toLowerCase()) && (
                   <button onClick={() => removeAdmin(email)} className="text-[10px] text-[#737373] hover:text-red-400 transition">Удалить</button>
                 )}
               </li>

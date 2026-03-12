@@ -10,9 +10,9 @@ const db = require('./db');
 const webpush = require('web-push');
 
 // VAPID config for push notifications
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BFzIsn11g6bxeVr68zjLthY-ABWUKbwlXk_hkmpiE2MNdV3douQrLv6NwapDEMzhE8EQkOcGxVGUUqJO4UAc8WU';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'pZguMDyNbv5viMuIK_PoXEhg04QolVsmCSID2plOYLs';
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:chyrukoleksii@gmail.com';
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT;
 
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
@@ -24,7 +24,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const JWT_SECRET = 'boden_radio_secret_key_123!';
+const JWT_SECRET = process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET env var is required') })();
 
 // System Health Endpoint
 app.get('/api/system/health', (req, res) => {
