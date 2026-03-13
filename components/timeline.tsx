@@ -55,7 +55,7 @@ export function Timeline({
   )
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0a]/95 backdrop-blur-md border-t border-[#2a2a2a] transition-all duration-500 h-14 hover:h-24 group/timeline flex flex-col hidden md:block">
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a0a0a]/95 backdrop-blur-md border-t border-[#2a2a2a] h-14 group/timeline flex flex-col hidden md:block">
       {/* Side Fade Masks */}
       <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-[#0a0a0a] to-transparent z-20 pointer-events-none" />
       <div className="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-[#0a0a0a] to-transparent z-20 pointer-events-none" />
