@@ -8,7 +8,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        agile: ['ZeroPrimeALILE', 'sans-serif'], // добавляем наш шрифт
+        boden: ['ZeroPrimeALILE', 'sans-serif'], // добавляем наш шрифт
       },
     },
   },

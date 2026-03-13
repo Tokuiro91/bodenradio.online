@@ -20,7 +20,7 @@ const files = [
     "app/api/stream/route.ts"
 ];
 
-const basePath = "/Users/ioioioi/Desktop/Code/Agileradio.online/b_0kaQq2GoFgB-1771946982612";
+const basePath = "/Users/ioioioi/Desktop/Bodenradio.online/web";
 
 files.forEach(f => {
     const fullPath = path.join(basePath, f);
