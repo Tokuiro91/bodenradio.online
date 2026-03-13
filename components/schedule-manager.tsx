@@ -216,6 +216,7 @@ export function ScheduleManager() {
     const [saving, setSaving] = useState(false)
     const [syncing, setSyncing] = useState(false)
     const [uploading, setUploading] = useState(false)
+    const [uploadProgress, setUploadProgress] = useState<number | null>(null)
     const [icecast, setIcecast] = useState<IcecastStatus | null>(null)
     const [nowEntry, setNowEntry] = useState<ScheduleEntry | null>(null)
 
@@ -410,23 +411,39 @@ export function ScheduleManager() {
 
     // ── Upload ─────────────────────────────────────────────────────────────
 
-    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]; if (!file) return
         setUploading(true)
+        setUploadProgress(0)
         const fd = new FormData(); fd.append("file", file)
-        try {
-            const r = await fetch("/api/radio/media", { method: "POST", body: fd })
-            if (!r.ok) throw new Error()
-            const d = await r.json()
-            await fetchMedia()
-            setForm(prev => ({ ...prev, file: d.name }))
-            suggestEndTime(d.name, form.time)
-            toast.success(`Uploaded: ${d.name}`)
-        } catch { toast.error("Upload failed") }
-        finally {
+        const xhr = new XMLHttpRequest()
+        xhr.open("POST", "/api/radio/media")
+        xhr.upload.onprogress = (ev) => {
+            if (ev.lengthComputable) setUploadProgress(Math.round(ev.loaded / ev.total * 100))
+        }
+        xhr.onload = async () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const d = JSON.parse(xhr.responseText)
+                    await fetchMedia()
+                    setForm(prev => ({ ...prev, file: d.name }))
+                    suggestEndTime(d.name, form.time)
+                    toast.success(`Uploaded: ${d.name}`)
+                } catch { toast.error("Upload failed") }
+            } else {
+                toast.error("Upload failed")
+            }
             setUploading(false)
+            setUploadProgress(null)
             if (uploadInputRef.current) uploadInputRef.current.value = ""
         }
+        xhr.onerror = () => {
+            toast.error("Upload failed")
+            setUploading(false)
+            setUploadProgress(null)
+            if (uploadInputRef.current) uploadInputRef.current.value = ""
+        }
+        xhr.send(fd)
     }
 
     if (loading) return (
@@ -463,7 +480,7 @@ export function ScheduleManager() {
                         form={form} setForm={setForm}
                         editIndex={editIndex} schedule={schedule}
                         mediaFiles={mediaFiles} playingUrl={playingUrl}
-                        uploading={uploading} saving={saving}
+                        uploading={uploading} uploadProgress={uploadProgress} saving={saving}
                         onTogglePlay={togglePlay}
                         onUploadClick={() => uploadInputRef.current?.click()}
                         onSuggestEnd={suggestEndTime}
@@ -925,10 +942,10 @@ function MonthView({ viewDate, schedule, today, onDayClick }: {
 // ─── Broadcast Form ───────────────────────────────────────────────────────────
 
 function BroadcastForm({ form, setForm, editIndex, schedule, mediaFiles, playingUrl,
-    uploading, saving, onTogglePlay, onUploadClick, onSuggestEnd, onSubmit, onReset }: {
+    uploading, uploadProgress, saving, onTogglePlay, onUploadClick, onSuggestEnd, onSubmit, onReset }: {
         form: ScheduleEntry; setForm: React.Dispatch<React.SetStateAction<ScheduleEntry>>
         editIndex: number | null; schedule: ScheduleEntry[]; mediaFiles: AudioFile[]
-        playingUrl: string | null; uploading: boolean; saving: boolean
+        playingUrl: string | null; uploading: boolean; uploadProgress: number | null; saving: boolean
         onTogglePlay: (url: string) => void; onUploadClick: () => void
         onSuggestEnd: (f: string, t: string) => void; onSubmit: () => void; onReset: () => void
     }) {
@@ -1005,7 +1022,16 @@ function BroadcastForm({ form, setForm, editIndex, schedule, mediaFiles, playing
                             {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
                         </button>
                     </div>
-                    {selectedFile && (
+                    {uploadProgress !== null && (
+                        <div className="space-y-1">
+                            <div className="h-1 bg-[#111] rounded-full overflow-hidden">
+                                <div className="h-full bg-[#99CCCC] transition-all duration-100"
+                                    style={{ width: `${uploadProgress}%` }} />
+                            </div>
+                            <div className="text-[9px] font-mono text-[#99CCCC] text-right">{uploadProgress}%</div>
+                        </div>
+                    )}
+                    {selectedFile && uploadProgress === null && (
                         <div className="text-[9px] font-mono text-[#333] px-1">
                             {(selectedFile.size / 1024 / 1024).toFixed(1)} MB · {new Date(selectedFile.mtime).toLocaleDateString()}
                         </div>

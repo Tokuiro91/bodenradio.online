@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import fs from "fs"
 import path from "path"
 
+
 /** Wrap a Node.js ReadableStream into a Web API ReadableStream. */
 function nodeToWebStream(nodeStream: fs.ReadStream): ReadableStream<Uint8Array> {
     return new ReadableStream({
