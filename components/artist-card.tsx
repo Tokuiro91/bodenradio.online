@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import Image from "next/image"
-import { Clock, ExternalLink, Star } from "lucide-react"
+import { Clock, ExternalLink, Star, Cloud } from "lucide-react"
 import type { Artist } from "@/lib/artists-data"
 import { SolariText } from "@/components/solari-text"
 import Lottie from "lottie-react"
@@ -27,16 +27,7 @@ function InstagramIcon({ className }: { className?: string }) {
 }
 
 function SoundcloudIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <line x1="2"  y1="10" x2="2"  y2="14" />
-      <line x1="6"  y1="6"  x2="6"  y2="18" />
-      <line x1="10" y1="4"  x2="10" y2="20" />
-      <line x1="14" y1="8"  x2="14" y2="16" />
-      <line x1="18" y1="6"  x2="18" y2="18" />
-      <line x1="22" y1="10" x2="22" y2="14" />
-    </svg>
-  )
+  return <Cloud className={className} strokeWidth={1.5} aria-hidden="true" />
 }
 
 function BandcampIcon({ className }: { className?: string }) {
