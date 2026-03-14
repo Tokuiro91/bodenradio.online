@@ -12,6 +12,7 @@ import { StickerPackManager } from "@/components/sticker-pack-manager"
 import type { DBArtist } from "@/lib/artist-db-store"
 import type { Listener } from "@/lib/listeners-store"
 import { ScheduleManager } from "@/components/schedule-manager"
+import { ArtistAnalytics } from "@/components/artist-analytics"
 
 function formatDuration(ms: number) {
   const totalSec = Math.max(0, Math.floor(ms / 1000))
@@ -60,6 +61,7 @@ export default function AdminPage() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [dbEditingId, setDbEditingId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<"artists" | "admins" | "analytics" | "stickers" | "artist-db" | "listeners" | "schedule">("analytics")
+  const [artistDbSubTab, setArtistDbSubTab] = useState<"base" | "analytics">("base")
   const [dbSearchQuery, setDbSearchQuery] = useState("")
   const [artistsSearchQuery, setArtistsSearchQuery] = useState("")
 
@@ -710,8 +712,15 @@ export default function AdminPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
               <h2 className="text-sm font-semibold text-[#99CCCC] font-mono">БАЗА АРТИСТОВ ({filteredDbArtists.length})</h2>
-              <button onClick={syncAllToDatabase} className="text-[10px] bg-[#1a1a1a] text-[#737373] hover:text-white px-2 py-1 rounded-sm border border-[#2a2a2a] transition">Sync All from Grid</button>
+              {artistDbSubTab === "base" && (
+                <button onClick={syncAllToDatabase} className="text-[10px] bg-[#1a1a1a] text-[#737373] hover:text-white px-2 py-1 rounded-sm border border-[#2a2a2a] transition">Sync All from Grid</button>
+              )}
+              <div className="flex bg-[#0a0a0a] border border-[#2a2a2a] rounded-sm p-0.5">
+                <button onClick={() => setArtistDbSubTab("base")} className={`px-3 py-1 text-[10px] uppercase tracking-widest rounded-sm transition ${artistDbSubTab === "base" ? "bg-[#2a2a2a] text-[#99CCCC]" : "text-[#737373] hover:text-[#e5e5e5]"}`}>База</button>
+                <button onClick={() => setArtistDbSubTab("analytics")} className={`px-3 py-1 text-[10px] uppercase tracking-widest rounded-sm transition ${artistDbSubTab === "analytics" ? "bg-[#2a2a2a] text-[#99CCCC]" : "text-[#737373] hover:text-[#e5e5e5]"}`}>Аналитика</button>
+              </div>
             </div>
+            {artistDbSubTab === "base" && (
             <div className="flex items-center bg-black border border-[#1a1a1a] rounded-sm px-2 py-1">
               <Search size={12} className="text-[#444] mr-2" />
               <input
@@ -724,8 +733,11 @@ export default function AdminPage() {
                 className="bg-transparent border-none outline-none text-[10px] font-mono uppercase text-white w-48"
               />
             </div>
+            )}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+
+          {artistDbSubTab === "analytics" && <ArtistAnalytics />}
+          {artistDbSubTab === "base" && <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <div
               className="border border-dashed border-[#2a2a2a] rounded-sm p-4 h-32 flex flex-col items-center justify-center cursor-pointer hover:border-[#99CCCC] transition group"
               onClick={() => {
@@ -763,9 +775,9 @@ export default function AdminPage() {
                 </button>
               </div>
             ))}
-          </div>
+          </div>}
 
-          {totalDbPages > 1 && (
+          {artistDbSubTab === "base" && totalDbPages > 1 && (
             <div className="mt-8 flex items-center justify-center gap-2">
               <button
                 disabled={dbPage === 1}
