@@ -21,13 +21,52 @@ const jetbrainsMono = JetBrains_Mono({
 
 /* Metadata */
 export const metadata: Metadata = {
-  title: "BØDEN Online",
-  description: "Live online radio with curated DJ sets and electronic music",
+  title: {
+    default: "Boden Radio — Live Deep House, Dub Techno & Electronic Music Radio Online",
+    template: "%s | Boden Radio",
+  },
+  description: "Boden Radio is a 24/7 live online radio station streaming deep house radio, dub techno radio, hypnotic techno radio, ambient radio, and electronic music. Listen free — no ads, curated DJ sets.",
+  keywords: [
+    "boden radio", "online radio", "live radio",
+    "deep house radio", "dub techno radio", "hypnotic techno radio",
+    "ambient radio", "electronic music radio", "techno radio",
+    "deep house music online", "dub techno online", "free radio stream",
+    "DJ sets online", "electronic music live stream",
+  ],
+  authors: [{ name: "Boden Radio" }],
+  creator: "Boden Radio",
+  publisher: "Boden Radio",
   manifest: "/manifest.json",
+  metadataBase: new URL("https://bodenradio.online"),
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    url: "https://bodenradio.online",
+    siteName: "Boden Radio",
+    title: "Boden Radio — Live Deep House, Dub Techno & Electronic Music Online",
+    description: "24/7 live online radio: deep house, dub techno, hypnotic techno, ambient. Free stream, no ads.",
+    images: [
+      {
+        url: "/icons/icon-512.png",
+        width: 512,
+        height: 512,
+        alt: "Boden Radio",
+      },
+    ],
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary",
+    title: "Boden Radio — Live Electronic Music Radio",
+    description: "24/7 live online radio: deep house, dub techno, hypnotic techno, ambient.",
+    images: ["/icons/icon-512.png"],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "BØDEN",
+    title: "Boden Radio",
   },
   icons: {
     icon: [
@@ -58,11 +97,34 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="ru">
+    <html lang="en">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Tektur:wght@500&display=swap" rel="stylesheet" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "RadioStation",
+              "name": "Boden Radio",
+              "alternateName": "BØDEN Radio",
+              "url": "https://bodenradio.online",
+              "logo": "https://bodenradio.online/icons/icon-512.png",
+              "description": "24/7 live online radio station streaming deep house, dub techno, hypnotic techno, ambient and electronic music. Free stream with curated DJ sets.",
+              "genre": [
+                "Deep House", "Dub Techno", "Hypnotic Techno",
+                "Ambient", "Electronic Music", "Techno"
+              ],
+              "broadcastFrequency": "Online",
+              "broadcastTimezone": "UTC",
+              "sameAs": [
+                "https://bodenradio.online"
+              ],
+            }),
+          }}
+        />
       </head>
       <body
         className={`

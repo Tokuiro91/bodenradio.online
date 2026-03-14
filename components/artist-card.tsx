@@ -359,6 +359,13 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
               </div>
             )}
 
+            {/* Genre tags — visually hidden, for search engines and screen readers */}
+            {!isAd && artist.genres && artist.genres.length > 0 && (
+              <span className="sr-only" aria-hidden="false">
+                {artist.genres.join(", ")}
+              </span>
+            )}
+
             {/* Expanded description */}
             {!isAd && (
               <div

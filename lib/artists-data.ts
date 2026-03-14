@@ -14,6 +14,7 @@ export interface Artist {
   instagramUrl?: string
   soundcloudUrl?: string
   bandcampUrl?: string
+  genres?: string[]
   // Advertisement fields
   type?: 'artist' | 'ad'
   redirectUrl?: string
