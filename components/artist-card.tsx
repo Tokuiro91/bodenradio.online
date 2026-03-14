@@ -28,8 +28,8 @@ function InstagramIcon({ className }: { className?: string }) {
 
 function SoundcloudIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 19h5a4 4 0 00.83-7.91 3 3 0 00-5-1.74 3 3 0 00-5.83 1.65A4 4 0 007 19h5" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M17.5 19H9a7 7 0 116.71-9 5 5 0 011.79 9" />
     </svg>
   )
 }
