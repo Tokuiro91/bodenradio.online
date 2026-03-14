@@ -1,0 +1,37 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="#0a0a0a"/>
+
+  <!-- Radio wave arcs — upper half only, emanating from center point -->
+  <path d="M 256 280 m -180 0 a 180 180 0 0 1 360 0" fill="none" stroke="#99CCCC" stroke-width="1.5" opacity="0.15"/>
+  <path d="M 256 280 m -130 0 a 130 130 0 0 1 260 0" fill="none" stroke="#99CCCC" stroke-width="1.5" opacity="0.3"/>
+  <path d="M 256 280 m -80 0 a 80 80 0 0 1 160 0"   fill="none" stroke="#99CCCC" stroke-width="2"   opacity="0.5"/>
+  <path d="M 256 280 m -40 0 a 40 40 0 0 1 80 0"    fill="none" stroke="#99CCCC" stroke-width="2.5" opacity="0.8"/>
+
+  <!-- Center broadcast dot -->
+  <circle cx="256" cy="280" r="7" fill="#99CCCC"/>
+
+  <!-- Thin horizontal divider -->
+  <line x1="96" y1="318" x2="416" y2="318" stroke="#2a2a2a" stroke-width="1"/>
+
+  <!-- BØDEN -->
+  <text
+    x="256" y="386"
+    text-anchor="middle"
+    font-family="'Helvetica Neue', Arial, sans-serif"
+    font-weight="800"
+    font-size="94"
+    letter-spacing="6"
+    fill="#99CCCC"
+  >BØDEN</text>
+
+  <!-- RADIO -->
+  <text
+    x="256" y="430"
+    text-anchor="middle"
+    font-family="'Courier New', Courier, monospace"
+    font-weight="400"
+    font-size="22"
+    letter-spacing="18"
+    fill="#555555"
+  >RADIO</text>
+</svg>

@@ -47,21 +47,12 @@ export const metadata: Metadata = {
     siteName: "Boden Radio",
     title: "Boden Radio — Live Deep House, Dub Techno & Electronic Music Online",
     description: "24/7 live online radio: deep house, dub techno, hypnotic techno, ambient. Free stream, no ads.",
-    images: [
-      {
-        url: "/icons/icon-512.png",
-        width: 512,
-        height: 512,
-        alt: "Boden Radio",
-      },
-    ],
     locale: "en_US",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Boden Radio — Live Electronic Music Radio",
     description: "24/7 live online radio: deep house, dub techno, hypnotic techno, ambient.",
-    images: ["/icons/icon-512.png"],
   },
   appleWebApp: {
     capable: true,
