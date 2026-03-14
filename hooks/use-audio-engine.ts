@@ -13,8 +13,8 @@ import { toast } from "sonner"
 const FADE_STEPS = 20
 const PRELOAD_BEFORE_MS = 10 * 60 * 1000  // 10 min before start
 const RELEASE_AFTER_MS = 10 * 60 * 1000   // 10 min after end
-const FADE_IN_DURATION_MS = 3000           // 3s fade-in for new broadcast
-const SWITCH_FADE_OUT_MS = 1500            // fade-out for broadcast switch / manual pause
+const FADE_IN_DURATION_MS = 1500           // 1.5s fade-in for new broadcast
+const SWITCH_FADE_OUT_MS = 500             // fade-out for broadcast switch / manual pause
 
 function isExternalUrl(url: string) {
     return url.startsWith("http://") || url.startsWith("https://")
@@ -278,8 +278,24 @@ export function useAudioEngine(artists: Artist[]) {
         }
 
         tick()
-        const interval = setInterval(tick, 5000)
-        return () => clearInterval(interval)
+        const interval = setInterval(tick, 1000)
+
+        // Also fire precisely at the next artist start/end time
+        const now = getSyncedTime()
+        const transitionTimes = artistsRef.current.flatMap(a => [
+            new Date(a.startTime).getTime(),
+            new Date(a.endTime).getTime(),
+        ]).filter(t => t > now)
+        let preciseTimeout: ReturnType<typeof setTimeout> | null = null
+        if (transitionTimes.length > 0) {
+            const nextMs = Math.min(...transitionTimes)
+            preciseTimeout = setTimeout(tick, Math.max(0, nextMs - now + 50))
+        }
+
+        return () => {
+            clearInterval(interval)
+            if (preciseTimeout) clearTimeout(preciseTimeout)
+        }
     }, [activeArtist])
 
     const togglePlay = useCallback(async () => {
