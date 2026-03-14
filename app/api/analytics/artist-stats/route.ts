@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { getArtistDB } from "@/lib/artist-db-store"
 import { getListeners } from "@/lib/listeners-store"
-import { getSessions } from "@/lib/analytics-store"
+import { getSessions, getEvents } from "@/lib/analytics-store"
 import fs from "fs"
 import path from "path"
 import type { Artist } from "@/lib/artists-data"
@@ -33,6 +33,7 @@ export async function GET() {
     const listeners = getListeners()
     const scheduleEntries = readScheduleArtists()
     const sessions = getSessions()
+    const events = getEvents()
 
     // Build bookmark map: dbArtistId → count
     const bookmarkMap: Record<string, number> = {}
@@ -53,12 +54,49 @@ export async function GET() {
         slotsByDbId[entry.dbId].push({ startMs, endMs })
     }
 
-    // Pre-process sessions
-    const sessionWindows = sessions.map(s => ({
-        id: s.id,
-        startMs: s.startedAt,
-        endMs: s.startedAt + (s.totalDurationMs || 0),
-    })).filter(s => s.endMs > s.startMs)
+    // Build session index for lastActive lookup
+    const sessionIndex: Record<string, { lastActive: number; endMs: number }> = {}
+    for (const s of sessions) {
+        sessionIndex[s.id] = {
+            lastActive: s.lastActive,
+            endMs: s.startedAt + (s.totalDurationMs || 0),
+        }
+    }
+
+    // Build actual radio listening windows from play/pause events
+    // Group play/pause events by sessionId, sorted by time
+    const playPauseBySession: Record<string, { timestamp: number; type: "play" | "pause" }[]> = {}
+    for (const e of events) {
+        if (e.type !== "play" && e.type !== "pause") continue
+        if (!playPauseBySession[e.sessionId]) playPauseBySession[e.sessionId] = []
+        playPauseBySession[e.sessionId].push({ timestamp: e.timestamp, type: e.type as "play" | "pause" })
+    }
+
+    // Convert play/pause pairs into listening windows
+    const listeningWindows: { startMs: number; endMs: number; sessionId: string }[] = []
+    for (const [sessionId, evts] of Object.entries(playPauseBySession)) {
+        const sorted = evts.sort((a, b) => a.timestamp - b.timestamp)
+        let playStart: number | null = null
+
+        for (const evt of sorted) {
+            if (evt.type === "play") {
+                // Start a new listening window (ignore double-play)
+                if (playStart === null) playStart = evt.timestamp
+            } else if (evt.type === "pause" && playStart !== null) {
+                listeningWindows.push({ startMs: playStart, endMs: evt.timestamp, sessionId })
+                playStart = null
+            }
+        }
+
+        // Still playing (no pause) — use session lastActive as approximate end
+        if (playStart !== null) {
+            const sess = sessionIndex[sessionId]
+            const endMs = sess ? Math.max(sess.lastActive, sess.endMs) : playStart
+            if (endMs > playStart) {
+                listeningWindows.push({ startMs: playStart, endMs, sessionId })
+            }
+        }
+    }
 
     // Compute stats for each DBArtist
     const result = dbArtists.map(artist => {
@@ -69,13 +107,13 @@ export async function GET() {
         const uniqueSessionIds = new Set<string>()
 
         for (const slot of slots) {
-            for (const sess of sessionWindows) {
-                // Calculate overlap between slot and session
-                const overlapStart = Math.max(slot.startMs, sess.startMs)
-                const overlapEnd = Math.min(slot.endMs, sess.endMs)
+            for (const win of listeningWindows) {
+                // Overlap between actual listening window and artist's time slot
+                const overlapStart = Math.max(slot.startMs, win.startMs)
+                const overlapEnd = Math.min(slot.endMs, win.endMs)
                 if (overlapEnd > overlapStart) {
                     listeningTimeMs += overlapEnd - overlapStart
-                    uniqueSessionIds.add(sess.id)
+                    uniqueSessionIds.add(win.sessionId)
                 }
             }
         }
