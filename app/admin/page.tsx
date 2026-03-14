@@ -970,12 +970,12 @@ export default function AdminPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Campaign Start</label>
-                      <input type="datetime-local" step="1" required value={form.campaignStart} onChange={(e) => setForm(f => ({ ...f, campaignStart: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                      <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Campaign Start <span className="normal-case text-[#555]">(empty = show now)</span></label>
+                      <input type="datetime-local" step="1" value={form.campaignStart} onChange={(e) => setForm(f => ({ ...f, campaignStart: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
                     </div>
                     <div>
-                      <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Campaign End</label>
-                      <input type="datetime-local" step="1" required value={form.campaignEnd} onChange={(e) => setForm(f => ({ ...f, campaignEnd: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                      <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Campaign End <span className="normal-case text-[#555]">(empty = no expiry)</span></label>
+                      <input type="datetime-local" step="1" value={form.campaignEnd} onChange={(e) => setForm(f => ({ ...f, campaignEnd: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
                     </div>
                   </div>
                 </>

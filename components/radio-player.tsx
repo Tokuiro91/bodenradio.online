@@ -84,7 +84,15 @@ export function RadioPlayer() {
   const sortedArtists = useMemo(() => {
     const rawSorted = [...artists].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
     const syncedNow = getSyncedTime()
-    return rawSorted.filter(a => isArtistInRollingWindow(a, syncedNow))
+    return rawSorted.filter(a => {
+      if (!isArtistInRollingWindow(a, syncedNow)) return false
+      if (a.type === 'ad') {
+        const startMs = a.campaignStart ? new Date(a.campaignStart).getTime() : 0
+        const endMs = a.campaignEnd ? new Date(a.campaignEnd).getTime() : Infinity
+        return syncedNow >= startMs && syncedNow <= endMs
+      }
+      return true
+    })
   }, [artists, Math.floor(now / 60000)]) // Re-filter every minute or when artists change
 
   const TOTAL_CARDS = sortedArtists.length
