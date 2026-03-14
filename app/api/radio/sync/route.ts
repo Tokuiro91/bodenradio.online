@@ -8,7 +8,7 @@ export async function POST(request: Request) {
         const authRes = await fetch(`${process.env.RADIO_BACKEND_URL || 'http://localhost:8080'}/api/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: "admin", password: "admin" })
+            body: JSON.stringify({ username: process.env.RADIO_BACKEND_USERNAME || "admin", password: process.env.RADIO_BACKEND_PASSWORD })
         });
         const { token } = await authRes.json();
         if (!token) throw new Error("Radio backend auth failed");

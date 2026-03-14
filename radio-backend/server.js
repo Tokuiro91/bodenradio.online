@@ -84,8 +84,9 @@ const upload = multer({
     limits: { fileSize: 500 * 1024 * 1024 } // 500MB limit
 });
 
-// Initialize Default Admin (admin/admin)
-bcrypt.hash('admin', 10, (err, hash) => {
+// Initialize Default Admin (password from env or fallback)
+const defaultAdminPassword = process.env.RADIO_BACKEND_PASSWORD || 'admin';
+bcrypt.hash(defaultAdminPassword, 10, (err, hash) => {
     db.run(`INSERT OR IGNORE INTO users (username, password) VALUES ('admin', ?)`, [hash]);
 });
 
