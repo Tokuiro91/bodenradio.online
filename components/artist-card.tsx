@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import Image from "next/image"
-import { Clock, ExternalLink, Star, Cloud } from "lucide-react"
+import { Clock, ExternalLink, Star } from "lucide-react"
 import type { Artist } from "@/lib/artists-data"
 import { SolariText } from "@/components/solari-text"
 import Lottie from "lottie-react"
@@ -27,7 +27,11 @@ function InstagramIcon({ className }: { className?: string }) {
 }
 
 function SoundcloudIcon({ className }: { className?: string }) {
-  return <Cloud className={className} strokeWidth={1.5} aria-hidden="true" />
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M11.56 8.87V17h8.76c.96 0 1.68-.76 1.68-1.76 0-.96-.74-1.76-1.68-1.76h-.14c.05-.24.07-.49.07-.74 0-2.17-1.78-3.96-3.96-3.96-1.16 0-2.22.5-2.97 1.3-.52-.11-1.13-.08-1.76.22zM9.81 9.26c-.38 0-.68.31-.68.7v7.38c0 .38.3.68.68.68s.68-.3.68-.68V9.96c0-.39-.3-.7-.68-.7zm-2.25 1.56c-.38 0-.68.31-.68.7v5.82c0 .38.3.68.68.68s.68-.3.68-.68v-5.82c0-.39-.3-.7-.68-.7zm-2.25 1.68c-.38 0-.68.31-.68.7v4.14c0 .38.3.68.68.68s.68-.3.68-.68v-4.14c0-.39-.3-.7-.68-.7zm-1.12 1.5c-.38 0-.68.31-.68.7v1.64c0 .38.3.68.68.68s.68-.3.68-.68v-1.64c0-.39-.3-.7-.68-.7zm2.24-1.06c-.38 0-.68.31-.68.7v2.7c0 .38.3.68.68.68s.68-.3.68-.68v-2.7c0-.39-.3-.7-.68-.7z" />
+    </svg>
+  )
 }
 
 function BandcampIcon({ className }: { className?: string }) {
