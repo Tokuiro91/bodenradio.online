@@ -62,7 +62,7 @@ export function AnalyticsDashboard({
             } catch { }
         }
         fetchHealth()
-        const iv = setInterval(fetchHealth, 1_000)
+        const iv = setInterval(fetchHealth, 5_000)
         return () => clearInterval(iv)
     }, [])
 

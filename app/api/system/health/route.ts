@@ -17,8 +17,11 @@ const CACHE_TTL_MS = 1000
 async function getIcecastStats() {
     try {
         const icecastPass = process.env.ICECAST_PASSWORD || "admin"
-        const res = await fetch(`http://admin:${icecastPass}@localhost:8000/admin/stats`, {
+        const res = await fetch(`http://localhost:8000/admin/stats`, {
             signal: AbortSignal.timeout(2000),
+            headers: {
+                "Authorization": "Basic " + Buffer.from(`admin:${icecastPass}`).toString("base64"),
+            },
         })
         if (!res.ok) return null
         const xml = await res.text()

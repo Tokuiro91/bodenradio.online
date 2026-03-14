@@ -66,7 +66,7 @@ export function useAnalytics() {
             const duration = Date.now() - sessionStartRef.current
             const payload = JSON.stringify({
                 sessionId: sessionIdRef.current,
-                type: "pause", // or just keepalive
+                type: "keepalive",
                 clientDurationMs: duration,
             })
 

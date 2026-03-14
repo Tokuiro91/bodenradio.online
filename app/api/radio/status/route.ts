@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 
 const ICECAST_PASS = process.env.ICECAST_PASSWORD || "admin"
-const ICECAST_URL = `http://admin:${ICECAST_PASS}@localhost:8000/admin/stats`
+const ICECAST_URL = `http://localhost:8000/admin/stats`
+const ICECAST_AUTH = "Basic " + Buffer.from(`admin:${ICECAST_PASS}`).toString("base64")
 const CACHE_TTL_MS = 10_000
 
 let cache: { data: IcecastStatus; ts: number } | null = null
@@ -23,6 +24,7 @@ async function fetchIcecastStatus(): Promise<IcecastStatus> {
     const res = await fetch(ICECAST_URL, {
         signal: AbortSignal.timeout(3000),
         cache: "no-store",
+        headers: { "Authorization": ICECAST_AUTH },
     })
 
     if (!res.ok) throw new Error(`Icecast returned ${res.status}`)

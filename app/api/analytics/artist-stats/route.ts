@@ -88,13 +88,9 @@ export async function GET() {
             }
         }
 
-        // Still playing (no pause) — use session lastActive as approximate end
+        // Still playing (no pause) — use current server time as end
         if (playStart !== null) {
-            const sess = sessionIndex[sessionId]
-            const endMs = sess ? Math.max(sess.lastActive, sess.endMs) : playStart
-            if (endMs > playStart) {
-                listeningWindows.push({ startMs: playStart, endMs, sessionId })
-            }
+            listeningWindows.push({ startMs: playStart, endMs: Date.now(), sessionId })
         }
     }
 
