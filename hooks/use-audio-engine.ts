@@ -207,15 +207,20 @@ export function useAudioEngine(artists: Artist[]) {
                     schedulePausedRef.current = false
                     if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current)
                     isFadingRef.current = true
+                    const audio = audioRef.current
+                    // Explicitly close any lingering connection before starting fresh
+                    audio.pause()
+                    audio.src = ""
+                    audio.load()
                     const url = resolveStreamUrl(getAudioUrl(active)) + "?t=" + Date.now()
-                    audioRef.current.src = url
-                    audioRef.current.volume = 0
-                    audioRef.current.load()
-                    audioRef.current.play().then(() => {
+                    audio.src = url
+                    audio.volume = 0
+                    audio.load()
+                    audio.play().then(() => {
                         setIsPlayingState(true)
                         isPlayingRef.current = true
                         const targetVol = isMutedRef.current ? 0 : volumeRef.current / 100
-                        fadeIntervalRef.current = startFade(audioRef.current!, 0, targetVol, FADE_IN_DURATION_MS, () => {
+                        fadeIntervalRef.current = startFade(audio, 0, targetVol, FADE_IN_DURATION_MS, () => {
                             isFadingRef.current = false
                         })
                     }).catch((err) => {
@@ -224,13 +229,21 @@ export function useAudioEngine(artists: Artist[]) {
                     })
                 }
             } else if (activeArtist && active && activeArtist.id !== active.id) {
-                // Switched from one broadcast to another — fade out, switch, fade in
-                if (isPlayingRef.current && audioRef.current) {
+                // Switched from one broadcast to another
+                const oldUrl = getAudioUrl(activeArtist)
+                const newUrl = getAudioUrl(active)
+                // Only reconnect if the stream URL actually changed (different source file/stream)
+                // If both artists use the same Icecast stream, the connection is continuous — no need to reconnect
+                if (isPlayingRef.current && audioRef.current && oldUrl !== newUrl) {
                     if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current)
                     isFadingRef.current = true
                     const audio = audioRef.current
                     fadeIntervalRef.current = startFade(audio, audio.volume, 0, SWITCH_FADE_OUT_MS, () => {
-                        const url = resolveStreamUrl(getAudioUrl(active)) + "?t=" + Date.now()
+                        // Explicitly close the old connection before opening a new one
+                        audio.pause()
+                        audio.src = ""
+                        audio.load()
+                        const url = resolveStreamUrl(newUrl) + "?t=" + Date.now()
                         audio.src = url
                         audio.volume = 0
                         audio.load()
