@@ -234,14 +234,14 @@ export function ScheduleManager() {
 
     // ── Fetch ──────────────────────────────────────────────────────────────
 
-    const fetchSchedule = useCallback(async () => {
-        setLoading(true)
+    const fetchSchedule = useCallback(async (silent = false) => {
+        if (!silent) setLoading(true)
         try {
             const r = await fetch("/api/schedule")
             const d = await r.json()
             if (d.schedule) setSchedule(d.schedule.map(entryUtcToLocal))
-        } catch { toast.error("Failed to load schedule") }
-        finally { setLoading(false) }
+        } catch { if (!silent) toast.error("Failed to load schedule") }
+        finally { if (!silent) setLoading(false) }
     }, [])
 
     const fetchMedia = useCallback(async () => {
@@ -269,8 +269,14 @@ export function ScheduleManager() {
 
     useEffect(() => {
         fetchSchedule(); fetchMedia(); fetchIcecast(); fetchArtists()
-        const iv = setInterval(fetchIcecast, 10_000)
-        return () => clearInterval(iv)
+        const ivIcecast = setInterval(fetchIcecast, 1_000)
+        const ivSchedule = setInterval(() => fetchSchedule(true), 1_000)
+        const ivArtists = setInterval(fetchArtists, 1_000)
+        return () => {
+            clearInterval(ivIcecast)
+            clearInterval(ivSchedule)
+            clearInterval(ivArtists)
+        }
     }, [fetchSchedule, fetchMedia, fetchIcecast, fetchArtists])
 
     // ── Reactive "now playing" ─────────────────────────────────────────────
@@ -278,7 +284,7 @@ export function ScheduleManager() {
     useEffect(() => {
         const update = () => setNowEntry(findActiveEntry(schedule))
         update()
-        const iv = setInterval(update, 15_000)
+        const iv = setInterval(update, 1_000)
         return () => clearInterval(iv)
     }, [schedule])
 
