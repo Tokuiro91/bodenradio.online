@@ -199,13 +199,13 @@ export function PushSubscriptionManager() {
             {needsActivation && !loading && (
                 <div className="pt-2 border-t border-[#2a2a2a]">
                     <p className="text-[10px] text-orange-500/80 mb-3 uppercase font-mono leading-relaxed">
-                        Вы включили уведомления для аккаунта, но это устройство еще не подписано.
+                        Notifications are enabled for your account, but this device is not yet subscribed.
                     </p>
                     <Button
                         onClick={subscribe}
                         className="w-full bg-orange-500/10 text-orange-500 border border-orange-500/30 text-[10px] uppercase font-bold tracking-widest hover:bg-orange-500 hover:text-white transition-all h-10"
                     >
-                        АКТИВИРОВАТЬ НА ЭТОМ УСТРОЙСТВЕ
+                        ACTIVATE ON THIS DEVICE
                     </Button>
                 </div>
             )}
@@ -219,7 +219,7 @@ export function PushSubscriptionManager() {
                         disabled={loading}
                         className="w-full border-[#99CCCC]/30 text-[#99CCCC] text-[10px] uppercase font-bold tracking-widest hover:bg-[#99CCCC]/10 h-10"
                     >
-                        {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Отправить тестовый пуш"}
+                        {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : "SEND TEST PUSH"}
                     </Button>
                 </div>
             )}

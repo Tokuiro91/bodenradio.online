@@ -32,8 +32,8 @@ export async function POST(req: NextRequest) {
         }
 
         const payload = JSON.stringify({
-            title: "BØDEN Test Push",
-            body: "This is a test notification from BØDEN Radio! It works! 🚀",
+            title: "BØDEN Radio ❤️",
+            body: "Now we are friends, Thank you ❤️",
             icon: "/icons/icon-192.png",
             url: "/profile"
         })
