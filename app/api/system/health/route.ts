@@ -2,10 +2,17 @@ import { NextResponse } from "next/server"
 import os from "os"
 import { execSync } from "child_process"
 
+// Realistic listener capacity for 1 vCPU server (128 kbps stream)
+const BROADCAST_CAPACITY = 100
+
 function fmtBytes(bytes: number) {
     const gb = bytes / 1024 / 1024 / 1024
     return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / 1024 / 1024).toFixed(0)} MB`
 }
+
+// 1-second server-side cache to avoid hammering on rapid polling
+let cache: { data: any; ts: number } | null = null
+const CACHE_TTL_MS = 1000
 
 async function getIcecastStats() {
     try {
@@ -16,15 +23,18 @@ async function getIcecastStats() {
         if (!res.ok) return null
         const xml = await res.text()
         const listeners = parseInt(xml.match(/<listeners>(\d+)<\/listeners>/)?.[1] ?? "0")
-        const maxListeners = parseInt(xml.match(/<listener_peak>(\d+)<\/listener_peak>/)?.[1] ?? "0") ||
-                             parseInt(xml.match(/<max_listeners>(\d+)<\/max_listeners>/)?.[1] ?? "100")
-        return { listeners, maxListeners }
+        return { listeners }
     } catch {
         return null
     }
 }
 
 export async function GET() {
+    // Return cached data if fresh
+    if (cache && Date.now() - cache.ts < CACHE_TTL_MS) {
+        return NextResponse.json(cache.data)
+    }
+
     try {
         // CPU: load average / cpuCount → percentage
         const cpuCount = os.cpus().length
@@ -42,9 +52,7 @@ export async function GET() {
         let diskTotalBytes = 0
         let diskUsedPercent = 0
         try {
-            // df outputs KB on Linux with -k
             const df = execSync("df -k / | tail -1").toString().trim().split(/\s+/)
-            // columns: Filesystem 1K-blocks Used Available Use% Mounted
             diskTotalBytes = parseInt(df[1]) * 1024
             const diskAvailBytes = parseInt(df[3]) * 1024
             diskFreeBytes = diskAvailBytes
@@ -56,12 +64,18 @@ export async function GET() {
         // Icecast broadcast load
         const icecast = await getIcecastStats()
         const broadcastListeners = icecast?.listeners ?? 0
-        // Use 100 as default max if we can't get it; peak is better than max_listeners
-        const broadcastMax = Math.max(icecast?.maxListeners ?? 100, broadcastListeners, 1)
-        const broadcastPercent = Math.min(100, Math.round((broadcastListeners / broadcastMax) * 100))
 
-        return NextResponse.json({
-            // legacy fields (used by existing components)
+        // Use realistic 100-listener capacity (1 vCPU server limit)
+        const broadcastPercent = Math.min(100, Math.round((broadcastListeners / BROADCAST_CAPACITY) * 100))
+
+        // Bandwidth estimate: 128 kbps per listener = 16 KB/s each
+        const bandwidthKBs = broadcastListeners * 16
+        const bandwidthStr = bandwidthKBs >= 1024
+            ? `${(bandwidthKBs / 1024).toFixed(1)} MB/s`
+            : `${bandwidthKBs} KB/s`
+
+        const data = {
+            // legacy fields
             cpu: `${cpuPercent.toFixed(1)}%`,
             memory: `${ramPercent.toFixed(1)}%`,
             storage: `${diskUsedPercent}%`,
@@ -77,9 +91,13 @@ export async function GET() {
             diskTotal: fmtBytes(diskTotalBytes),
             diskUsedPercent,
             broadcastListeners,
-            broadcastMax,
+            broadcastMax: BROADCAST_CAPACITY,
             broadcastPercent,
-        })
+            bandwidthStr,
+        }
+
+        cache = { data, ts: Date.now() }
+        return NextResponse.json(data)
     } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 500 })
     }

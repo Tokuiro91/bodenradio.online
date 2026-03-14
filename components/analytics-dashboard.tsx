@@ -35,6 +35,7 @@ interface SystemStats {
     broadcastListeners?: number
     broadcastMax?: number
     broadcastPercent?: number
+    bandwidthStr?: string
 }
 
 export function AnalyticsDashboard({
@@ -50,43 +51,36 @@ export function AnalyticsDashboard({
     const [icecastListeners, setIcecastListeners] = useState<number | null>(null)
     const [systemStats, setSystemStats] = useState<SystemStats>(externalStats)
 
-    // Poll Icecast listener count every 10s
-    useEffect(() => {
-        const fetchIcecast = async () => {
-            try {
-                const r = await fetch("/api/radio/status")
-                const d = await r.json()
-                if (typeof d.listeners === "number") setIcecastListeners(d.listeners)
-            } catch { }
-        }
-        fetchIcecast()
-        const iv = setInterval(fetchIcecast, 10_000)
-        return () => clearInterval(iv)
-    }, [])
-
-    // Poll system health every 30s
+    // Poll Icecast listener count every 1s (via health endpoint)
     useEffect(() => {
         const fetchHealth = async () => {
             try {
                 const r = await fetch("/api/system/health")
                 const d = await r.json()
                 setSystemStats(d)
+                if (typeof d.broadcastListeners === "number") setIcecastListeners(d.broadcastListeners)
             } catch { }
         }
         fetchHealth()
-        const iv = setInterval(fetchHealth, 30_000)
+        const iv = setInterval(fetchHealth, 1_000)
         return () => clearInterval(iv)
     }, [])
 
+    // Auto-refresh analytics data every 10s
     useEffect(() => {
-        setLoading(true)
-        fetch(`/api/analytics/stats?period=${period}`)
-            .then(res => {
-                if (!res.ok) throw new Error("Failed to load analytics")
-                return res.json()
-            })
-            .then(d => { setData(d); setLoading(false) })
-            .catch(err => { setError(err.message); setLoading(false) })
+        const load = () => {
+            setLoading(true)
+            fetch(`/api/analytics/stats?period=${period}`)
+                .then(res => {
+                    if (!res.ok) throw new Error("Failed to load analytics")
+                    return res.json()
+                })
+                .then(d => { setData(d); setLoading(false) })
+                .catch(err => { setError(err.message); setLoading(false) })
+        }
+        load()
+        const iv = setInterval(load, 10_000)
+        return () => clearInterval(iv)
     }, [period])
 
     if (loading && !data) return <div className="p-4 text-xs text-[#9ca3af] font-mono">Загрузка аналитики...</div>
@@ -186,10 +180,10 @@ export function AnalyticsDashboard({
                     <ServerCard
                         icon={<Radio size={14} />}
                         label="Трансляция"
-                        value={`${systemStats.broadcastPercent ?? 0}%`}
-                        sub={systemStats.broadcastListeners !== undefined
-                            ? `${systemStats.broadcastListeners} / ${systemStats.broadcastMax} слушателей`
-                            : "пиковое = 100%"}
+                        value={`${systemStats.broadcastListeners ?? 0} / 100`}
+                        sub={systemStats.bandwidthStr
+                            ? `${systemStats.bandwidthStr} bandwidth`
+                            : "max capacity = 100 listeners"}
                         percent={systemStats.broadcastPercent ?? 0}
                         color={
                             (systemStats.broadcastPercent ?? 0) > 80 ? "#f97373"
