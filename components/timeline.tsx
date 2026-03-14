@@ -90,8 +90,8 @@ export function Timeline({
             >
               {/* Date Marker Above Slot */}
               {isFirstOfDay && (
-                <div className="absolute top-1 left-[-4px] flex flex-col items-start opacity-40 group-hover/timeline:opacity-100 transition-opacity pointer-events-none">
-                  <div className="w-[1px] h-3 bg-[#99CCCC] mb-1" />
+                <div className="absolute top-1 left-[-4px] flex flex-row items-center gap-1 opacity-40 group-hover/timeline:opacity-100 transition-opacity pointer-events-none">
+                  <div className="w-[1px] h-3 bg-[#99CCCC]" />
                   <span className="text-[8px] font-mono whitespace-nowrap text-[#99CCCC] tracking-tighter">
                     {dateLabel}
                   </span>
