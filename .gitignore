@@ -6,8 +6,19 @@ __v0_jsx-dev-runtime.ts
 # Common ignores
 node_modules/
 .next/
-.env*.local
 .DS_Store
+
+# Environment / secrets — NEVER commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+service-account*.json
+credentials.json
+secrets.json
 # Persistent data (server-side storage)
 data/artists.json
 data/artist-db.json
