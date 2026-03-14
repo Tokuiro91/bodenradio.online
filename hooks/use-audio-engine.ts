@@ -34,6 +34,19 @@ function resolveStreamUrl(url: string): string {
 
 const UNIFIED_STREAM_URL = process.env.NEXT_PUBLIC_STREAM_URL || "http://163.245.219.4:8000/radio"
 
+/** Report play/pause to analytics so artist listening time can be computed */
+function trackAudioEvent(type: "play" | "pause") {
+    try {
+        const sessionId = localStorage.getItem("analytics_session_id")
+        if (!sessionId) return
+        fetch("/api/analytics/track", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId, type }),
+        }).catch(() => { })
+    } catch { }
+}
+
 function getAudioUrl(artist: Artist): string {
     return artist.audioUrl || UNIFIED_STREAM_URL
 }
@@ -217,6 +230,7 @@ export function useAudioEngine(artists: Artist[]) {
                     audio.volume = 0
                     audio.load()
                     audio.play().then(() => {
+                        trackAudioEvent("play")
                         setIsPlayingState(true)
                         isPlayingRef.current = true
                         const targetVol = isMutedRef.current ? 0 : volumeRef.current / 100
@@ -296,6 +310,7 @@ export function useAudioEngine(artists: Artist[]) {
             audio.load()
             try {
                 await audio.play()
+                trackAudioEvent("play")
                 isFadingRef.current = true
                 const targetVol = isMutedRef.current ? 0 : volumeRef.current / 100
                 fadeIntervalRef.current = startFade(audio, 0, targetVol, FADE_IN_DURATION_MS, () => {
@@ -310,6 +325,7 @@ export function useAudioEngine(artists: Artist[]) {
         } else {
             // Fade out then stop
             isFadingRef.current = true
+            trackAudioEvent("pause")
             fadeIntervalRef.current = startFade(audio, audio.volume, 0, SWITCH_FADE_OUT_MS, () => {
                 audio.pause()
                 audio.src = ""
