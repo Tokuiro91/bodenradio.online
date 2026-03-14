@@ -28,9 +28,16 @@ function InstagramIcon({ className }: { className?: string }) {
 
 function SoundcloudIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M11.56 8.87V17h8.76c.96 0 1.68-.76 1.68-1.76 0-.96-.74-1.76-1.68-1.76h-.14c.05-.24.07-.49.07-.74 0-2.17-1.78-3.96-3.96-3.96-1.16 0-2.22.5-2.97 1.3-.52-.11-1.13-.08-1.76.22zM9.81 9.26c-.38 0-.68.31-.68.7v7.38c0 .38.3.68.68.68s.68-.3.68-.68V9.96c0-.39-.3-.7-.68-.7zm-2.25 1.56c-.38 0-.68.31-.68.7v5.82c0 .38.3.68.68.68s.68-.3.68-.68v-5.82c0-.39-.3-.7-.68-.7zm-2.25 1.68c-.38 0-.68.31-.68.7v4.14c0 .38.3.68.68.68s.68-.3.68-.68v-4.14c0-.39-.3-.7-.68-.7zm-1.12 1.5c-.38 0-.68.31-.68.7v1.64c0 .38.3.68.68.68s.68-.3.68-.68v-1.64c0-.39-.3-.7-.68-.7zm2.24-1.06c-.38 0-.68.31-.68.7v2.7c0 .38.3.68.68.68s.68-.3.68-.68v-2.7c0-.39-.3-.7-.68-.7z" />
-    </svg>
+    <>
+      {/* Mobile: SimpleIcons fill — clear at 24px */}
+      <svg className={`${className} md:hidden`} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M11.56 8.87V17h8.76c.96 0 1.68-.76 1.68-1.76 0-.96-.74-1.76-1.68-1.76h-.14c.05-.24.07-.49.07-.74 0-2.17-1.78-3.96-3.96-3.96-1.16 0-2.22.5-2.97 1.3-.52-.11-1.13-.08-1.76.22zM9.81 9.26c-.38 0-.68.31-.68.7v7.38c0 .38.3.68.68.68s.68-.3.68-.68V9.96c0-.39-.3-.7-.68-.7zm-2.25 1.56c-.38 0-.68.31-.68.7v5.82c0 .38.3.68.68.68s.68-.3.68-.68v-5.82c0-.39-.3-.7-.68-.7zm-2.25 1.68c-.38 0-.68.31-.68.7v4.14c0 .38.3.68.68.68s.68-.3.68-.68v-4.14c0-.39-.3-.7-.68-.7zm-1.12 1.5c-.38 0-.68.31-.68.7v1.64c0 .38.3.68.68.68s.68-.3.68-.68v-1.64c0-.39-.3-.7-.68-.7zm2.24-1.06c-.38 0-.68.31-.68.7v2.7c0 .38.3.68.68.68s.68-.3.68-.68v-2.7c0-.39-.3-.7-.68-.7z" />
+      </svg>
+      {/* Desktop: stroke outline — clean at 16px */}
+      <svg className={`${className} hidden md:block`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M17 18H7A5 5 0 015.36 8.93a7 7 0 0113.28 0A4 4 0 0117 18z" />
+      </svg>
+    </>
   )
 }
 
@@ -331,7 +338,7 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
                     href={artist.soundcloudUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[#737373] hover:text-[#e5e5e5] transition-colors"
+                    className="text-[#737373] hover:text-[#99CCCC] transition-colors"
                     aria-label="SoundCloud"
                   >
                     <SoundcloudIcon className="w-6 h-6 md:w-4 md:h-4" />
