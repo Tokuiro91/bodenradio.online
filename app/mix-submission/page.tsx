@@ -1,14 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Loader2, ArrowLeft, Send, CheckCircle2 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 
 export default function MixSubmissionPage() {
-    const { data: session, status } = useSession()
     const router = useRouter()
     const [loading, setLoading] = useState(false)
     const [submitted, setSubmitted] = useState(false)
@@ -26,12 +24,6 @@ export default function MixSubmissionPage() {
         genresBpm: "",
         contact: ""
     })
-
-    // Protect page
-    if (status === "unauthenticated") {
-        router.push("/login")
-        return null
-    }
 
     useEffect(() => {
         if (submitted) {
