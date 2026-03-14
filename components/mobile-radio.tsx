@@ -563,7 +563,7 @@ export function MobileRadio() {
                       className="text-white/70 hover:text-[#99CCCC] transition-colors"
                       aria-label="Share"
                     >
-                      <Share2 className="w-4 h-4" />
+                      <Share2 className="w-6 h-6" />
                     </button>
 
                     {artist.instagramUrl && (
