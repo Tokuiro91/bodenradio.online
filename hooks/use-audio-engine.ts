@@ -182,7 +182,7 @@ export function useAudioEngine(artists: Artist[]) {
     useEffect(() => { volumeRef.current = volume }, [volume])
     useEffect(() => { isMutedRef.current = isMuted }, [isMuted])
 
-    // Init audio element
+    // Init audio element + external control handlers (BT headphones, lock screen, phone calls)
     useEffect(() => {
         if (!audioRef.current) {
             audioRef.current = new Audio()
@@ -190,11 +190,62 @@ export function useAudioEngine(artists: Artist[]) {
             audioRef.current.src = UNIFIED_STREAM_URL
             audioRef.current.crossOrigin = "anonymous"
         }
+        const audio = audioRef.current
+
+        // External pause (BT headphone removed, phone call, OS media button)
+        // isFadingRef = true means WE paused it — skip to avoid state conflict
+        const onExternalPause = () => {
+            if (isFadingRef.current) return
+            setIsPlayingState(false)
+            isPlayingRef.current = false
+        }
+
+        // Stream stalled (network hiccup) — reconnect if we should be playing
+        const onStalled = () => {
+            if (!isPlayingRef.current || isFadingRef.current) return
+            const currentActive = findActiveArtist(artistsRef.current)
+            const streamUrl = resolveStreamUrl(currentActive ? getAudioUrl(currentActive) : UNIFIED_STREAM_URL) + "?t=" + Date.now()
+            audio.src = streamUrl
+            audio.load()
+            audio.play().catch(() => { })
+        }
+
+        audio.addEventListener("pause", onExternalPause)
+        audio.addEventListener("stalled", onStalled)
+
+        // Media Session: lock screen / headphone button controls
+        if (typeof navigator !== "undefined" && "mediaSession" in navigator) {
+            navigator.mediaSession.setActionHandler("play", () => {
+                if (isPlayingRef.current) return
+                // Reconnect to fresh stream — avoids stale buffer glitch on BT resume
+                const currentActive = findActiveArtist(artistsRef.current)
+                const streamUrl = resolveStreamUrl(currentActive ? getAudioUrl(currentActive) : UNIFIED_STREAM_URL) + "?t=" + Date.now()
+                audio.src = streamUrl
+                audio.volume = isMutedRef.current ? 0 : volumeRef.current / 100
+                audio.load()
+                audio.play().then(() => {
+                    trackAudioEvent("play")
+                    setIsPlayingState(true)
+                    isPlayingRef.current = true
+                }).catch(() => { })
+            })
+            navigator.mediaSession.setActionHandler("pause", () => {
+                if (!isPlayingRef.current) return
+                trackAudioEvent("pause")
+                audio.pause()
+                audio.src = ""
+                audio.load()
+                setIsPlayingState(false)
+                isPlayingRef.current = false
+            })
+        }
 
         return () => {
             if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current)
-            audioRef.current?.pause()
-            if (audioRef.current) audioRef.current.src = ""
+            audio.removeEventListener("pause", onExternalPause)
+            audio.removeEventListener("stalled", onStalled)
+            audio.pause()
+            audio.src = ""
         }
     }, [])
 
