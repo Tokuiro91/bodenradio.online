@@ -84,10 +84,11 @@ function calcSeekPosition(artist: Artist): number {
     return Math.max(0, (now - s) / 1000)
 }
 
-function updateMediaSession(artist: Artist | null) {
+function updateMediaSession(artist: Artist | null, playing?: boolean) {
     if (typeof navigator !== "undefined" && "mediaSession" in navigator) {
         if (!artist) {
             navigator.mediaSession.metadata = null
+            navigator.mediaSession.playbackState = "none"
             return
         }
         navigator.mediaSession.metadata = new MediaMetadata({
@@ -98,6 +99,9 @@ function updateMediaSession(artist: Artist | null) {
                 { src: artist.image, sizes: "512x512", type: "image/jpeg" },
             ],
         })
+        if (playing !== undefined) {
+            navigator.mediaSession.playbackState = playing ? "playing" : "paused"
+        }
     }
 }
 
@@ -220,6 +224,7 @@ export function useAudioEngine(artists: Artist[]) {
                 // Reconnect to fresh stream — avoids stale buffer glitch on BT resume
                 const currentActive = findActiveArtist(artistsRef.current)
                 const streamUrl = resolveStreamUrl(currentActive ? getAudioUrl(currentActive) : UNIFIED_STREAM_URL) + "?t=" + Date.now()
+                isFadingRef.current = true
                 audio.src = streamUrl
                 audio.volume = isMutedRef.current ? 0 : volumeRef.current / 100
                 audio.load()
@@ -227,16 +232,21 @@ export function useAudioEngine(artists: Artist[]) {
                     trackAudioEvent("play")
                     setIsPlayingState(true)
                     isPlayingRef.current = true
-                }).catch(() => { })
+                    updateMediaSession(currentActive, true)
+                    isFadingRef.current = false
+                }).catch(() => { isFadingRef.current = false })
             })
             navigator.mediaSession.setActionHandler("pause", () => {
                 if (!isPlayingRef.current) return
                 trackAudioEvent("pause")
+                isFadingRef.current = true
                 audio.pause()
                 audio.src = ""
                 audio.load()
+                isFadingRef.current = false
                 setIsPlayingState(false)
                 isPlayingRef.current = false
+                if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "paused"
             })
         }
 
@@ -325,7 +335,7 @@ export function useAudioEngine(artists: Artist[]) {
             }
 
             setActiveArtist(active)
-            updateMediaSession(active)
+            updateMediaSession(active, isPlayingRef.current)
         }
 
         tick()
@@ -372,19 +382,21 @@ export function useAudioEngine(artists: Artist[]) {
 
         if (newPlaying) {
             const streamUrl = resolveStreamUrl(currentActive ? getAudioUrl(currentActive) : UNIFIED_STREAM_URL) + "?t=" + Date.now()
+            isFadingRef.current = true  // guard: prevent onExternalPause from resetting state during setup
             audio.src = streamUrl
             audio.volume = 0
             audio.load()
             try {
                 await audio.play()
                 trackAudioEvent("play")
-                isFadingRef.current = true
+                updateMediaSession(findActiveArtist(artistsRef.current), true)
                 const targetVol = isMutedRef.current ? 0 : volumeRef.current / 100
                 fadeIntervalRef.current = startFade(audio, 0, targetVol, FADE_IN_DURATION_MS, () => {
                     isFadingRef.current = false
                 })
             } catch (err) {
                 console.error("Playback failed:", err)
+                isFadingRef.current = false
                 setIsPlayingState(false)
                 isPlayingRef.current = false
                 toast.error("Failed to start playback")
