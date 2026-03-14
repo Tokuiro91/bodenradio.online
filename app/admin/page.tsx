@@ -971,11 +971,17 @@ export default function AdminPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Campaign Start <span className="normal-case text-[#555]">(empty = show now)</span></label>
-                      <input type="datetime-local" step="1" value={form.campaignStart} onChange={(e) => setForm(f => ({ ...f, campaignStart: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                      <div className="flex gap-1">
+                        <input type="datetime-local" step="1" value={form.campaignStart} onChange={(e) => setForm(f => ({ ...f, campaignStart: e.target.value }))} className="flex-1 bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                        {form.campaignStart && <button type="button" onClick={() => setForm(f => ({ ...f, campaignStart: "" }))} className="px-2 text-[#555] hover:text-red-400 border border-[#2a2a2a] rounded-sm text-xs">×</button>}
+                      </div>
                     </div>
                     <div>
                       <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Campaign End <span className="normal-case text-[#555]">(empty = no expiry)</span></label>
-                      <input type="datetime-local" step="1" value={form.campaignEnd} onChange={(e) => setForm(f => ({ ...f, campaignEnd: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                      <div className="flex gap-1">
+                        <input type="datetime-local" step="1" value={form.campaignEnd} onChange={(e) => setForm(f => ({ ...f, campaignEnd: e.target.value }))} className="flex-1 bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                        {form.campaignEnd && <button type="button" onClick={() => setForm(f => ({ ...f, campaignEnd: "" }))} className="px-2 text-[#555] hover:text-red-400 border border-[#2a2a2a] rounded-sm text-xs">×</button>}
+                      </div>
                     </div>
                   </div>
                 </>
