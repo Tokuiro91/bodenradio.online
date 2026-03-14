@@ -319,7 +319,7 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
                       }`}
                     aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
                   >
-                    <Star className={`w-5 h-5 lg:w-4 lg:h-4 ${isFavorite ? "fill-current" : ""}`} />
+                    <Star className={`w-6 h-6 lg:w-4 lg:h-4 ${isFavorite ? "fill-current" : ""}`} />
                   </button>
                 )}
                 {artist.instagramUrl && (
@@ -330,7 +330,7 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
                     className="text-[#737373] hover:text-[#99CCCC] transition-colors"
                     aria-label="Instagram"
                   >
-                    <InstagramIcon className="w-5 h-5 lg:w-4 lg:h-4" />
+                    <InstagramIcon className="w-6 h-6 lg:w-4 lg:h-4" />
                   </a>
                 )}
                 {artist.soundcloudUrl && (
@@ -341,7 +341,7 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
                     className="text-[#737373] hover:text-[#99CCCC] transition-colors"
                     aria-label="SoundCloud"
                   >
-                    <SoundcloudIcon className="w-5 h-[22px] lg:w-4 lg:h-4" />
+                    <SoundcloudIcon className="w-6 h-[26px] lg:w-4 lg:h-4" />
                   </a>
                 )}
                 {artist.bandcampUrl && (
@@ -352,7 +352,7 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
                     className="text-[#737373] hover:text-[#99CCCC] transition-colors"
                     aria-label="Bandcamp"
                   >
-                    <BandcampIcon className="w-5 h-5 lg:w-4 lg:h-4" />
+                    <BandcampIcon className="w-6 h-6 lg:w-4 lg:h-4" />
                   </a>
                 )}
               </div>
