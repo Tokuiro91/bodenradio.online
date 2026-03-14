@@ -2,7 +2,24 @@
 
 import { useEffect, useState } from "react"
 
-const DISMISSED_KEY = "boden-pwa-install-dismissed"
+const DISMISSED_KEY = "boden-pwa-install-dismissed-v2"
+const DISMISS_DAYS = 30
+
+function isDismissed() {
+    const raw = localStorage.getItem(DISMISSED_KEY)
+    if (!raw) return false
+    const expires = parseInt(raw, 10)
+    if (Date.now() > expires) {
+        localStorage.removeItem(DISMISSED_KEY)
+        return false
+    }
+    return true
+}
+
+function setDismissed() {
+    const expires = Date.now() + DISMISS_DAYS * 24 * 60 * 60 * 1000
+    localStorage.setItem(DISMISSED_KEY, String(expires))
+}
 
 function isIosSafari() {
     if (typeof navigator === "undefined") return false
@@ -19,22 +36,18 @@ export function PwaInstallPrompt() {
     const [platform, setPlatform] = useState<"ios" | "android" | "other">("other")
 
     useEffect(() => {
-        // 1. Check if already dismissed
-        if (localStorage.getItem(DISMISSED_KEY)) return
+        if (isDismissed()) return
 
-        // 2. Platform detection
         if (isIosSafari()) {
             setPlatform("ios")
             const t = setTimeout(() => setShow(true), 5000)
             return () => clearTimeout(t)
         }
 
-        // 3. Android/Chrome BeforeInstallPrompt
         const handleBeforeInstallPrompt = (e: Event) => {
             e.preventDefault()
             setDeferredPrompt(e)
             setPlatform("android")
-            // Show immediately or after delay on Android
             setTimeout(() => setShow(true), 3000)
         }
 
@@ -43,7 +56,7 @@ export function PwaInstallPrompt() {
     }, [])
 
     const dismiss = () => {
-        localStorage.setItem(DISMISSED_KEY, "1")
+        setDismissed()
         setShow(false)
     }
 
@@ -52,7 +65,7 @@ export function PwaInstallPrompt() {
         deferredPrompt.prompt()
         const { outcome } = await deferredPrompt.userChoice
         if (outcome === "accepted") {
-            localStorage.setItem(DISMISSED_KEY, "1")
+            setDismissed()
             setShow(false)
         }
         setDeferredPrompt(null)
@@ -89,13 +102,13 @@ export function PwaInstallPrompt() {
             {platform === "android" && deferredPrompt ? (
                 <div className="space-y-4">
                     <p className="text-sm font-mono text-[#e5e5e5]">
-                        Установите радио как приложение для быстрого доступа к эфиру.
+                        Install the radio as an app for quick access to the stream.
                     </p>
                     <button
                         onClick={handleInstall}
                         className="w-full py-3 bg-[#99CCCC] text-black font-bold text-xs font-mono uppercase tracking-widest rounded-xl hover:bg-white transition"
                     >
-                        Установить сейчас
+                        Install now
                     </button>
                 </div>
             ) : (
@@ -119,8 +132,8 @@ export function PwaInstallPrompt() {
                                 </>
                             ) : (
                                 <>
-                                    Нажмите на кнопку меню{" "}
-                                    <span className="text-[#99CCCC] font-bold">⋮</span> (три точки)
+                                    Tap the menu button{" "}
+                                    <span className="text-[#99CCCC] font-bold">⋮</span> (three dots)
                                 </>
                             )}
                         </span>
@@ -128,18 +141,15 @@ export function PwaInstallPrompt() {
                     <li className="flex items-start gap-3">
                         <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#99CCCC]/20 text-[#99CCCC] text-[11px] flex items-center justify-center font-bold">2</span>
                         <span>
-                            {platform === "ios"
-                                ? "Scroll down and tap "
-                                : "Выберите "
-                            }
+                            {platform === "ios" ? "Scroll down and tap " : "Select "}
                             <span className="text-[#99CCCC]">
-                                {platform === "ios" ? "\"Add to Home Screen\"" : "\"Установить приложение\" (или Добавить)"}
+                                {platform === "ios" ? "\"Add to Home Screen\"" : "\"Add to Home Screen\""}
                             </span>
                         </span>
                     </li>
                     <li className="flex items-start gap-3">
                         <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#99CCCC]/20 text-[#99CCCC] text-[11px] flex items-center justify-center font-bold">3</span>
-                        <span>Нажмите <span className="text-[#99CCCC]">"{platform === "ios" ? "Add" : "Установить"}"</span> для подтверждения</span>
+                        <span>Tap <span className="text-[#99CCCC]">"Add"</span> to confirm</span>
                     </li>
                 </ol>
             )}
