@@ -3,51 +3,86 @@ import type { MetadataRoute } from "next"
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
-      // All crawlers: allow public pages, block admin & API
+      // ── Search engines ──────────────────────────────────────────────
       {
-        userAgent: "*",
+        userAgent: "Googlebot",
         allow: "/",
         disallow: ["/admin/", "/api/"],
       },
-      // OpenAI GPTBot
+      {
+        userAgent: "Bingbot",
+        allow: "/",
+        disallow: ["/admin/", "/api/"],
+      },
+      {
+        userAgent: "Yandexbot",
+        allow: "/",
+        disallow: ["/admin/", "/api/"],
+      },
+      {
+        userAgent: "DuckDuckBot",
+        allow: "/",
+        disallow: ["/admin/", "/api/"],
+      },
+      {
+        userAgent: "Applebot",
+        allow: "/",
+        disallow: ["/admin/", "/api/"],
+      },
+
+      // ── AI crawlers ─────────────────────────────────────────────────
       {
         userAgent: "GPTBot",
         allow: "/",
         disallow: ["/admin/", "/api/"],
       },
-      // OpenAI ChatGPT-User
       {
         userAgent: "ChatGPT-User",
         allow: "/",
         disallow: ["/admin/", "/api/"],
       },
-      // Google Gemini / Bard
       {
         userAgent: "Google-Extended",
         allow: "/",
         disallow: ["/admin/", "/api/"],
       },
-      // Anthropic Claude
       {
         userAgent: "ClaudeBot",
         allow: "/",
         disallow: ["/admin/", "/api/"],
       },
-      // Common Crawl (used by many AI training datasets)
+      {
+        userAgent: "PerplexityBot",
+        allow: "/",
+        disallow: ["/admin/", "/api/"],
+      },
+      {
+        userAgent: "ByteSpider",
+        allow: "/",
+        disallow: ["/admin/", "/api/"],
+      },
       {
         userAgent: "CCBot",
         allow: "/",
         disallow: ["/admin/", "/api/"],
       },
-      // Meta AI
       {
         userAgent: "FacebookBot",
         allow: "/",
         disallow: ["/admin/", "/api/"],
       },
-      // Apple Applebot
+
+      // ── Block known bad bots / scrapers ─────────────────────────────
+      { userAgent: "AhrefsBot",    disallow: "/" },
+      { userAgent: "MJ12bot",      disallow: "/" },
+      { userAgent: "DotBot",       disallow: "/" },
+      { userAgent: "SemrushBot",   disallow: "/" },
+      { userAgent: "MajesticSEO",  disallow: "/" },
+      { userAgent: "BLEXBot",      disallow: "/" },
+
+      // ── Default: allow all public pages ─────────────────────────────
       {
-        userAgent: "Applebot",
+        userAgent: "*",
         allow: "/",
         disallow: ["/admin/", "/api/"],
       },
