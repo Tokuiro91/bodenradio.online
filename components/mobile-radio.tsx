@@ -539,7 +539,7 @@ export function MobileRadio() {
                 {/* Social links & Favorites — Hide for ads */}
                 {!isAd && (
                   <div
-                    className="flex items-center gap-2 mt-3"
+                    className="flex items-center gap-[9px] mt-3"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <button
@@ -553,7 +553,7 @@ export function MobileRadio() {
                         }`}
                       aria-label={userFavorites.includes(artist.dbId || String(artist.id)) ? "Remove from favorites" : "Add to favorites"}
                     >
-                      <Star className={`w-6 h-6 ${userFavorites.includes(artist.dbId || String(artist.id)) ? "fill-current" : ""}`} />
+                      <Star className={`w-[22px] h-[22px] ${userFavorites.includes(artist.dbId || String(artist.id)) ? "fill-current" : ""}`} />
                     </button>
                     <button
                       onClick={(e) => {
@@ -563,7 +563,7 @@ export function MobileRadio() {
                       className="text-white/70 hover:text-[#99CCCC] transition-colors"
                       aria-label="Share"
                     >
-                      <Share2 className="w-6 h-6" />
+                      <Share2 className="w-[22px] h-[22px]" />
                     </button>
 
                     {artist.instagramUrl && (
@@ -574,7 +574,7 @@ export function MobileRadio() {
                         className="text-white/70 hover:text-[#99CCCC] transition-colors"
                         aria-label="Instagram"
                       >
-                        <InstagramIcon className="w-6 h-6" />
+                        <InstagramIcon className="w-[22px] h-[22px]" />
                       </a>
                     )}
                     {artist.soundcloudUrl && (
@@ -585,7 +585,7 @@ export function MobileRadio() {
                         className="text-white/70 hover:text-[#99CCCC] transition-colors"
                         aria-label="SoundCloud"
                       >
-                        <SoundcloudIcon className="w-6 h-[26px]" />
+                        <SoundcloudIcon className="w-[22px] h-[22px]" />
                       </a>
                     )}
                     {artist.bandcampUrl && (
@@ -596,7 +596,7 @@ export function MobileRadio() {
                         className="text-white/70 hover:text-[#99CCCC] transition-colors"
                         aria-label="Bandcamp"
                       >
-                        <BandcampIcon className="w-6 h-6" />
+                        <BandcampIcon className="w-[22px] h-[22px]" />
                       </a>
                     )}
                   </div>
