@@ -539,7 +539,7 @@ export function MobileRadio() {
                 {/* Social links & Favorites — Hide for ads */}
                 {!isAd && (
                   <div
-                    className="flex items-center gap-[9px] mt-3"
+                    className="flex items-center gap-[11px] mt-3"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <button
