@@ -42,6 +42,7 @@ interface Artist {
     image: string
     startTime: string  // ISO UTC string
     endTime: string    // ISO UTC string
+    type?: string      // "ad" for ad slots
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -600,13 +601,14 @@ function ScheduleGrid({ schedule, artists, nowEntry, onEdit, onDelete, onDeleteA
 
     const navigate = (dir: 1 | -1) => {
         const d = new Date(anchor + "T12:00:00")
-        if (mode === "week") d.setDate(d.getDate() + dir * 7)
+        if (mode === "week") d.setDate(d.getDate() + dir * 1)
         else d.setMonth(d.getMonth() + dir)
         setAnchor(toDateStr(d))
     }
 
-    const weekStart = getWeekStart(anchor)
-    const weekDays = Array.from({ length: 7 }, (_, i) => toDateStr(addDays(weekStart, i)))
+    // Week view: anchor is always column 1 (today by default)
+    const anchorDate = new Date(anchor + "T12:00:00")
+    const weekDays = Array.from({ length: 7 }, (_, i) => toDateStr(addDays(anchorDate, i)))
     const rangeLabel = mode === "week"
         ? `${weekDays[0]} — ${weekDays[6]}`
         : new Date(anchor + "T12:00:00").toLocaleString("default", { month: "long", year: "numeric" }).toUpperCase()
@@ -665,10 +667,12 @@ function ScheduleGrid({ schedule, artists, nowEntry, onEdit, onDelete, onDeleteA
                             <div className="w-14 flex-shrink-0" />
                             {weekDays.map((date, i) => {
                                 const isToday = date === today
-                                const dayNum = new Date(date + "T12:00:00").getDate()
+                                const dayObj = new Date(date + "T12:00:00")
+                                const dayNum = dayObj.getDate()
+                                const dayName = dayObj.toLocaleDateString("en", { weekday: "short" }).toUpperCase()
                                 return (
                                     <div key={date} className={`flex-1 text-center py-2.5 border-l border-[#111] ${isToday ? "border-b-2 border-b-[#99CCCC]" : ""}`}>
-                                        <div className={`text-[8px] font-black uppercase tracking-widest ${isToday ? "text-[#99CCCC]" : "text-[#333]"}`}>{DAY_LABELS[i]}</div>
+                                        <div className={`text-[8px] font-black uppercase tracking-widest ${isToday ? "text-[#99CCCC]" : "text-[#333]"}`}>{dayName}</div>
                                         <div className={`text-sm font-black mt-0.5 ${isToday ? "text-white" : "text-[#2a2a2a]"}`}>{dayNum}</div>
                                     </div>
                                 )
@@ -844,11 +848,16 @@ function TimeGrid({ days, today, schedule, artists, search, nowEntry, onEdit, on
                                 const localStart = new Date(artist.startTime).toTimeString().slice(0, 8)
                                 const localEnd = new Date(artist.endTime).toTimeString().slice(0, 8)
                                 const isDragTarget = dragOverArtistId === artist.id
+                                const isAd = artist.type === "ad"
+                                const cardBase = isAd
+                                    ? "bg-[#4ade80]/10 border-[#4ade80]/25 hover:bg-[#4ade80]/20"
+                                    : "bg-[#CC99CC]/10 border-[#CC99CC]/20 hover:bg-[#CC99CC]/20"
+                                const cardTextColor = isAd ? "text-[#4ade80]" : "text-[#CC99CC]"
                                 return (
                                     <div
                                         key={`artist-${artist.id}-${date}`}
                                         style={{ top: scaledTop, height: scaledHeight, position: "absolute", left: "calc(50% + 1px)", right: 3, zIndex: 10 }}
-                                        className={`rounded-sm px-1.5 py-1 overflow-hidden border cursor-pointer group transition-all ${isDragTarget ? "bg-[#99CCCC]/25 border-[#99CCCC] ring-1 ring-[#99CCCC]" : "bg-[#CC99CC]/10 border-[#CC99CC]/20 hover:bg-[#CC99CC]/20"}`}
+                                        className={`rounded-sm px-1.5 py-1 overflow-hidden border cursor-pointer group transition-all ${isDragTarget ? "bg-[#99CCCC]/25 border-[#99CCCC] ring-1 ring-[#99CCCC]" : cardBase}`}
                                         title={isDragTarget ? "Drop to sync timeslot" : `${artist.name} — ${artist.show}`}
                                         onClick={() => onEditArtist(artist)}
                                         onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy" }}
@@ -865,7 +874,7 @@ function TimeGrid({ days, today, schedule, artists, search, nowEntry, onEdit, on
                                             onSyncArtist({ ...artist, startTime: startISO, endTime: endISO })
                                         }}
                                     >
-                                        <div className="text-[8px] font-mono font-bold leading-tight text-[#CC99CC] truncate">
+                                        <div className={`text-[8px] font-mono font-bold leading-tight truncate ${cardTextColor}`}>
                                             {localStart}<span className="opacity-60"> → {localEnd}</span>
                                         </div>
                                         {scaledHeight > 30 && (
@@ -874,13 +883,13 @@ function TimeGrid({ days, today, schedule, artists, search, nowEntry, onEdit, on
                                             </div>
                                         )}
                                         {scaledHeight > 50 && (
-                                            <div className="text-[8px] font-mono text-[#CC99CC]/60 truncate leading-tight">
+                                            <div className={`text-[8px] font-mono truncate leading-tight ${cardTextColor} opacity-60`}>
                                                 {artist.show}
                                             </div>
                                         )}
                                         <button
                                             onClick={e => { e.stopPropagation(); onDeleteArtist(artist.id) }}
-                                            className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-[#CC99CC]/50 hover:text-red-400 transition-all"
+                                            className={`absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-all ${isAd ? "text-[#4ade80]/50 hover:text-red-400" : "text-[#CC99CC]/50 hover:text-red-400"}`}
                                         >
                                             <X size={10} />
                                         </button>
