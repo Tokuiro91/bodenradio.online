@@ -12,12 +12,13 @@ interface ArtistStat {
     location: string
     bookmarks: number
     slots: number
+    scheduleCount: number
     listeningTimeMs: number
     uniqueListeners: number
     rating: number
 }
 
-type SortKey = "rating" | "bookmarks" | "listeningTimeMs" | "uniqueListeners"
+type SortKey = "rating" | "bookmarks" | "listeningTimeMs" | "scheduleCount"
 
 function fmtDuration(ms: number) {
     const totalSec = Math.floor(ms / 1000)
@@ -115,8 +116,8 @@ export function ArtistAnalytics() {
                     <button onClick={() => handleSort("listeningTimeMs")} className="flex items-center gap-1 text-[9px] text-[#444] font-mono uppercase tracking-widest hover:text-[#99CCCC] transition">
                         <Clock size={9} /> Time <SortIcon col="listeningTimeMs" />
                     </button>
-                    <button onClick={() => handleSort("uniqueListeners")} className="flex items-center gap-1 text-[9px] text-[#444] font-mono uppercase tracking-widest hover:text-[#99CCCC] transition">
-                        <Users size={9} /> Sess. <SortIcon col="uniqueListeners" />
+                    <button onClick={() => handleSort("scheduleCount")} className="flex items-center gap-1 text-[9px] text-[#444] font-mono uppercase tracking-widest hover:text-[#99CCCC] transition">
+                        <Users size={9} /> Sched. <SortIcon col="scheduleCount" />
                     </button>
                     <button onClick={() => handleSort("rating")} className="flex items-center gap-1 text-[9px] text-[#444] font-mono uppercase tracking-widest hover:text-[#99CCCC] transition">
                         <BarChart2 size={9} /> Rating <SortIcon col="rating" />
@@ -176,13 +177,10 @@ export function ArtistAnalytics() {
                                     </div>
                                 </div>
 
-                                {/* Unique sessions */}
+                                {/* Schedule count */}
                                 <div className="flex items-center gap-1.5">
                                     <Users size={9} className="text-[#737373] flex-shrink-0" />
-                                    <span className="text-xs font-mono text-[#a3a3a3]">{artist.uniqueListeners}</span>
-                                    {artist.slots > 0 && (
-                                        <span className="text-[8px] font-mono text-[#333]">({artist.slots} slots)</span>
-                                    )}
+                                    <span className="text-xs font-mono text-[#a3a3a3]">{artist.scheduleCount}</span>
                                 </div>
 
                                 {/* Rating */}
@@ -198,7 +196,7 @@ export function ArtistAnalytics() {
             </div>
 
             <p className="text-[9px] text-[#333] font-mono text-right">
-                Rating = bookmarks×3 + sessions×2 + hours listened · auto-refreshes every 30s
+                Rating = bookmarks×3 + schedule additions×2 + hours listened · auto-refreshes every 30s
             </p>
         </div>
     )

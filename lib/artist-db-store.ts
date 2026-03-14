@@ -16,6 +16,7 @@ export interface DBArtist {
     soundcloudUrl?: string
     bandcampUrl?: string
     isLottie?: boolean
+    scheduleCount?: number  // persistent: total times added to schedule (never decremented)
     favoritesCount?: number // computed by API, not stored in JSON
 }
 
@@ -60,6 +61,14 @@ export function updateDBArtist(id: string, updates: Partial<DBArtist>): DBArtist
     artists[index] = { ...artists[index], ...updates }
     saveArtistDB(artists)
     return artists[index]
+}
+
+export function incrementScheduleCount(id: string): void {
+    const artists = getArtistDB()
+    const index = artists.findIndex(a => a.id === id)
+    if (index === -1) return
+    artists[index] = { ...artists[index], scheduleCount: (artists[index].scheduleCount || 0) + 1 }
+    saveArtistDB(artists)
 }
 
 export function deleteDBArtist(id: string) {

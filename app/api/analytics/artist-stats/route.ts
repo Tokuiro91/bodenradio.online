@@ -118,9 +118,10 @@ export async function GET() {
             }
         }
 
-        // Rating: weighted score (bookmarks × 3 + unique listeners × 2 + hours)
+        // Rating: weighted score (bookmarks × 3 + schedule count × 2 + hours listened)
         const listeningHours = listeningTimeMs / 3_600_000
-        const rating = bookmarks * 3 + uniqueSessionIds.size * 2 + listeningHours
+        const scheduleCount = artist.scheduleCount || 0
+        const rating = bookmarks * 3 + scheduleCount * 2 + listeningHours
 
         return {
             id: artist.id,
@@ -130,6 +131,7 @@ export async function GET() {
             location: artist.location,
             bookmarks,
             slots: slots.length,
+            scheduleCount: artist.scheduleCount || 0,
             listeningTimeMs,
             uniqueListeners: uniqueSessionIds.size,
             rating: parseFloat(rating.toFixed(2)),

@@ -433,6 +433,15 @@ export default function AdminPage() {
     // IMPORTANT: setArtists in useArtists.ts performs a POST to /api/artists
     setArtists(nextArtists)
 
+    // Increment persistent schedule count when adding a NEW entry (not editing) with a dbId
+    if (!isEditing && form.dbId) {
+      fetch("/api/artist-db", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "increment-schedule", id: form.dbId }),
+      }).catch(() => { })
+    }
+
     try {
       // Trigger Radio Schedule Sync for the backend playback engine
       const syncRes = await fetch("/api/radio/sync", {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getArtistDB, createDBArtist, updateDBArtist, deleteDBArtist, syncDBArtists } from "@/lib/artist-db-store"
+import { getArtistDB, createDBArtist, updateDBArtist, deleteDBArtist, syncDBArtists, incrementScheduleCount } from "@/lib/artist-db-store"
 import { getListeners } from "@/lib/listeners-store"
 import { auth } from "@/lib/auth"
 
@@ -27,6 +27,12 @@ export async function POST(req: Request) {
         if (body.action === "sync" && Array.isArray(body.artists)) {
             const synced = syncDBArtists(body.artists)
             return NextResponse.json(synced)
+        }
+
+        // Increment schedule count for an existing artist
+        if (body.action === "increment-schedule" && body.id) {
+            incrementScheduleCount(body.id)
+            return NextResponse.json({ success: true })
         }
 
         const newArtist = createDBArtist(body)
