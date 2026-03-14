@@ -574,7 +574,7 @@ export function MobileRadio() {
                         className="text-white/70 hover:text-[#99CCCC] transition-colors"
                         aria-label="Instagram"
                       >
-                        <InstagramIcon className="w-4 h-4" />
+                        <InstagramIcon className="w-6 h-6" />
                       </a>
                     )}
                     {artist.soundcloudUrl && (
@@ -585,7 +585,7 @@ export function MobileRadio() {
                         className="text-white/70 hover:text-[#99CCCC] transition-colors"
                         aria-label="SoundCloud"
                       >
-                        <SoundcloudIcon className="w-4 h-4" />
+                        <SoundcloudIcon className="w-6 h-[26px]" />
                       </a>
                     )}
                     {artist.bandcampUrl && (
@@ -596,7 +596,7 @@ export function MobileRadio() {
                         className="text-white/70 hover:text-[#99CCCC] transition-colors"
                         aria-label="Bandcamp"
                       >
-                        <BandcampIcon className="w-4 h-4" />
+                        <BandcampIcon className="w-6 h-6" />
                       </a>
                     )}
                   </div>
