@@ -519,9 +519,9 @@ export function MobileRadio() {
                 </div>
               )}
 
-              {/* Gradient overlay — covers bottom 50% of card */}
+              {/* Gradient overlay — bottom 50% dark, top transparent */}
               {!isAd && (
-                <div className="absolute bottom-0 left-0 right-0 h-1/2 pointer-events-none" style={{ backgroundImage: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 100%)" }} aria-hidden="true" />
+                <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 50%)" }} aria-hidden="true" />
               )}
 
               {/* Info */}
