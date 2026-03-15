@@ -144,6 +144,24 @@ function nextFreeSlot(entries: ScheduleEntry[], date: string) {
     return day[day.length - 1].end_time || day[day.length - 1].time
 }
 
+/** Returns the artist card that is linked (overlaps ≥90%) with a CSV broadcast entry */
+function findLinkedArtist(entry: ScheduleEntry, artists: Artist[]): Artist | null {
+    if (!entry.end_time) return null
+    const entryStart = new Date(`${entry.date}T${entry.time}`).getTime()
+    const entryEnd = new Date(`${entry.end_date || entry.date}T${entry.end_time}`).getTime()
+    if (!entryEnd || entryEnd <= entryStart) return null
+    return artists.find(a => {
+        if (!a.startTime || !a.endTime) return false
+        const aStart = new Date(a.startTime).getTime()
+        const aEnd = new Date(a.endTime).getTime()
+        const overlapStart = Math.max(entryStart, aStart)
+        const overlapEnd = Math.min(entryEnd, aEnd)
+        const overlap = overlapEnd - overlapStart
+        const entryDur = entryEnd - entryStart
+        return overlap > 0 && overlap / entryDur > 0.9
+    }) ?? null
+}
+
 function findActiveEntry(schedule: ScheduleEntry[]): ScheduleEntry | null {
     const today = toDateStr(new Date())
     const hms = nowHMS()
@@ -580,7 +598,7 @@ function ScheduleGrid({ schedule, artists, nowEntry, onEdit, onDelete, onDeleteA
 }) {
     const today = toDateStr(new Date())
     const [anchor, setAnchor] = useState(today)
-    const [mode, setMode] = useState<"week" | "month">("week")
+    const [mode, setMode] = useState<"week" | "month" | "list">("week")
     const [search, setSearch] = useState("")
     const [zoom, setZoom] = useState(1.0)
     const gridRef = useRef<HTMLDivElement>(null)
@@ -655,7 +673,7 @@ function ScheduleGrid({ schedule, artists, nowEntry, onEdit, onDelete, onDeleteA
                         </button>
                     </div>
                     <div className="flex border border-[#1a1a1a] overflow-hidden rounded-sm">
-                        {(["week", "month"] as const).map(m => (
+                        {(["week", "month", "list"] as const).map(m => (
                             <button key={m} onClick={() => setMode(m)}
                                 className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest transition-all ${mode === m ? "bg-[#99CCCC] text-black" : "text-[#444] hover:text-white"}`}>
                                 {m}
@@ -703,6 +721,15 @@ function ScheduleGrid({ schedule, artists, nowEntry, onEdit, onDelete, onDeleteA
                         <MonthView
                             viewDate={anchor} schedule={schedule} today={today}
                             onDayClick={d => { setAnchor(d); setMode("week") }}
+                        />
+                    </motion.div>
+                )}
+
+                {mode === "list" && (
+                    <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 overflow-hidden flex flex-col">
+                        <BroadcastListView
+                            schedule={schedule} artists={artists}
+                            onEdit={onEdit} onDelete={onDelete}
                         />
                     </motion.div>
                 )}
@@ -800,6 +827,7 @@ function TimeGrid({ days, today, schedule, artists, search, nowEntry, onEdit, on
                                 const scaledTop = seg.top * zoom
                                 const scaledHeight = Math.max(seg.height * zoom, 24)
                                 const isNow = nowEntry?.date === entry.date && nowEntry?.time === entry.time && nowEntry?.file === entry.file
+                                const linkedArtist = findLinkedArtist(entry, artists)
                                 const rightStyle = hasArtists ? "calc(50% + 1px)" : "3px"
 
                                 return (
@@ -819,10 +847,12 @@ function TimeGrid({ days, today, schedule, artists, search, nowEntry, onEdit, on
                                         onClick={() => onEdit(idx)}
                                         className={`rounded-sm px-1.5 py-1 cursor-grab active:cursor-grabbing overflow-hidden group transition-all border ${isNow
                                             ? "bg-[#99CCCC]/25 border-[#99CCCC]/50 shadow-[0_0_12px_rgba(153,204,204,0.2)]"
-                                            : "bg-[#99CCCC]/10 border-[#99CCCC]/20 hover:bg-[#99CCCC] hover:border-[#99CCCC]"
+                                            : linkedArtist
+                                                ? "bg-yellow-500/20 border-yellow-500/40 hover:bg-yellow-500 hover:border-yellow-500"
+                                                : "bg-[#99CCCC]/10 border-[#99CCCC]/20 hover:bg-[#99CCCC] hover:border-[#99CCCC]"
                                         }`}
                                     >
-                                        <div className={`text-[8px] font-mono font-bold leading-tight ${isNow ? "text-[#99CCCC]" : "text-[#99CCCC] group-hover:text-black"}`}>
+                                        <div className={`text-[8px] font-mono font-bold leading-tight ${isNow ? "text-[#99CCCC]" : linkedArtist ? "text-yellow-400 group-hover:text-black" : "text-[#99CCCC] group-hover:text-black"}`}>
                                             {entry.time.slice(0, 8)}
                                             {entry.end_time && <span className="opacity-70"> → {entry.end_time.slice(0, 8)}</span>}
                                             {entry.end_date && entry.end_date !== entry.date && (
@@ -832,7 +862,12 @@ function TimeGrid({ days, today, schedule, artists, search, nowEntry, onEdit, on
                                         </div>
                                         {scaledHeight > 30 && (
                                             <div className={`text-[9px] font-bold truncate leading-tight mt-0.5 ${isNow ? "text-white" : "text-white group-hover:text-black"}`}>
-                                                {basename(entry.file).replace(/\.[^.]+$/, "")}
+                                                {linkedArtist ? linkedArtist.name : basename(entry.file).replace(/\.[^.]+$/, "")}
+                                            </div>
+                                        )}
+                                        {linkedArtist && scaledHeight > 50 && (
+                                            <div className="text-[8px] font-mono text-yellow-400/70 truncate leading-tight group-hover:text-black/70">
+                                                {linkedArtist.show}
                                             </div>
                                         )}
                                         <button
@@ -947,6 +982,130 @@ function MonthView({ viewDate, schedule, today, onDayClick }: {
                                 {entries.length > 3 && <div className="text-[7px] font-mono text-[#333] pl-1">+{entries.length - 3}</div>}
                             </div>
                         </button>
+                    )
+                })}
+            </div>
+        </div>
+    )
+}
+
+// ─── Broadcast List View ──────────────────────────────────────────────────────
+
+function BroadcastListView({ schedule, artists, onEdit, onDelete }: {
+    schedule: ScheduleEntry[]
+    artists: Artist[]
+    onEdit: (i: number) => void
+    onDelete: (i: number) => void
+}) {
+    const [search, setSearch] = useState("")
+    const today = toDateStr(new Date())
+
+    const sorted = [...schedule]
+        .map((e, i) => ({ entry: e, origIdx: i }))
+        .filter(({ entry }) => basename(entry.file).toLowerCase().includes(search.toLowerCase()))
+        .sort((a, b) => {
+            const aKey = `${a.entry.date}T${a.entry.time}`
+            const bKey = `${b.entry.date}T${b.entry.time}`
+            return aKey.localeCompare(bKey)
+        })
+
+    const linked = sorted.filter(({ entry }) => findLinkedArtist(entry, artists) !== null)
+    const unlinked = sorted.filter(({ entry }) => findLinkedArtist(entry, artists) === null)
+
+    const rows = [...unlinked, ...linked].sort((a, b) => {
+        const aKey = `${a.entry.date}T${a.entry.time}`
+        const bKey = `${b.entry.date}T${b.entry.time}`
+        return aKey.localeCompare(bKey)
+    })
+
+    return (
+        <div className="flex-1 overflow-hidden flex flex-col">
+            {/* Search + stats */}
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-[#111] flex-shrink-0">
+                <div className="relative flex-1">
+                    <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#333]" />
+                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="search file..."
+                        className="w-full bg-black border border-[#1a1a1a] pl-6 pr-2 py-1.5 text-[9px] font-mono text-white outline-none focus:border-[#99CCCC] transition-colors" />
+                </div>
+                <div className="flex items-center gap-3 text-[8px] font-mono uppercase tracking-widest flex-shrink-0">
+                    <span className="flex items-center gap-1.5 text-yellow-500/80">
+                        <span className="w-1.5 h-1.5 rounded-full bg-yellow-500" />{linked.length} linked
+                    </span>
+                    <span className="flex items-center gap-1.5 text-red-500/60">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500/60" />{unlinked.length} no card
+                    </span>
+                </div>
+            </div>
+
+            {/* Header row */}
+            <div className="grid grid-cols-[auto_1fr] gap-0 flex-shrink-0 border-b border-[#111] px-4 py-1.5">
+                <div className="text-[8px] font-black uppercase tracking-[0.15em] text-[#333] w-52">Date / Time</div>
+                <div className="text-[8px] font-black uppercase tracking-[0.15em] text-[#333]">File / Artist Card</div>
+            </div>
+
+            {/* Rows */}
+            <div className="flex-1 overflow-y-auto rscroll divide-y divide-[#0a0a0a]">
+                {rows.length === 0 ? (
+                    <div className="px-5 py-12 text-center text-[9px] font-mono uppercase text-[#2a2a2a] tracking-widest">No broadcasts</div>
+                ) : rows.map(({ entry, origIdx }) => {
+                    const artist = findLinkedArtist(entry, artists)
+                    const endDate = entry.end_date || entry.date
+                    const isToday = entry.date === today
+                    const now = toDateStr(new Date())
+                    const hms = new Date().toTimeString().slice(0, 8)
+                    const isNow = entry.date <= now && (endDate > now || (endDate === now && (entry.end_time || "99:99:99") > hms)) && entry.time <= hms
+
+                    return (
+                        <div
+                            key={`${entry.date}-${entry.time}-${entry.file}-${origIdx}`}
+                            className={`flex items-center gap-3 px-4 py-3 cursor-pointer group hover:bg-white/[0.02] transition-colors border-l-2 ${
+                                isNow ? "border-l-[#99CCCC] bg-[#99CCCC]/5"
+                                    : artist ? "border-l-yellow-500/60"
+                                        : "border-l-red-500/30"
+                            }`}
+                            onClick={() => { onEdit(origIdx); window.scrollTo({ top: 0, behavior: "smooth" }) }}
+                        >
+                            {/* Status dot */}
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isNow ? "bg-[#99CCCC] shadow-[0_0_6px_#99CCCC] animate-pulse" : artist ? "bg-yellow-500" : "bg-red-500/50"}`} />
+
+                            {/* Date + time */}
+                            <div className="w-48 flex-shrink-0 font-mono">
+                                <div className={`text-[10px] font-black ${isToday ? "text-[#99CCCC]" : "text-[#555]"}`}>
+                                    {entry.date}
+                                    {isNow && <span className="ml-2 text-[8px] text-[#99CCCC] animate-pulse">● NOW</span>}
+                                </div>
+                                <div className="text-[9px] text-[#777] mt-0.5 tabular-nums">
+                                    {entry.time}
+                                    <span className="text-[#444]"> → </span>
+                                    {entry.end_time || "—"}
+                                    {endDate !== entry.date && (
+                                        <span className="text-[#333] ml-1 text-[8px]">+{endDate.slice(5)}</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* File + artist */}
+                            <div className="flex-1 min-w-0">
+                                <div className={`text-[10px] font-bold truncate ${artist ? "text-yellow-400/80" : "text-[#555]"}`}>
+                                    {basename(entry.file).replace(/\.[^.]+$/, "")}
+                                </div>
+                                {artist ? (
+                                    <div className="text-[9px] font-mono text-yellow-300/60 truncate mt-0.5">
+                                        {artist.name} — {artist.show}
+                                    </div>
+                                ) : (
+                                    <div className="text-[8px] font-mono text-red-500/40 uppercase tracking-widest mt-0.5">No card linked</div>
+                                )}
+                            </div>
+
+                            {/* Delete */}
+                            <button
+                                onClick={e => { e.stopPropagation(); onDelete(origIdx) }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 flex items-center justify-center text-[#333] hover:text-red-500 flex-shrink-0"
+                            >
+                                <Trash2 size={11} />
+                            </button>
+                        </div>
                     )
                 })}
             </div>
