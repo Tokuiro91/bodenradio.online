@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { Header } from "@/components/header"
+import { WorldMap } from "@/components/world-map"
 import { ArtistCard } from "@/components/artist-card"
 import { Timeline } from "@/components/timeline"
 import { useArtists } from "@/lib/use-artists"
@@ -48,6 +49,7 @@ export function RadioPlayer() {
     setGlobalTimeOffset(offset)
   }, [offset])
 
+  const [mapOpen, setMapOpen] = useState(false)
   const [currentPlayingIndex, setCurrentPlayingIndex] = useState(-1)
   const [progress, setProgress] = useState(0)
   const [visibleIndex, setVisibleIndex] = useState(0)
@@ -354,63 +356,98 @@ export function RadioPlayer() {
         onMuteToggle={() => setIsMuted(!isMuted)}
       />
 
-      {/* Background ambience */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#99CCCC]/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-[#99CCCC]/5 rounded-full blur-[100px]" />
-      </div>
-
-      {/* Horizontal scroll area */}
-      <div
-        ref={scrollRef}
-        className="absolute inset-0 pt-24 pb-16 flex items-center overflow-x-auto scrollbar-hide"
-        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      {/* Map toggle button — right below header */}
+      <button
+        onClick={() => setMapOpen(o => !o)}
+        className="absolute z-50 flex items-center gap-2 px-4 py-1.5 font-mono text-[9px] uppercase tracking-[0.35em] hover:text-[#99CCCC] transition-colors duration-200"
+        style={{
+          top: "56px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          color: "#737373",
+          borderBottom: "1px solid #1e1e1e",
+        }}
       >
-        <div className="flex items-center gap-6 px-8" style={{ minWidth: "max-content" }}>
-          {tripleArtists.map((artist, i) => {
-            const realIndex = i % TOTAL_CARDS
+        <span style={{ display: "inline-block", transition: "transform 500ms", transform: mapOpen ? "rotate(180deg)" : "rotate(0deg)" }}>↓</span>
+        Map
+      </button>
 
-            const prevDate =
-              i === 0
-                ? null
-                : localDate(sortedArtists[(i - 1) % TOTAL_CARDS].startTime)
-            const thisDate = localDate(sortedArtists[realIndex].startTime)
-            const isFirstOfDay = prevDate !== thisDate
-
-            const sawtoothPeriod = 6
-            const t = (realIndex % sawtoothPeriod) / sawtoothPeriod
-            const waveOffset = (1 - t) * 150 - 75
-
-            return (
-              <div
-                key={`${artist.id}-${i}`}
-                ref={(el) => { cardRefs.current[i] = el }}
-                className="flex-shrink-0"
-              >
-                <div className="h-4" />
-
-                {/* Sawtooth card with wave animation */}
-                <div
-                  className="transition-transform duration-500"
-                  style={{ transform: `translateY(${waveOffset}px)` }}
-                >
-                  <ArtistCard
-                    artist={artist}
-                    status={getStatus(i)}
-                    progress={realIndex === currentPlayingIndex ? progress : 0}
-                    isFavorite={userFavorites.includes(artist.dbId || String(artist.id))}
-                    onToggleFavorite={toggleFavorite}
-                  />
-                </div>
-              </div>
-            )
-          })}
-        </div>
+      {/* World map panel — slides DOWN from under header, covers top half */}
+      <div
+        className="absolute left-0 right-0 z-20 overflow-hidden"
+        style={{
+          top: "56px",
+          height: "calc(100vh - 508px)",
+          transform: mapOpen ? "translateY(0)" : "translateY(-100%)",
+          transition: "transform 700ms ease-in-out",
+        }}
+      >
+        <WorldMap />
       </div>
 
-      {/* Countdown UI */}
-      {
-        countdownStr && (
+      {/* Cards panel — sinks to bottom when map opens */}
+      <div
+        className="absolute inset-0 z-10"
+        style={{
+          transform: mapOpen ? "translateY(calc(50vh - 250px))" : "translateY(0)",
+          transition: "transform 700ms ease-in-out",
+        }}
+      >
+
+        {/* Background ambience */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#99CCCC]/5 rounded-full blur-[120px]" />
+          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-[#99CCCC]/5 rounded-full blur-[100px]" />
+        </div>
+
+        {/* Horizontal scroll area */}
+        <div
+          ref={scrollRef}
+          className="absolute inset-0 pt-24 pb-16 flex items-center overflow-x-auto scrollbar-hide"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          <div className="flex items-center gap-6 px-8" style={{ minWidth: "max-content" }}>
+            {tripleArtists.map((artist, i) => {
+              const realIndex = i % TOTAL_CARDS
+
+              const prevDate =
+                i === 0
+                  ? null
+                  : localDate(sortedArtists[(i - 1) % TOTAL_CARDS].startTime)
+              const thisDate = localDate(sortedArtists[realIndex].startTime)
+              const isFirstOfDay = prevDate !== thisDate
+
+              const sawtoothPeriod = 6
+              const t = (realIndex % sawtoothPeriod) / sawtoothPeriod
+              // When map opens: all cards level to 0, then map slides over them
+              const waveOffset = mapOpen ? 0 : (1 - t) * 150 - 75
+
+              return (
+                <div
+                  key={`${artist.id}-${i}`}
+                  ref={(el) => { cardRefs.current[i] = el }}
+                  className="flex-shrink-0"
+                >
+                  <div className="h-4" />
+                  <div
+                    style={{ transform: `translateY(${waveOffset}px)`, transition: "transform 500ms ease-in-out" }}
+                  >
+                    <ArtistCard
+                      artist={artist}
+                      status={getStatus(i)}
+                      progress={realIndex === currentPlayingIndex ? progress : 0}
+                      isFavorite={userFavorites.includes(artist.dbId || String(artist.id))}
+                      onToggleFavorite={toggleFavorite}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Countdown UI */}
+        {countdownStr && (
           <div className="absolute top-24 left-1/2 -translate-x-1/2 z-40">
             <div className="backdrop-blur-xl bg-black/60 border border-[#2a2a2a] px-6 py-3 rounded-full flex gap-3 items-center shadow-2xl">
               <span className="w-2 h-2 rounded-full bg-[#99CCCC] animate-pulse" />
@@ -418,20 +455,31 @@ export function RadioPlayer() {
               <span className="text-sm font-mono text-white tracking-[0.2em]">{countdownStr}</span>
             </div>
           </div>
-        )
-      }
+        )}
 
-      <Timeline
-        totalArtists={TOTAL_CARDS}
-        currentPlayingIndex={currentPlayingIndex}
-        visibleIndex={visibleIndex}
-        onSeek={scrollToArtist}
-        artists={sortedArtists}
-      />
+        <div className="absolute bottom-24 right-8 z-[9997]">
+          <ReactionPicker isFixed={false} />
+        </div>
 
-      {/* Reaction picker positioned in the bottom-right of the player area */}
-      <div className="absolute bottom-24 right-8 z-[9997]">
-        <ReactionPicker isFixed={false} />
+      </div>
+
+      {/* Timeline — slides down and disappears independently */}
+      <div
+        className="absolute inset-x-0 bottom-0 z-30"
+        style={{
+          transform: mapOpen ? "translateY(150px)" : "translateY(0)",
+          opacity: mapOpen ? 0 : 1,
+          pointerEvents: mapOpen ? "none" : "auto",
+          transition: "transform 500ms ease-in-out, opacity 300ms ease-in-out",
+        }}
+      >
+        <Timeline
+          totalArtists={TOTAL_CARDS}
+          currentPlayingIndex={currentPlayingIndex}
+          visibleIndex={visibleIndex}
+          onSeek={scrollToArtist}
+          artists={sortedArtists}
+        />
       </div>
 
     </div >
