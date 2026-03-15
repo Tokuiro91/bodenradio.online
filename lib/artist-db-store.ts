@@ -16,6 +16,8 @@ export interface DBArtist {
     soundcloudUrl?: string
     bandcampUrl?: string
     isLottie?: boolean
+    lat?: number
+    lng?: number
     scheduleCount?: number  // persistent: total times added to schedule (never decremented)
     favoritesCount?: number // computed by API, not stored in JSON
 }

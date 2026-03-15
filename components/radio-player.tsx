@@ -382,7 +382,11 @@ export function RadioPlayer() {
           transition: "transform 700ms ease-in-out",
         }}
       >
-        <WorldMap />
+        <WorldMap
+          artists={sortedArtists.map((a, i) => ({ id: a.id, name: a.name, lat: a.lat, lng: a.lng, sortedIndex: i }))}
+          currentPlayingIndex={currentPlayingIndex}
+          onArtistSelect={scrollToArtist}
+        />
       </div>
 
       {/* Cards panel — sinks to bottom when map opens */}
@@ -438,6 +442,7 @@ export function RadioPlayer() {
                       progress={realIndex === currentPlayingIndex ? progress : 0}
                       isFavorite={userFavorites.includes(artist.dbId || String(artist.id))}
                       onToggleFavorite={toggleFavorite}
+                      disableHoverScale={mapOpen}
                     />
                   </div>
                 </div>

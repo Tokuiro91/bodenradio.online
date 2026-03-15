@@ -26,6 +26,8 @@ const defaultForm = {
   type: "artist" as "artist" | "ad",
   name: "",
   location: "",
+  lat: 0,
+  lng: 0,
   show: "",
   image: "",
   audioUrl: "",
@@ -40,6 +42,75 @@ const defaultForm = {
   campaignEnd: "",
   isLottie: false,
   dbId: "",
+}
+
+// Nominatim location search combobox
+function LocationSearch({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (location: string, lat: number, lng: number) => void
+}) {
+  const [query, setQuery] = useState(value)
+  const [suggestions, setSuggestions] = useState<{ display: string; lat: number; lng: number }[]>([])
+  const [open, setOpen] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const search = (q: string) => {
+    if (q.length < 2) { setSuggestions([]); return }
+    fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=8&addressdetails=1`)
+      .then(r => r.json())
+      .then((data: any[]) => {
+        setSuggestions(data.map(item => {
+          const a = item.address || {}
+          const city = a.city || a.town || a.village || a.county || a.state || ""
+          const country = a.country || ""
+          const display = [city, country].filter(Boolean).join(", ") || item.display_name.split(",").slice(0, 2).join(",").trim()
+          return { display, lat: parseFloat(item.lat), lng: parseFloat(item.lon) }
+        }))
+        setOpen(true)
+      })
+      .catch(() => { })
+  }
+
+  const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value
+    setQuery(v)
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => search(v), 400)
+  }
+
+  const select = (s: { display: string; lat: number; lng: number }) => {
+    setQuery(s.display)
+    setSuggestions([])
+    setOpen(false)
+    onChange(s.display, s.lat, s.lng)
+  }
+
+  return (
+    <div style={{ position: "relative" }}>
+      <input
+        value={query}
+        onChange={handleInput}
+        onFocus={() => suggestions.length > 0 && setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="Type city or country..."
+        className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC] font-mono"
+      />
+      {open && suggestions.length > 0 && (
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100 }}
+          className="bg-[#0d1b22] border border-[#99CCCC]/30 max-h-48 overflow-y-auto">
+          {suggestions.map((s, i) => (
+            <button key={i} type="button" onMouseDown={() => select(s)}
+              className="block w-full text-left px-3 py-1.5 text-[10px] font-mono text-[#a3a3a3] hover:bg-[#99CCCC]/10 hover:text-[#99CCCC] uppercase tracking-wider border-b border-[#1a1a1a] last:border-0">
+              {s.display}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function AdminPage() {
@@ -259,6 +330,8 @@ export default function AdminPage() {
     setForm({
       name: artist.name,
       location: artist.location,
+      lat: artist.lat ?? 0,
+      lng: artist.lng ?? 0,
       show: artist.show,
       image: artist.image,
       audioUrl: artist.audioUrl ?? "",
@@ -284,6 +357,8 @@ export default function AdminPage() {
       ...defaultForm,
       name: a.name,
       location: a.location,
+      lat: a.lat ?? 0,
+      lng: a.lng ?? 0,
       show: a.show,
       image: a.image,
       audioUrl: a.audioUrl ?? "",
@@ -303,6 +378,8 @@ export default function AdminPage() {
       ...defaultForm,
       name: a.name,
       location: a.location,
+      lat: a.lat ?? 0,
+      lng: a.lng ?? 0,
       show: a.show,
       image: a.image,
       audioUrl: a.audioUrl ?? "",
@@ -366,6 +443,8 @@ export default function AdminPage() {
       dbId: form.dbId || undefined,
       name: form.name || (form.type === 'ad' ? "Untitled Ad" : "Без имени"),
       location: form.location || "Earth",
+      lat: form.lat || undefined,
+      lng: form.lng || undefined,
       show: form.show || (form.type === 'ad' ? "Advertisement" : "Новый сет"),
       image: form.image || "/artists/artist-1.jpg",
       audioUrl: form.audioUrl || undefined,
@@ -394,6 +473,8 @@ export default function AdminPage() {
           body: JSON.stringify({
             name: form.name,
             location: form.location || "Earth",
+            lat: form.lat || undefined,
+            lng: form.lng || undefined,
             show: form.show || "Новый сет",
             image: form.image || "/artists/artist-1.jpg",
             description: form.description || "...",
@@ -460,6 +541,8 @@ export default function AdminPage() {
       const artistData = {
         name: form.name,
         location: form.location || "Earth",
+        lat: form.lat || undefined,
+        lng: form.lng || undefined,
         show: form.show || "Новый сет",
         image: form.image || "/artists/artist-1.jpg",
         description: form.description || "...",
@@ -836,8 +919,13 @@ export default function AdminPage() {
               </div>
 
               <div>
-                <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">Location</label>
-                <input value={form.location} onChange={(e) => setForm(f => ({ ...f, location: e.target.value }))} className="w-full bg-black border border-[#2a2a2a] rounded-sm px-2 py-1.5 text-xs outline-none focus:border-[#99CCCC]" />
+                <label className="block mb-1 text-[10px] uppercase font-mono text-[#737373]">
+                  Location{form.lat ? <span className="ml-2 text-[#99CCCC]/50">{form.lat.toFixed(2)}, {form.lng.toFixed(2)}</span> : null}
+                </label>
+                <LocationSearch
+                  value={form.location}
+                  onChange={(loc, lat, lng) => setForm(f => ({ ...f, location: loc, lat, lng }))}
+                />
               </div>
 
               {!dbEditingId && (

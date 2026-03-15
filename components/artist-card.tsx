@@ -73,9 +73,10 @@ interface ArtistCardProps {
   progress?: number
   isFavorite?: boolean
   onToggleFavorite?: (id: string) => void
+  disableHoverScale?: boolean
 }
 
-export function ArtistCard({ artist, status, progress: externalProgress = 0, isFavorite, onToggleFavorite }: ArtistCardProps) {
+export function ArtistCard({ artist, status, progress: externalProgress = 0, isFavorite, onToggleFavorite, disableHoverScale }: ArtistCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [now, setNow] = useState(getSyncedTime())
 
@@ -166,8 +167,8 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
         onClick={handleCardClick}
         onMouseLeave={() => setExpanded(false)}
         className={`relative flex-shrink-0 cursor-pointer transition-all duration-300 ease-out group font-sans
-          ${isAd ? "hover:scale-[1.02]" : "hover:scale-[1.08] hover:z-20"}
-          ${expanded ? "scale-[1.08] z-20" : ""}
+          ${disableHoverScale ? "" : isAd ? "hover:scale-[1.02]" : "hover:scale-[1.08] hover:z-20"}
+          ${expanded && !disableHoverScale ? "scale-[1.08] z-20" : ""}
         `}
         style={{
           width: expanded ? "344px" : "312px",
