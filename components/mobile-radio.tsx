@@ -519,8 +519,13 @@ export function MobileRadio() {
                 </div>
               )}
 
+              {/* Gradient overlay — covers bottom 50% of card */}
+              {!isAd && (
+                <div className="absolute bottom-0 left-0 right-0 h-1/2 pointer-events-none" style={{ backgroundImage: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 100%)" }} aria-hidden="true" />
+              )}
+
               {/* Info */}
-              <div className="absolute bottom-0 left-0 right-0 p-4" style={!isAd ? { backgroundImage: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 100%)" } : undefined}>
+              <div className="absolute bottom-0 left-0 right-0 p-4">
                 {!isAd && (
                   <p className="text-[9px] uppercase tracking-[0.15em] text-[#737373] mb-0.5">
                     {artist.location}
