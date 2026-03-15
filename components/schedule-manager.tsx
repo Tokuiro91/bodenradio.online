@@ -600,7 +600,7 @@ function ScheduleGrid({ schedule, artists, nowEntry, onEdit, onDelete, onDeleteA
     const [anchor, setAnchor] = useState(today)
     const [mode, setMode] = useState<"week" | "month" | "list">("week")
     const [search, setSearch] = useState("")
-    const [zoom, setZoom] = useState(1.0)
+    const [zoom, setZoom] = useState(0.5)
     const gridRef = useRef<HTMLDivElement>(null)
     const hourPx = HOUR_PX * zoom
 
