@@ -500,8 +500,6 @@ export function MobileRadio() {
                 </div>
               )}
 
-              {/* Gradient overlay — dark from bottom, transparent at 35% */}
-              <div className="absolute inset-0" style={{ background: "linear-gradient(to top, #0a0a0a 0%, rgba(10,10,10,0.7) 18%, transparent 35%)" }} />
 
               {/* Playing progress bar */}
               {status === "playing" && !isAd && (
@@ -522,7 +520,7 @@ export function MobileRadio() {
               )}
 
               {/* Info */}
-              <div className="absolute bottom-0 left-0 right-0 p-4">
+              <div className="absolute bottom-0 left-0 right-0 p-4" style={!isAd ? { backgroundImage: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 100%)" } : undefined}>
                 {!isAd && (
                   <p className="text-[9px] uppercase tracking-[0.15em] text-[#737373] mb-0.5">
                     {artist.location}
