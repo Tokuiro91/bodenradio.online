@@ -229,7 +229,7 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
 
           {/* Gradient overlay — bottom 50% dark, top transparent */}
           {!isAd && (
-            <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 55%)" }} aria-hidden="true" />
+            <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 55%)", zIndex: 2 }} aria-hidden="true" />
           )}
 
           {/* Progress line */}
