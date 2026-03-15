@@ -525,7 +525,7 @@ export function MobileRadio() {
               )}
 
               {/* Info */}
-              <div className="absolute bottom-0 left-0 right-0 p-4">
+              <div className="absolute bottom-0 left-0 right-0 p-4" style={{ zIndex: 3 }}>
                 {!isAd && (
                   <p className="text-[9px] uppercase tracking-[0.15em] text-[#737373] mb-0.5">
                     {artist.location}

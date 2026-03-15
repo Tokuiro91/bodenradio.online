@@ -283,7 +283,7 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
           )}
 
           {/* INFO */}
-          <div className="absolute bottom-0 left-0 right-0 p-5">
+          <div className="absolute bottom-0 left-0 right-0 p-5" style={{ zIndex: 3 }}>
             {!isAd && (
               <p className="text-[10px] uppercase tracking-widest text-[#737373] mb-1">
                 {artist.location}
