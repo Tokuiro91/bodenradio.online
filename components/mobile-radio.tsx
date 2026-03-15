@@ -521,7 +521,7 @@ export function MobileRadio() {
 
               {/* Gradient overlay — bottom 50% dark, top transparent */}
               {!isAd && (
-                <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0) 65%)", zIndex: 2 }} aria-hidden="true" />
+                <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 40%, rgba(0,0,0,0) 70%)", zIndex: 2 }} aria-hidden="true" />
               )}
 
               {/* Info */}
