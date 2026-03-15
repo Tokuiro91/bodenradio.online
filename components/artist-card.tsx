@@ -228,7 +228,7 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
           </div>
 
           {/* Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" style={{ backgroundImage: "linear-gradient(to top, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 50%)" }} />
 
           {/* Progress line */}
           {effectiveStatus === "playing" && !isAd && (
