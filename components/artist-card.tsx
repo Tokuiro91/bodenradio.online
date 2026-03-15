@@ -227,8 +227,6 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
             )}
           </div>
 
-          {/* Overlay */}
-          <div className="absolute inset-0" style={{ backgroundImage: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 50%)" }} />
 
           {/* Progress line */}
           {effectiveStatus === "playing" && !isAd && (
@@ -281,7 +279,7 @@ export function ArtistCard({ artist, status, progress: externalProgress = 0, isF
           )}
 
           {/* INFO */}
-          <div className="absolute bottom-0 left-0 right-0 p-5">
+          <div className="absolute bottom-0 left-0 right-0 p-5" style={!isAd ? { backgroundImage: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 100%)" } : undefined}>
             {!isAd && (
               <p className="text-[10px] uppercase tracking-widest text-[#737373] mb-1">
                 {artist.location}
