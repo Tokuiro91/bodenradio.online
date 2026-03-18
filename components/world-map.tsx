@@ -267,11 +267,14 @@ export function WorldMap({ artists = [], currentPlayingIndex = -1, onArtistSelec
     >
       <style>{`
         @keyframes mapPing {
-          0%  { r: 6;  opacity: 0.75; }
-          100%{ r: 22; opacity: 0; }
+          0%   { r: 7;  opacity: 0.85; }
+          60%  { opacity: 0.3; }
+          100% { r: 48; opacity: 0; }
         }
-        .map-ping   { animation: mapPing 1.8s ease-out infinite; }
-        .map-ping-2 { animation: mapPing 1.8s ease-out 0.7s infinite; }
+        .map-ping-1 { animation: mapPing 2.4s cubic-bezier(0,.5,.5,1) infinite; }
+        .map-ping-2 { animation: mapPing 2.4s cubic-bezier(0,.5,.5,1) 0.6s infinite; }
+        .map-ping-3 { animation: mapPing 2.4s cubic-bezier(0,.5,.5,1) 1.2s infinite; }
+        .map-ping-4 { animation: mapPing 2.4s cubic-bezier(0,.5,.5,1) 1.8s infinite; }
       `}</style>
 
       {/* Zoom controls — right side */}
@@ -345,8 +348,13 @@ export function WorldMap({ artists = [], currentPlayingIndex = -1, onArtistSelec
             >
               {group.isLive && (
                 <>
-                  <circle cx={group.cx} cy={group.cy} r={6} fill="#99CCCC" className="map-ping" />
-                  <circle cx={group.cx} cy={group.cy} r={6} fill="#99CCCC" className="map-ping-2" />
+                  {/* 4 expanding echo rings */}
+                  <circle cx={group.cx} cy={group.cy} r={7} fill="#99CCCC" className="map-ping-1" />
+                  <circle cx={group.cx} cy={group.cy} r={7} fill="#99CCCC" className="map-ping-2" />
+                  <circle cx={group.cx} cy={group.cy} r={7} fill="#99CCCC" className="map-ping-3" />
+                  <circle cx={group.cx} cy={group.cy} r={7} fill="#99CCCC" className="map-ping-4" />
+                  {/* Static outer ring — always visible on open */}
+                  <circle cx={group.cx} cy={group.cy} r={12} fill="none" stroke="#99CCCC" strokeWidth={1.5} opacity={0.55} />
                 </>
               )}
               <circle
