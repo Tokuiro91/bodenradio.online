@@ -267,14 +267,13 @@ export function WorldMap({ artists = [], currentPlayingIndex = -1, onArtistSelec
     >
       <style>{`
         @keyframes mapPing {
-          0%   { r: 7;  opacity: 0.85; }
-          60%  { opacity: 0.3; }
-          100% { r: 48; opacity: 0; }
+          0%   { r: 6;  opacity: 0.35; }
+          100% { r: 26; opacity: 0; }
         }
-        .map-ping-1 { animation: mapPing 2.4s cubic-bezier(0,.5,.5,1) infinite; }
-        .map-ping-2 { animation: mapPing 2.4s cubic-bezier(0,.5,.5,1) 0.6s infinite; }
-        .map-ping-3 { animation: mapPing 2.4s cubic-bezier(0,.5,.5,1) 1.2s infinite; }
-        .map-ping-4 { animation: mapPing 2.4s cubic-bezier(0,.5,.5,1) 1.8s infinite; }
+        .map-ping-1 { animation: mapPing 4s ease-out infinite; }
+        .map-ping-2 { animation: mapPing 4s ease-out 1s infinite; }
+        .map-ping-3 { animation: mapPing 4s ease-out 2s infinite; }
+        .map-ping-4 { animation: mapPing 4s ease-out 3s infinite; }
       `}</style>
 
       {/* Zoom controls — right side */}
