@@ -200,7 +200,7 @@ export function WorldMap({ artists = [], currentPlayingIndex = -1, onArtistSelec
       s.targetX = Math.max(-s.maxShiftX, Math.min(s.maxShiftX, -nx * s.maxShiftX * 2))
       s.targetY = Math.max(-s.maxShiftY, Math.min(s.maxShiftY, -ny * s.maxShiftY * 2))
     }
-    const onMouseLeave = () => { s.targetX = 0; s.targetY = 0 }
+    const onMouseLeave = () => { s.targetX = s.currentX; s.targetY = s.currentY }
 
     // Scroll zoom
     const onWheel = (e: WheelEvent) => {
