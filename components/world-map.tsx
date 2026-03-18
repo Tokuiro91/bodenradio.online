@@ -55,14 +55,28 @@ export function WorldMap({ artists = [], currentPlayingIndex = -1, onArtistSelec
     ctx: null as CanvasRenderingContext2D | null,
   })
 
-  // Reset pan to center when map opens
+  // Center on Europe when map opens
   useEffect(() => {
     if (isOpen) {
       const s = S.current
-      s.targetX = 0
-      s.targetY = 0
-      s.currentX = 0
-      s.currentY = 0
+      if (s.projection && s.mapW) {
+        // Project Europe center [lng, lat]
+        const projected = s.projection([15, 50])
+        if (projected) {
+          const [cx, cy] = projected
+          const tx = Math.max(-s.maxShiftX, Math.min(s.maxShiftX, s.mapW / 2 - cx))
+          const ty = Math.max(-s.maxShiftY, Math.min(s.maxShiftY, s.mapH / 2 - cy))
+          s.targetX = tx
+          s.targetY = ty
+          s.currentX = tx
+          s.currentY = ty
+        }
+      } else {
+        s.targetX = 0
+        s.targetY = 0
+        s.currentX = 0
+        s.currentY = 0
+      }
     }
   }, [isOpen])
 
