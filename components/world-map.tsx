@@ -22,9 +22,10 @@ interface WorldMapProps {
   artists?: MapArtist[]
   currentPlayingIndex?: number
   onArtistSelect?: (sortedIndex: number) => void
+  isOpen?: boolean
 }
 
-export function WorldMap({ artists = [], currentPlayingIndex = -1, onArtistSelect }: WorldMapProps) {
+export function WorldMap({ artists = [], currentPlayingIndex = -1, onArtistSelect, isOpen }: WorldMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -33,8 +34,8 @@ export function WorldMap({ artists = [], currentPlayingIndex = -1, onArtistSelec
   const [dotGroups, setDotGroups] = useState<DotGroup[]>([])
   const [popupGroup, setPopupGroup] = useState<DotGroup | null>(null)
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null)
+  const [zoom, setZoom] = useState(1)
 
-  // All mutable map state lives here — avoids stale closures
   const S = useRef({
     mapW: 0,
     mapH: 0,
@@ -48,15 +49,28 @@ export function WorldMap({ artists = [], currentPlayingIndex = -1, onArtistSelec
     maxShiftX: 0,
     maxShiftY: 0,
     rafId: 0,
+    zoom: 1,
+    // exposed rebuild so zoom buttons can call it
+    buildMap: null as (() => void) | null,
+    ctx: null as CanvasRenderingContext2D | null,
   })
+
+  // Reset pan to center when map opens
+  useEffect(() => {
+    if (isOpen) {
+      const s = S.current
+      s.targetX = 0
+      s.targetY = 0
+      s.currentX = 0
+      s.currentY = 0
+    }
+  }, [isOpen])
 
   const recomputeDots = useCallback(() => {
     const s = S.current
     if (!s.projection || !s.mapW) return
 
     const validArtists = artists.filter(a => a.lat != null && a.lng != null)
-
-    // Group artists within ~0.5 degree of each other
     const groups: Map<string, MapArtist[]> = new Map()
     for (const a of validArtists) {
       const key = `${Math.round(a.lat! * 2) / 2},${Math.round(a.lng! * 2) / 2}`
@@ -86,6 +100,7 @@ export function WorldMap({ artists = [], currentPlayingIndex = -1, onArtistSelec
     if (!container || !inner || !canvas) return
 
     const ctx = canvas.getContext("2d")!
+    s.ctx = ctx
 
     function renderMap() {
       if (!s.geoData || !s.geoPath) return
@@ -117,7 +132,9 @@ export function WorldMap({ artists = [], currentPlayingIndex = -1, onArtistSelec
       const ch = container!.offsetHeight
       if (cw === 0 || ch === 0) return
 
-      const scale = cw / 4.5
+      const baseScale = cw / 4.5
+      const scale = baseScale * s.zoom
+
       s.mapW = Math.round(scale * 2 * Math.PI)
       s.mapH = Math.round(scale * 3.27)
 
@@ -138,6 +155,10 @@ export function WorldMap({ artists = [], currentPlayingIndex = -1, onArtistSelec
       s.maxShiftX = Math.max(0, s.mapW / 2 - cw / 2)
       s.maxShiftY = Math.max(0, s.mapH / 2 - ch / 2)
 
+      // Clamp pan to new limits
+      s.targetX = Math.max(-s.maxShiftX, Math.min(s.maxShiftX, s.targetX))
+      s.targetY = Math.max(-s.maxShiftY, Math.min(s.maxShiftY, s.targetY))
+
       s.projection = d3.geoNaturalEarth1()
         .scale(scale)
         .translate([s.mapW / 2, s.mapH / 2])
@@ -148,6 +169,8 @@ export function WorldMap({ artists = [], currentPlayingIndex = -1, onArtistSelec
       recomputeDots()
     }
 
+    s.buildMap = buildMap
+
     fetch("https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson")
       .then(r => r.json())
       .then(data => { s.geoData = data; buildMap() })
@@ -155,17 +178,29 @@ export function WorldMap({ artists = [], currentPlayingIndex = -1, onArtistSelec
 
     window.addEventListener("resize", buildMap)
 
+    // Mouse pan (only updates target; actual motion via RAF)
     const onMouseMove = (e: MouseEvent) => {
       const rect = container!.getBoundingClientRect()
       const nx = (e.clientX - rect.left) / rect.width - 0.5
       const ny = (e.clientY - rect.top) / rect.height - 0.5
-      s.targetX = -nx * s.maxShiftX * 2
-      s.targetY = -ny * s.maxShiftY * 2
+      s.targetX = Math.max(-s.maxShiftX, Math.min(s.maxShiftX, -nx * s.maxShiftX * 2))
+      s.targetY = Math.max(-s.maxShiftY, Math.min(s.maxShiftY, -ny * s.maxShiftY * 2))
     }
     const onMouseLeave = () => { s.targetX = 0; s.targetY = 0 }
 
+    // Scroll zoom
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const delta = e.deltaY > 0 ? -0.12 : 0.12
+      const newZoom = Math.max(0.6, Math.min(6, s.zoom + delta))
+      s.zoom = newZoom
+      setZoom(newZoom)
+      buildMap()
+    }
+
     container.addEventListener("mousemove", onMouseMove)
     container.addEventListener("mouseleave", onMouseLeave)
+    container.addEventListener("wheel", onWheel, { passive: false })
 
     const tick = () => {
       s.currentX += (s.targetX - s.currentX) * 0.055
@@ -179,19 +214,26 @@ export function WorldMap({ artists = [], currentPlayingIndex = -1, onArtistSelec
       window.removeEventListener("resize", buildMap)
       container.removeEventListener("mousemove", onMouseMove)
       container.removeEventListener("mouseleave", onMouseLeave)
+      container.removeEventListener("wheel", onWheel)
       cancelAnimationFrame(s.rafId)
     }
   }, [recomputeDots])
 
-  useEffect(() => {
-    recomputeDots()
-  }, [recomputeDots])
+  useEffect(() => { recomputeDots() }, [recomputeDots])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPopupGroup(null) }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [])
+
+  const handleZoom = (dir: 1 | -1) => {
+    const s = S.current
+    const newZoom = Math.max(0.6, Math.min(6, s.zoom + dir * 0.35))
+    s.zoom = newZoom
+    setZoom(newZoom)
+    s.buildMap?.()
+  }
 
   const handleDotClick = (group: DotGroup) => {
     if (group.artists.length === 1) {
@@ -218,6 +260,42 @@ export function WorldMap({ artists = [], currentPlayingIndex = -1, onArtistSelec
         .map-ping-2 { animation: mapPing 1.8s ease-out 0.7s infinite; }
       `}</style>
 
+      {/* Zoom controls — right side */}
+      <div
+        style={{ position: "absolute", right: "20px", top: "50%", transform: "translateY(-50%)", zIndex: 10 }}
+        className="flex flex-col gap-3"
+        onClick={e => e.stopPropagation()}
+      >
+        <button
+          onClick={() => handleZoom(1)}
+          className="flex items-center justify-center font-mono text-[#99CCCC] hover:text-white transition-colors duration-200"
+          style={{
+            width: 40, height: 40,
+            fontSize: 26,
+            lineHeight: 1,
+            border: "1px solid rgba(153,204,204,0.25)",
+            background: "rgba(8,8,8,0.7)",
+            letterSpacing: "-1px",
+          }}
+        >
+          +
+        </button>
+        <button
+          onClick={() => handleZoom(-1)}
+          className="flex items-center justify-center font-mono text-[#99CCCC] hover:text-white transition-colors duration-200"
+          style={{
+            width: 40, height: 40,
+            fontSize: 26,
+            lineHeight: 1,
+            border: "1px solid rgba(153,204,204,0.25)",
+            background: "rgba(8,8,8,0.7)",
+            letterSpacing: "-1px",
+          }}
+        >
+          −
+        </button>
+      </div>
+
       <div
         ref={innerRef}
         style={{
@@ -233,7 +311,6 @@ export function WorldMap({ artists = [], currentPlayingIndex = -1, onArtistSelec
           style={{ display: "block", position: "absolute", top: 0, left: 0 }}
         />
 
-        {/* SVG dot overlay */}
         <svg
           ref={svgRef}
           style={{ display: "block", position: "absolute", top: 0, left: 0, overflow: "visible" }}
@@ -284,7 +361,6 @@ export function WorldMap({ artists = [], currentPlayingIndex = -1, onArtistSelec
           ))}
         </svg>
 
-        {/* Hover tooltip */}
         {tooltip && (
           <div
             style={{
@@ -300,7 +376,6 @@ export function WorldMap({ artists = [], currentPlayingIndex = -1, onArtistSelec
           </div>
         )}
 
-        {/* Multi-artist popup */}
         {popupGroup && (
           <div
             style={{

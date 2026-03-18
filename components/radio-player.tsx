@@ -386,6 +386,7 @@ export function RadioPlayer() {
           artists={sortedArtists.map((a, i) => ({ id: a.id, name: a.name, lat: a.lat, lng: a.lng, sortedIndex: i }))}
           currentPlayingIndex={currentPlayingIndex}
           onArtistSelect={scrollToArtist}
+          isOpen={mapOpen}
         />
       </div>
 
