@@ -99,7 +99,8 @@ export async function GET() {
         const bookmarks = bookmarkMap[artist.id] || 0
         const slots = slotsByDbId[artist.id] || []
 
-        let listeningTimeMs = 0
+        // Start with historically accumulated time from removed/moved slots
+        let listeningTimeMs = artist.accumulatedListeningMs || 0
         const uniqueSessionIds = new Set<string>()
 
         for (const slot of slots) {

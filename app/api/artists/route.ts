@@ -4,6 +4,8 @@ import path from "path"
 import { generateArtists } from "@/lib/artists-data"
 import type { Artist } from "@/lib/artists-data"
 import { auth } from "@/lib/auth"
+import { addAccumulatedListeningMs } from "@/lib/artist-db-store"
+import { computeListeningMsForSlot } from "@/lib/compute-listening-time"
 
 const DATA_FILE = path.join(process.cwd(), "data", "artists.json")
 
@@ -111,6 +113,25 @@ export async function POST(request: Request) {
                         }
                     }
                 }
+            }
+        }
+
+        // Accumulate listening time for slots that are being removed or moved
+        const oldArtists = readArtists()
+        for (const oldA of oldArtists) {
+            if (!oldA.dbId || !oldA.startTime || !oldA.endTime) continue
+            const oldStartMs = new Date(oldA.startTime).getTime()
+            const oldEndMs = new Date(oldA.endTime).getTime()
+            if (isNaN(oldStartMs) || isNaN(oldEndMs) || oldEndMs <= oldStartMs) continue
+
+            const newA = artists.find(a => a.id === oldA.id)
+            const slotChanged = !newA
+                || newA.startTime !== oldA.startTime
+                || newA.endTime !== oldA.endTime
+
+            if (slotChanged) {
+                const ms = computeListeningMsForSlot(oldStartMs, oldEndMs)
+                if (ms > 0) addAccumulatedListeningMs(oldA.dbId, ms)
             }
         }
 

@@ -18,8 +18,9 @@ export interface DBArtist {
     isLottie?: boolean
     lat?: number
     lng?: number
-    scheduleCount?: number  // persistent: total times added to schedule (never decremented)
-    favoritesCount?: number // computed by API, not stored in JSON
+    scheduleCount?: number       // persistent: total times added to schedule (never decremented)
+    accumulatedListeningMs?: number // persistent: listening time from past (removed/moved) slots
+    favoritesCount?: number      // computed by API, not stored in JSON
 }
 
 function ensureDirectoryExistence(filePath: string) {
@@ -70,6 +71,18 @@ export function incrementScheduleCount(id: string): void {
     const index = artists.findIndex(a => a.id === id)
     if (index === -1) return
     artists[index] = { ...artists[index], scheduleCount: (artists[index].scheduleCount || 0) + 1 }
+    saveArtistDB(artists)
+}
+
+export function addAccumulatedListeningMs(id: string, ms: number): void {
+    if (ms <= 0) return
+    const artists = getArtistDB()
+    const index = artists.findIndex(a => a.id === id)
+    if (index === -1) return
+    artists[index] = {
+        ...artists[index],
+        accumulatedListeningMs: (artists[index].accumulatedListeningMs || 0) + ms
+    }
     saveArtistDB(artists)
 }
 
