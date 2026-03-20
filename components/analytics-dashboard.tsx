@@ -82,7 +82,7 @@ export function AnalyticsDashboard({
                 .catch(() => {})
         }
         load()
-        const iv = setInterval(load, 30_000)
+        const iv = setInterval(load, 5_000)
         return () => clearInterval(iv)
     }, [])
 

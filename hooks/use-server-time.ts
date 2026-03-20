@@ -49,3 +49,10 @@ export function setGlobalTimeOffset(offset: number) {
 export function getSyncedTime() {
     return Date.now() + globalOffset
 }
+
+/**
+ * Icecast stream buffer delay. Cards use this offset so they transition
+ * ~5 seconds after the server clock boundary, matching what listeners actually hear.
+ * Audio engine is NOT affected — only UI card display.
+ */
+export const STREAM_BUFFER_MS = 5_000

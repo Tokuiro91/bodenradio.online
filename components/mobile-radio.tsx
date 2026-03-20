@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/sheet"
 import Link from "next/link"
 import Lottie from "lottie-react"
-import { getSyncedTime } from "@/hooks/use-server-time"
+import { getSyncedTime, STREAM_BUFFER_MS } from "@/hooks/use-server-time"
 
 // ── Minimal B&W social icons ──────────────────────────────────────────────────
 
@@ -66,7 +66,7 @@ function BandcampIcon({ className }: { className?: string }) {
 }
 
 function findCurrentArtistIndex(artists: { startTime: string; endTime: string }[]): number {
-  const now = getSyncedTime()
+  const now = getSyncedTime() - STREAM_BUFFER_MS
   return artists.findIndex((a) => {
     const s = new Date(a.startTime).getTime()
     const e = new Date(a.endTime).getTime()
@@ -75,7 +75,7 @@ function findCurrentArtistIndex(artists: { startTime: string; endTime: string }[
 }
 
 function calcProgress(artist: { startTime: string; endTime: string }): number {
-  const now = getSyncedTime()
+  const now = getSyncedTime() - STREAM_BUFFER_MS
   const s = new Date(artist.startTime).getTime()
   const e = new Date(artist.endTime).getTime()
   if (now < s || e <= s) return 0
@@ -231,7 +231,7 @@ export function MobileRadio() {
       }
       const a = sortedArtists[i]
       if (!a) return "upcoming"
-      const now = getSyncedTime()
+      const now = getSyncedTime() - STREAM_BUFFER_MS
       const e = new Date(a.endTime).getTime()
       const s = new Date(a.startTime).getTime()
       if (now > e) return "played"
