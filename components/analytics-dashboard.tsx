@@ -5,7 +5,7 @@ import {
     LineChart, Line, BarChart, Bar,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts"
-import { Users, Cpu, HardDrive, MemoryStick, Radio } from "lucide-react"
+import { Cpu, HardDrive, MemoryStick, Radio, UserCheck, Globe } from "lucide-react"
 
 interface AnalyticsData {
     totalVisitors: number
@@ -17,6 +17,12 @@ interface AnalyticsData {
     timelineData: { date: string; visitors: number }[]
     heatmapData: { hour: number; count: number }[]
     rawSessions: any[]
+}
+
+interface OnlineData {
+    totalOnline: number
+    registered: { name: string; country: string | null; city: string | null; lastActive: number }[]
+    anonymous: { country: string; count: number }[]
 }
 
 interface SystemStats {
@@ -50,6 +56,7 @@ export function AnalyticsDashboard({
     const [period, setPeriod] = useState<"day" | "week" | "month" | "all">("all")
     const [icecastListeners, setIcecastListeners] = useState<number | null>(null)
     const [systemStats, setSystemStats] = useState<SystemStats>(externalStats)
+    const [onlineData, setOnlineData] = useState<OnlineData | null>(null)
 
     // Poll Icecast listener count every 1s (via health endpoint)
     useEffect(() => {
@@ -63,6 +70,19 @@ export function AnalyticsDashboard({
         }
         fetchHealth()
         const iv = setInterval(fetchHealth, 5_000)
+        return () => clearInterval(iv)
+    }, [])
+
+    // Poll who's online every 30s
+    useEffect(() => {
+        const load = () => {
+            fetch("/api/analytics/online")
+                .then(r => r.ok ? r.json() : null)
+                .then(d => { if (d) setOnlineData(d) })
+                .catch(() => {})
+        }
+        load()
+        const iv = setInterval(load, 30_000)
         return () => clearInterval(iv)
     }, [])
 
@@ -272,6 +292,66 @@ export function AnalyticsDashboard({
                                 )
                             })}
                         </div>
+                    </div>
+                </div>
+            </div>
+            {/* ── Who's Online Now ── */}
+            <div>
+                <div className="flex items-center gap-3 mb-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#444]">Сейчас на сайте</p>
+                    <span className="flex items-center gap-1.5 text-[10px] font-mono text-[#99CCCC]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                        {onlineData?.totalOnline ?? 0}
+                    </span>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Registered users */}
+                    <div className="bg-[#0a0a0a] border border-[#2a2a2a] rounded-sm overflow-hidden">
+                        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#1a1a1a]">
+                            <UserCheck size={11} className="text-[#99CCCC]" />
+                            <span className="text-[10px] uppercase tracking-widest text-[#737373]">Зарегистрированные</span>
+                            <span className="ml-auto font-mono text-[10px] text-[#99CCCC]">{onlineData?.registered.length ?? 0}</span>
+                        </div>
+                        {!onlineData || onlineData.registered.length === 0 ? (
+                            <p className="px-4 py-3 text-[11px] text-[#3a3a3a] font-mono">Никого нет онлайн</p>
+                        ) : (
+                            <div className="divide-y divide-[#111]">
+                                {onlineData.registered.map((u, i) => (
+                                    <div key={i} className="flex items-center gap-3 px-4 py-2.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+                                        <span className="text-[12px] text-[#e5e5e5] font-mono flex-1 truncate">{u.name}</span>
+                                        <span className="text-[10px] text-[#555] font-mono">
+                                            {[u.city, u.country].filter(Boolean).join(", ") || "—"}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Anonymous by country */}
+                    <div className="bg-[#0a0a0a] border border-[#2a2a2a] rounded-sm overflow-hidden">
+                        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#1a1a1a]">
+                            <Globe size={11} className="text-[#737373]" />
+                            <span className="text-[10px] uppercase tracking-widest text-[#737373]">Анонимные по странам</span>
+                            <span className="ml-auto font-mono text-[10px] text-[#737373]">
+                                {onlineData?.anonymous.reduce((s, x) => s + x.count, 0) ?? 0}
+                            </span>
+                        </div>
+                        {!onlineData || onlineData.anonymous.length === 0 ? (
+                            <p className="px-4 py-3 text-[11px] text-[#3a3a3a] font-mono">Нет данных</p>
+                        ) : (
+                            <div className="divide-y divide-[#111]">
+                                {onlineData.anonymous.map((a, i) => (
+                                    <div key={i} className="flex items-center gap-3 px-4 py-2.5">
+                                        <span className="text-[10px] font-mono text-[#555] w-5 text-right flex-shrink-0">{i + 1}</span>
+                                        <span className="text-[12px] text-[#a3a3a3] font-mono flex-1">{a.country}</span>
+                                        <span className="text-[12px] font-mono text-white">{a.count}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

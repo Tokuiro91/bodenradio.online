@@ -74,11 +74,17 @@ export async function POST(req: Request) {
                 city,
                 totalDurationMs: 0,
                 isRegistered,
+                userName: isRegistered && serverSession?.user
+                    ? (serverSession.user.name || serverSession.user.email || undefined)
+                    : undefined,
             }
         } else {
             // Update existing session
             session.lastActive = now
             session.isRegistered = isRegistered // keep updated
+            if (isRegistered && serverSession?.user) {
+                session.userName = serverSession.user.name || serverSession.user.email || undefined
+            }
             if (clientDurationMs) {
                 session.totalDurationMs = Math.max(session.totalDurationMs, clientDurationMs)
             } else {
