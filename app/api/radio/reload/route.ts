@@ -42,8 +42,18 @@ function sendLiquidsoapCommand(command: string): Promise<string> {
     })
 }
 
-export async function POST() {
-    // Clear anti-repeat state so liq-bridge will re-queue immediately
+export async function POST(request: Request) {
+    const url = new URL(request.url)
+    const force = url.searchParams.get("force") === "true"
+
+    // Soft reload: schedule file is already saved on disk, liq-bridge will
+    // pick up future changes on its next poll cycle — no need to interrupt
+    // whatever is currently playing.
+    if (!force) {
+        return NextResponse.json({ success: true, message: "Schedule saved" })
+    }
+
+    // Force reload: clear anti-repeat state + flush_and_skip current track
     try {
         fs.writeFileSync(STATE_FILE, "")
     } catch { /* non-fatal */ }

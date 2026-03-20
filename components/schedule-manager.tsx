@@ -356,17 +356,25 @@ export function ScheduleManager() {
             if (!r.ok) throw new Error()
             setSchedule(entries)
             toast.success("Schedule saved")
-            reload()
+
+            // Only force-skip if the currently playing slot changed.
+            // For edits to future entries the bridge will pick up the new
+            // schedule file on its next poll — no need to interrupt playback.
+            const newNowEntry = findActiveEntry(entries)
+            const force = nowEntry?.date !== newNowEntry?.date
+                || nowEntry?.time !== newNowEntry?.time
+                || nowEntry?.file !== newNowEntry?.file
+            reload(force)
         } catch { toast.error("Failed to save") }
         finally { setSaving(false) }
     }
 
-    const reload = async () => {
+    const reload = async (force = true) => {
         setSyncing(true)
         try {
-            const r = await fetch("/api/radio/reload", { method: "POST" })
-            if (r.ok) toast.success("Liquidsoap reloaded", { duration: 2000 })
-            else toast.warning("Saved (engine offline)")
+            const r = await fetch(`/api/radio/reload?force=${force}`, { method: "POST" })
+            if (r.ok && force) toast.success("Liquidsoap reloaded", { duration: 2000 })
+            else if (!r.ok) toast.warning("Saved (engine offline)")
         } catch { toast.warning("Saved (engine offline)") }
         finally { setSyncing(false) }
     }
