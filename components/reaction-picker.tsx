@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import { Smile, Lock } from "lucide-react"
-import dynamic from "next/dynamic"
 import { socketService } from "@/lib/socket"
 
 interface Sticker {
@@ -33,7 +32,7 @@ export function ReactionPicker({ isFixed = true, className = "" }: { isFixed?: b
 
     // Load packs & Connect to socket
     useEffect(() => {
-        const socket = socketService.connect()
+        socketService.connect()
 
         if (!isLoggedIn) return
         fetch("/api/reactions/send")
@@ -66,10 +65,7 @@ export function ReactionPicker({ isFixed = true, className = "" }: { isFixed?: b
         window.dispatchEvent(new CustomEvent("local-reaction", { detail: reactionData }))
 
         // --- Socket Broadcast ---
-        const socket = socketService.socket
-        if (socket?.connected) {
-            socket.emit("reaction", reactionData)
-        }
+        socketService.connect().emit("reaction", reactionData)
 
         setSending(true)
         try {
